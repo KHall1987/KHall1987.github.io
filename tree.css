@@ -1,0 +1,202 @@
+:root {
+--Accent: #57a16a;
+}
+
+.NavBar{
+  background-color: var(--Accent);
+}
+.nav li{
+  padding: 5px;
+  padding-bottom: 0px;
+}
+
+.nav li a{
+margin-right: 2px;
+line-height: 1.42857143;
+border-radius: 4px 4px 0 0;
+color: var(--Accent);
+background: white;
+font-weight: bold;
+}
+
+body {
+position: relative;
+    font-family:'Arial', sans-serif;
+
+background: rgb(221,255,217);
+background: linear-gradient(0deg, rgba(221,255,217,1) 0%, rgba(255,255,255,1) 100%);
+ 
+background: var(--Accent);
+background: linear-gradient(0deg, lightgreen 0%, rgba(255,255,255,1) 100%); 
+
+background-attachment: fixed;
+}
+.content {
+height: 70vh;
+    margin:50px;
+}
+*{margin:0;padding: 0;}
+
+h1 {
+    color:var(--Accent);
+}
+
+li img{
+height: 1.4em;
+vertical-align: middle;
+
+}
+
+
+.content {
+    width:90%;
+    margin:auto;
+}
+.tree ul {
+    margin-left: 20px;
+}
+
+.tree li {
+    list-style-type: none;
+    margin: 0.1em;
+    position: relative;
+}
+
+.tree li::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -15px;
+    border-left: 1px solid #ccc;
+	border-bottom: 1px solid #ccc;
+    border-radius: 0 0 0 0px;
+    width: 14px;
+    height: 18px;
+}
+
+.tree li::after {
+position: absolute;
+content: "";
+top: 16px;
+left: -15px;
+border-left: 1px solid #ccc;
+border-top: 1px solid #ccc;
+border-radius: 0px 0 0 0;
+width: 14px;
+height: 100%;
+}
+
+.tree li:last-child::after  {
+    display:none;
+}
+
+.tree li:last-child:before{
+    border-radius: 0 0 0 5px;
+}
+
+ul.tree>li:first-child::before {
+    display:none;
+}
+
+ul.tree>li:first-child::after {
+    border-radius:5px 0 0 0;
+}
+
+.tree li div{
+    border: 2px #ccc solid;
+    border-radius: 5px;
+    padding:0.25em;
+	display: inline-block;
+background: #FFFFFF;
+}
+
+
+.formal {
+float: Left;
+clear: left;
+}
+
+.Online {
+float: left;
+clear: right;
+}
+
+.tree li div:hover, .tree li div:hover+ul li div,
+.tree li div:focus, .tree li div:focus+ul li div {
+    background: var(--Accent); color: #FFF; border: 2px solid #FFF;
+}
+
+.tree li img:hover, .tree li img:hover+ul li img,
+.tree li img:focus, .tree li img:focus+ul li img {
+    background: white; color: #FFF;
+}
+
+.tree li a:hover+ul li::after, .tree li a:focus+ul li::after,
+.tree li a:hover+ul li::before, .tree li a:focus+ul li::before 
+.tree li a:hover+ul::before, .tree li a:focus+ul::before 
+.tree li a:hover+ul ul::before, .tree li a:focus+ul ul::before{
+    border-color:  #000; /*connector color on hover*/
+	/*color: #FFF;*/
+}
+
+.tree a{
+    text-decoration:none;
+	Padding-right: 3px;
+}
+.contacts {
+postion: relative;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background-color: red;
+  color: white;
+  text-align: center;
+}
+
+
+
+
+* {
+  box-sizing: border-box;
+}
+
+
+/* Style the container/contact section */
+.container {
+float: left;
+width: 100%;
+  border-radius: 5px;
+  background-color: var(--Accent);
+}
+
+/* Create two columns that float next to eachother */
+.column {
+  float: left;
+  width: 50%;
+  margin-top: 6px;
+  padding: 20px;
+}
+
+.krow {
+float: left;
+clear: both;
+    width: 100%;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Responsive layout - when the screen is less than 600px wide, make the two columns stack on top of each other instead of next to each other */
+@media screen and (max-width: 600px) {
+  .column, input[type=submit] {
+    width: 100%;
+    margin-top: 0;
+  }
+}
+.LI-badge-container-horizontal-light {
+Background: lightgrey;
+}
