@@ -5,6 +5,9 @@
 .NavBar{
   background-color: var(--Accent);
 }
+.NavBar img{
+  max-width: 90%;
+}
 .nav li{
   padding: 5px;
   padding-bottom: 0px;
