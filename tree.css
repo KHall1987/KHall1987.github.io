@@ -12,6 +12,9 @@
   padding: 5px;
   padding-bottom: 0px;
 }
+.nav-tabs > li {
+  float:right;
+}
 
 .nav li a{
 margin-right: 2px;
