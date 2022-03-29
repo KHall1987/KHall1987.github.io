@@ -1,0 +1,114 @@
+:root {
+--Accent: #57a16a;
+}
+
+.nav li{
+  padding: 5px;
+  padding-bottom: 0px;
+}
+
+.resume .resume-item ul li {
+    padding-bottom: 2px;
+}
+
+.nav li a{
+margin-right: 2px;
+line-height: 1.42857143;
+border-radius: 4px 4px 0 0;
+color: var(--Accent);
+background: white;
+font-weight: bold;
+}
+
+
+
+li img{
+height: 1.4em;
+vertical-align: middle;
+
+}
+
+.tree ul {
+    margin-left: 20px;
+}
+
+.tree li {
+    list-style-type: none;
+    margin: 0.1em;
+    position: relative;
+}
+
+.tree li::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -15px;
+    border-left: 1px solid #ccc;
+	border-bottom: 1px solid #ccc;
+    border-radius: 0 0 0 0px;
+    width: 14px;
+    height: 18px;
+}
+
+.tree li::after {
+position: absolute;
+content: "";
+top: 16px;
+left: -15px;
+border-left: 1px solid #ccc;
+border-top: 1px solid #ccc;
+border-radius: 0px 0 0 0;
+width: 14px;
+height: 100%;
+}
+
+.tree li:last-child::after  {
+    display:none;
+}
+
+.tree li:last-child:before{
+    border-radius: 0 0 0 5px;
+}
+
+ul.tree>li:first-child::before {
+    display:none;
+}
+
+ul.tree>li:first-child::after {
+    border-radius:5px 0 0 0;
+}
+
+.tree li div{
+    border: 2px #ccc solid;
+    border-radius: 5px;
+    padding:0.18em;
+	display: inline-block;
+background: #FFFFFF;
+}
+
+.tree li div:hover, .tree li div:hover+ul li div,
+.tree li div:focus, .tree li div:focus+ul li div {
+    background: var(--Accent); color: #FFF; border: 2px solid #FFF;
+}
+
+.tree li img:hover, .tree li img:hover+ul li img,
+.tree li img:focus, .tree li img:focus+ul li img {
+    background: white; color: #FFF;
+}
+
+.tree li a:hover+ul li::after, .tree li a:focus+ul li::after,
+.tree li a:hover+ul li::before, .tree li a:focus+ul li::before 
+.tree li a:hover+ul::before, .tree li a:focus+ul::before 
+.tree li a:hover+ul ul::before, .tree li a:focus+ul ul::before{
+    border-color:  #000; /*connector color on hover*/
+	/*color: #FFF;*/
+}
+
+.tree a{
+    text-decoration:none;
+	Padding-right: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
