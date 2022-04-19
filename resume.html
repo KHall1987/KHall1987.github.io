@@ -33,6 +33,18 @@
   * Author: BootstrapMade.com
   * License: https://bootstrapmade.com/license/
   ======================================================== -->
+<script>
+window.onload = function(){
+	const startDay = new Date(2015, 1, 16);
+	var currentDay = new Date();
+	var dateDifference = currentDay-startDay;
+	var diffDays = Math.ceil(dateDifference / (1000 * 60 * 60 * 24));
+	var diffYears = Math.floor(diffDays/365.25);
+	var number = diffYears;
+	document.getElementById("YearsofExperience").innerHTML = number;
+}
+</script>
+
 </head>
 
 <body>
@@ -84,8 +96,8 @@
             <h3 class="resume-title">Sumary</h3>
             <div class="resume-item pb-0">
               <h4>Kelvin Hall</h4>
-              <p><em>Innovative and deadline-driven Electrical Engineer with 6+ years of experience designing and developing industrial control systems from initial concept to final deliverable for the natural resource sector in North America.</em></p>
-	      <p>
+              <span><em>Innovative and deadline-driven Electrical Engineer with </span> <span id="YearsofExperience"> many </span> <span> years of experience designing and developing industrial control systems from initial concept to final deliverable for the natural resource sector in North America.</em></p>
+	      <span>
               <ul>
                 <li>Kamloops, BC</li>
                 <li>(604) 868-0253</li>
