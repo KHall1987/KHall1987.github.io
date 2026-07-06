@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spring Constraint Diagram Toy with Gravity</title>
+  <!-- Shared MathMeetLife widget styles. Keep this file beside mml-toy.css, or update the href to your hosted CSS path. -->
+  <link rel="stylesheet" href="assets/mml-toy.css" />
+  <style>
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-top: 0.2rem;
+      color: var(--mml-muted, rgba(227, 237, 237, 0.72));
+      font-size: 0.95rem;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+
+    .check-row input {
+      width: 1.1rem;
+      height: 1.1rem;
+      accent-color: var(--mml-accent, #8fcfed);
+      flex: 0 0 auto;
+    }
+  </style>
+</head>
+<body class="mml-widget">
+  <div class="page">
+    <nav class="links" aria-label="Related links">
+      <a href="https://mathmeetlife.substack.com/">Kelly's Substack</a>
+      <a href="https://mathmeetlife.substack.com/p/why-do-single-crochets-flat-circles">Original post</a>
+    </nav>
+
+    <header class="hero">
+      <div class="tag">Parametric</div>
+      <h1>Spring constraint diagram toy</h1>
+      <p class="lede">A small companion widget for diagrams that argue back. Enter nodes and preferred edge lengths, then let the system pull, push, damp, and settle into a compromise.</p>
+      <p class="subnote">Drag any node on the canvas. Fixed nodes stay pinned; free nodes keep negotiating with their constraints.</p>
+    </header>
+
+    <section>
+      <div class="section-head">
+        <h2>Inputs</h2>
+        <p>Use plain JSON arrays. Reset reloads the data and restarts the search.</p>
+      </div>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Nodes</h3>
+          <textarea id="nodesInput" spellcheck="false"></textarea>
+          <p class="hint">Required: <code>id</code>, <code>x</code>, <code>y</code>. Optional: <code>fixed</code>, <code>mass</code>.</p>
+        </article>
+
+        <article class="card">
+          <h3>Edges and constraints</h3>
+          <textarea id="edgesInput" spellcheck="false"></textarea>
+          <p class="hint">Required: <code>source</code>, <code>target</code>, <code>length</code>. Optional: <code>stiffness</code>.</p>
+        </article>
+      </div>
+
+      <article class="card controls-card">
+        <h3>Simulation controls</h3>
+        <div class="controls">
+          <div class="control">
+            <label for="stiffness">Tension <output id="stiffnessOut"></output></label>
+            <input id="stiffness" type="range" min="0.005" max="0.25" value="0.055" step="0.005" />
+          </div>
+          <div class="control">
+            <label for="damping">Damping <output id="dampingOut"></output></label>
+            <input id="damping" type="range" min="0" max="0.22" value="0.055" step="0.005" />
+          </div>
+          <div class="control">
+            <label for="timestep">Timestep <output id="timestepOut"></output></label>
+            <input id="timestep" type="range" min="0.1" max="2.0" value="1.0" step="0.1" />
+          </div>
+          <div class="control">
+            <label for="repulsion">Repulsion <output id="repulsionOut"></output></label>
+            <input id="repulsion" type="range" min="0" max="1800" value="180" step="10" />
+          </div>
+          <div class="control">
+            <label for="substeps">Substeps <output id="substepsOut"></output></label>
+            <input id="substeps" type="range" min="1" max="8" value="3" step="1" />
+          </div>
+          <div class="control">
+            <label for="gravity">Gravity <output id="gravityOut"></output></label>
+            <input id="gravity" type="range" min="0" max="1.2" value="0.18" step="0.02" />
+          </div>
+          <label class="check-row" for="gravityEnabled">
+            <input id="gravityEnabled" type="checkbox" />
+            <span>Apply gravity when at least one node is fixed</span>
+          </label>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="applyBtn">Recalculate / reset</button>
+          <button id="playBtn">Pause</button>
+          <button id="settleBtn">Settle 500 steps</button>
+          <button id="jiggleBtn">Jiggle free nodes</button>
+        </div>
+
+        <div class="formula">Spring model: F = k(L - L0). Gravity, when enabled, adds Fy = mg straight down for each free node, but only if at least one node is fixed. Motion model: a = F / m, then v = (1 - damping)(v + a dt), and x = x + v dt.</div>
+        <div id="status" class="status"></div>
+      </article>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Results</h2>
+        <p>Blue edges are stretched; red-orange edges are compressed.</p>
+      </div>
+
+      <article class="results">
+        <div class="canvas-wrap">
+          <canvas id="canvas"></canvas>
+          <div class="legend">
+            <span><i class="dot fixed-dot"></i>fixed node</span>
+            <span><i class="dot free-dot"></i>free node</span>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Nodes</div><div class="metric-value" id="nodesMetric">0</div></div>
+          <div class="metric"><div class="metric-label">Constraints</div><div class="metric-value" id="edgesMetric">0</div></div>
+          <div class="metric"><div class="metric-label">Kinetic energy</div><div class="metric-value" id="energyMetric">0.000</div></div>
+          <div class="metric"><div class="metric-label">Mean edge error</div><div class="metric-value" id="errorMetric">0.000</div></div>
+          <div class="metric"><div class="metric-label">Gravity</div><div class="metric-value" id="gravityMetric">off</div></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Edge</th>
+                <th>Status</th>
+                <th>Preferred</th>
+                <th>Actual</th>
+                <th>Error</th>
+                <th>Stiffness</th>
+              </tr>
+            </thead>
+            <tbody id="edgeTable"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <p class="footnote">This is a deliberately small numerical model. Extreme stiffness, high timesteps, or overlapping nodes can make the system behave badly.</p>
+    </section>
+  </div>
+
+  <script>
+    const sampleNodes = [
+      { "id": "A", "x": 170, "y": 160, "fixed": true, "mass": 1 },
+      { "id": "B", "x": 560, "y": 120, "mass": 1 },
+      { "id": "C", "x": 520, "y": 410, "mass": 1 },
+      { "id": "D", "x": 170, "y": 380, "fixed": true, "mass": 1 },
+      { "id": "E", "x": 360, "y": 265, "mass": 0.8 }
+    ];
+
+    const sampleEdges = [
+      { "source": "A", "target": "B", "length": 250, "stiffness": 1.0 },
+      { "source": "B", "target": "C", "length": 210, "stiffness": 1.0 },
+      { "source": "C", "target": "D", "length": 250, "stiffness": 1.0 },
+      { "source": "D", "target": "A", "length": 220, "stiffness": 1.0 },
+      { "source": "A", "target": "E", "length": 160, "stiffness": 1.0 },
+      { "source": "B", "target": "E", "length": 160, "stiffness": 1.0 },
+      { "source": "C", "target": "E", "length": 160, "stiffness": 1.0 },
+      { "source": "D", "target": "E", "length": 160, "stiffness": 1.0 }
+    ];
+
+    const nodesInput = document.getElementById("nodesInput");
+    const edgesInput = document.getElementById("edgesInput");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const edgeTable = document.getElementById("edgeTable");
+    const statusEl = document.getElementById("status");
+
+    const metrics = {
+      nodes: document.getElementById("nodesMetric"),
+      edges: document.getElementById("edgesMetric"),
+      energy: document.getElementById("energyMetric"),
+      error: document.getElementById("errorMetric"),
+      gravity: document.getElementById("gravityMetric")
+    };
+
+    const controls = {
+      stiffness: document.getElementById("stiffness"),
+      damping: document.getElementById("damping"),
+      timestep: document.getElementById("timestep"),
+      repulsion: document.getElementById("repulsion"),
+      substeps: document.getElementById("substeps"),
+      gravity: document.getElementById("gravity"),
+      gravityEnabled: document.getElementById("gravityEnabled")
+    };
+
+    const outputs = {
+      stiffness: document.getElementById("stiffnessOut"),
+      damping: document.getElementById("dampingOut"),
+      timestep: document.getElementById("timestepOut"),
+      repulsion: document.getElementById("repulsionOut"),
+      substeps: document.getElementById("substepsOut"),
+      gravity: document.getElementById("gravityOut")
+    };
+
+    let nodes = [];
+    let edges = [];
+    let running = true;
+    let draggedNode = null;
+    let lastEnergy = 0;
+    let meanEdgeError = 0;
+    let frame = 0;
+
+    function cssVar(name, fallback) {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return value || fallback;
+    }
+
+    function pretty(value) { return JSON.stringify(value, null, 2); }
+
+    function updateControlOutputs() {
+      outputs.stiffness.textContent = Number(controls.stiffness.value).toFixed(3);
+      outputs.damping.textContent = Number(controls.damping.value).toFixed(3);
+      outputs.timestep.textContent = Number(controls.timestep.value).toFixed(1);
+      outputs.repulsion.textContent = Math.round(Number(controls.repulsion.value));
+      outputs.substeps.textContent = Math.round(Number(controls.substeps.value));
+      outputs.gravity.textContent = Number(controls.gravity.value).toFixed(2);
+    }
+
+    Object.values(controls).forEach(input => input.addEventListener("input", updateControlOutputs));
+
+    function setStatus(message, isError) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function parseInputs() {
+      const parsedNodes = JSON.parse(nodesInput.value);
+      const parsedEdges = JSON.parse(edgesInput.value);
+      if (!Array.isArray(parsedNodes)) throw new Error("Nodes JSON must be an array.");
+      if (!Array.isArray(parsedEdges)) throw new Error("Edges JSON must be an array.");
+
+      const seen = new Set();
+      const cleanNodes = parsedNodes.map((node, index) => {
+        if (typeof node.id !== "string" || !node.id.trim()) throw new Error("Node at index " + index + " needs a string id.");
+        if (seen.has(node.id)) throw new Error("Duplicate node id: " + node.id);
+        seen.add(node.id);
+        const x = Number(node.x);
+        const y = Number(node.y);
+        const mass = Number(node.mass);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Node " + node.id + " needs numeric x and y values.");
+        return { id: node.id, x, y, vx: 0, vy: 0, fx: 0, fy: 0, mass: Number.isFinite(mass) && mass > 0 ? mass : 1, fixed: Boolean(node.fixed) };
+      });
+
+      const ids = new Set(cleanNodes.map(n => n.id));
+      const cleanEdges = parsedEdges.map((edge, index) => {
+        if (!ids.has(edge.source)) throw new Error("Edge " + index + " has unknown source node: " + edge.source);
+        if (!ids.has(edge.target)) throw new Error("Edge " + index + " has unknown target node: " + edge.target);
+        const length = Number(edge.length);
+        const stiffness = Number(edge.stiffness);
+        if (!Number.isFinite(length) || length <= 0) throw new Error("Edge " + index + " needs a positive numeric length.");
+        return { source: edge.source, target: edge.target, length, stiffness: Number.isFinite(stiffness) && stiffness > 0 ? stiffness : 1 };
+      });
+
+      return { cleanNodes, cleanEdges };
+    }
+
+    function applyJSONAndReset() {
+      try {
+        const parsed = parseInputs();
+        nodes = parsed.cleanNodes;
+        edges = parsed.cleanEdges;
+        draggedNode = null;
+        running = true;
+        document.getElementById("playBtn").textContent = "Pause";
+        setStatus("Loaded " + nodes.length + " nodes and " + edges.length + " constraints.");
+        updateDiagnostics();
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function nodeMap() {
+      const map = new Map();
+      nodes.forEach(n => map.set(n.id, n));
+      return map;
+    }
+
+    function clearForces() {
+      for (const n of nodes) { n.fx = 0; n.fy = 0; }
+    }
+
+    function hasFixedNode() {
+      return nodes.some(n => n.fixed);
+    }
+
+    function gravityIsActive() {
+      return controls.gravityEnabled.checked && hasFixedNode();
+    }
+
+    function addGravity(strength) {
+      if (!gravityIsActive() || strength <= 0) return;
+
+      for (const n of nodes) {
+        if (!n.fixed) {
+          // Canvas y increases downward, so positive force is visually downward.
+          n.fy += n.mass * strength;
+        }
+      }
+    }
+
+    function addSpringForces(map, globalK) {
+      for (const e of edges) {
+        const a = map.get(e.source);
+        const b = map.get(e.target);
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist < 0.0001) {
+          dx = (Math.random() - 0.5) * 0.01;
+          dy = (Math.random() - 0.5) * 0.01;
+          dist = Math.hypot(dx, dy);
+        }
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const force = globalK * e.stiffness * (dist - e.length);
+        const fx = force * ux;
+        const fy = force * uy;
+        if (!a.fixed) { a.fx += fx; a.fy += fy; }
+        if (!b.fixed) { b.fx -= fx; b.fy -= fy; }
+      }
+    }
+
+    function addRepulsion(strength) {
+      if (strength <= 0) return;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i];
+          const b = nodes[j];
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          let d2 = dx * dx + dy * dy;
+          if (d2 < 25) {
+            dx += (Math.random() - 0.5) * 2;
+            dy += (Math.random() - 0.5) * 2;
+            d2 = dx * dx + dy * dy + 25;
+          }
+          const d = Math.sqrt(d2);
+          const f = strength / d2;
+          const fx = f * dx / d;
+          const fy = f * dy / d;
+          if (!a.fixed) { a.fx -= fx; a.fy -= fy; }
+          if (!b.fixed) { b.fx += fx; b.fy += fy; }
+        }
+      }
+    }
+
+    function integrate(dt, damping) {
+      const keep = Math.max(0, 1 - damping);
+      let kinetic = 0;
+      for (const n of nodes) {
+        if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
+        const ax = n.fx / n.mass;
+        const ay = n.fy / n.mass;
+        n.vx = (n.vx + ax * dt) * keep;
+        n.vy = (n.vy + ay * dt) * keep;
+        n.x += n.vx * dt;
+        n.y += n.vy * dt;
+        kinetic += 0.5 * n.mass * (n.vx * n.vx + n.vy * n.vy);
+      }
+      lastEnergy = kinetic;
+    }
+
+    function step() {
+      const map = nodeMap();
+      const globalK = Number(controls.stiffness.value);
+      const damping = Number(controls.damping.value);
+      const dt = Number(controls.timestep.value);
+      const repulsion = Number(controls.repulsion.value);
+      const gravity = Number(controls.gravity.value);
+      const substeps = Number(controls.substeps.value);
+      const smallDt = dt / substeps;
+
+      for (let i = 0; i < substeps; i++) {
+        clearForces();
+        addSpringForces(map, globalK);
+        addRepulsion(repulsion);
+        addGravity(gravity);
+        integrate(smallDt, damping);
+      }
+    }
+
+    function edgeStats() {
+      const map = nodeMap();
+      let totalAbs = 0;
+      const rows = edges.map(e => {
+        const a = map.get(e.source);
+        const b = map.get(e.target);
+        const actual = Math.hypot(b.x - a.x, b.y - a.y);
+        const error = actual - e.length;
+        totalAbs += Math.abs(error);
+        return { e, actual, error };
+      });
+      meanEdgeError = edges.length ? totalAbs / edges.length : 0;
+      return rows;
+    }
+
+    function updateDiagnostics() {
+      const rows = edgeStats();
+      metrics.nodes.textContent = String(nodes.length);
+      metrics.edges.textContent = String(edges.length);
+      metrics.energy.textContent = lastEnergy.toFixed(3);
+      metrics.error.textContent = meanEdgeError.toFixed(3);
+      metrics.gravity.textContent = gravityIsActive() ? Number(controls.gravity.value).toFixed(2) : "off";
+
+      edgeTable.innerHTML = rows.map(row => {
+        const status = Math.abs(row.error) < 1 ? "settled" : row.error > 0 ? "stretched" : "compressed";
+        return "<tr>" +
+          "<td>" + row.e.source + " - " + row.e.target + "</td>" +
+          "<td><span class='pill'>" + status + "</span></td>" +
+          "<td>" + row.e.length.toFixed(1) + "</td>" +
+          "<td>" + row.actual.toFixed(1) + "</td>" +
+          "<td>" + row.error.toFixed(1) + "</td>" +
+          "<td>" + row.e.stiffness.toFixed(2) + "</td>" +
+        "</tr>";
+      }).join("");
+    }
+
+    function draw() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      const map = nodeMap();
+
+      for (const e of edges) {
+        const a = map.get(e.source);
+        const b = map.get(e.target);
+        const actual = Math.hypot(b.x - a.x, b.y - a.y);
+        const error = actual - e.length;
+        const intensity = Math.min(1, Math.abs(error) / Math.max(1, e.length));
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.lineWidth = 2 + intensity * 4;
+        const stretchRGB = cssVar("--mml-canvas-edge-stretched-rgb", "143, 207, 237");
+        const compressRGB = cssVar("--mml-canvas-edge-compressed-rgb", "217, 130, 107");
+        ctx.strokeStyle = error >= 0
+          ? "rgba(" + stretchRGB + ", " + (0.35 + intensity * 0.45) + ")"
+          : "rgba(" + compressRGB + ", " + (0.32 + intensity * 0.43) + ")";
+        ctx.stroke();
+
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        ctx.fillStyle = cssVar("--mml-canvas-label", "rgba(227, 237, 237, 0.76)");
+        ctx.font = "11px " + cssVar("--mml-mono", "monospace");
+        ctx.fillText(Math.round(actual) + "/" + e.length, mx + 5, my - 5);
+      }
+
+      for (const n of nodes) {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.fixed ? 9 : 8, 0, Math.PI * 2);
+        ctx.fillStyle = n.fixed ? cssVar("--mml-canvas-node-fixed", "#d9826b") : cssVar("--mml-canvas-node-free", "#8fcfed");
+        ctx.fill();
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = cssVar("--mml-canvas-node-stroke", "#e3eded");
+        ctx.stroke();
+
+        if (n.fixed) {
+          ctx.beginPath();
+          ctx.moveTo(n.x - 5, n.y - 5);
+          ctx.lineTo(n.x + 5, n.y + 5);
+          ctx.moveTo(n.x + 5, n.y - 5);
+          ctx.lineTo(n.x - 5, n.y + 5);
+          ctx.lineWidth = 1.7;
+          ctx.strokeStyle = cssVar("--mml-canvas-node-stroke", "#e3eded");
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = cssVar("--mml-ink", "#e3eded");
+        ctx.font = "13px " + cssVar("--mml-sans", "system-ui, sans-serif");
+        ctx.fillText(n.id, n.x + 12, n.y + 4);
+      }
+    }
+
+    function animate() {
+      if (running && nodes.length) step();
+      draw();
+      frame++;
+      if (frame % 12 === 0) updateDiagnostics();
+      requestAnimationFrame(animate);
+    }
+
+    function pointerPoint(ev) {
+      const r = canvas.getBoundingClientRect();
+      return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+    }
+
+    function nearestNode(pt) {
+      let best = null;
+      let bestDist = Infinity;
+      for (const n of nodes) {
+        const d = Math.hypot(n.x - pt.x, n.y - pt.y);
+        if (d < bestDist && d <= 22) { best = n; bestDist = d; }
+      }
+      return best;
+    }
+
+    canvas.addEventListener("pointerdown", ev => {
+      const pt = pointerPoint(ev);
+      draggedNode = nearestNode(pt);
+      if (draggedNode) {
+        canvas.setPointerCapture(ev.pointerId);
+        canvas.classList.add("dragging");
+        draggedNode.vx = 0;
+        draggedNode.vy = 0;
+      }
+    });
+
+    canvas.addEventListener("pointermove", ev => {
+      if (!draggedNode) return;
+      const pt = pointerPoint(ev);
+      draggedNode.x = pt.x;
+      draggedNode.y = pt.y;
+      draggedNode.vx = 0;
+      draggedNode.vy = 0;
+    });
+
+    function endDrag(ev) {
+      if (draggedNode && ev.pointerId !== undefined) {
+        try { canvas.releasePointerCapture(ev.pointerId); } catch (err) {}
+      }
+      draggedNode = null;
+      canvas.classList.remove("dragging");
+    }
+
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+
+    document.getElementById("applyBtn").addEventListener("click", applyJSONAndReset);
+    document.getElementById("playBtn").addEventListener("click", ev => {
+      running = !running;
+      ev.target.textContent = running ? "Pause" : "Run";
+    });
+    controls.gravityEnabled.addEventListener("change", () => {
+      if (controls.gravityEnabled.checked && !hasFixedNode()) {
+        setStatus("Gravity is checked, but it will not apply until at least one node is fixed.", true);
+      } else if (controls.gravityEnabled.checked) {
+        setStatus("Gravity enabled. Each free node receives a downward force proportional to its mass.");
+      } else {
+        setStatus("Gravity disabled.");
+      }
+      updateDiagnostics();
+    });
+
+    document.getElementById("settleBtn").addEventListener("click", () => {
+      for (let i = 0; i < 500; i++) step();
+      updateDiagnostics();
+      draw();
+      setStatus("Ran 500 settle steps. Kinetic energy: " + lastEnergy.toFixed(4) + ".");
+    });
+    document.getElementById("jiggleBtn").addEventListener("click", () => {
+      for (const n of nodes) {
+        if (!n.fixed) {
+          n.x += (Math.random() - 0.5) * 90;
+          n.y += (Math.random() - 0.5) * 90;
+          n.vx = 0;
+          n.vy = 0;
+        }
+      }
+      running = true;
+      document.getElementById("playBtn").textContent = "Pause";
+      setStatus("Free nodes were jiggled. The system is searching again.");
+    });
+
+    window.addEventListener("resize", () => { resizeCanvas(); draw(); });
+
+    nodesInput.value = pretty(sampleNodes);
+    edgesInput.value = pretty(sampleEdges);
+    updateControlOutputs();
+    resizeCanvas();
+    applyJSONAndReset();
+    animate();
+  </script>
+</body>
+</html>

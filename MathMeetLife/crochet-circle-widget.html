@@ -1,787 +1,368 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Flat Crochet Circle Stitch Calculator</title>
-  <style>
-    :root {
-      --color_theme_bg_pop: #0284c7;
-      --background_pop: #0284c7;
-      --color_theme_bg_web: #042f2e;
-      --cover_bg_color: #042f2e;
-      --cover_bg_color_secondary: #133b3b;
-      --background_pop_darken: #0273ae;
-      --print_on_pop: #ffffff;
-      --color_theme_bg_pop_darken: #0273ae;
-      --color_theme_print_on_pop: #ffffff;
-      --color_theme_bg_pop_20: rgba(2, 132, 199, 0.2);
-      --color_theme_bg_pop_30: rgba(2, 132, 199, 0.3);
-      --print_pop: #0284c7;
-      --color_theme_accent: #0284c7;
-      --cover_print_primary: #ffffff;
-      --cover_print_secondary: #d9d9d9;
-      --cover_print_tertiary: #d9d9d9;
-      --cover_border_color: #ffffff;
-      --font_family_body_preset: Merriweather, Georgia, serif;
-      --font_weight_body_preset: 400;
-      --font_family_section_headings_preset: 'Roboto Slab', Georgia, serif;
-      --font_weight_section_headings_preset: 700;
-      --home_hero: newspaper;
-      --home_posts: list;
-      --web_bg_color: #042f2e;
-      --background_contrast_1: #133b3b;
-      --background_contrast_2: #264b4a;
-      --background_contrast_3: #4b6a69;
-      --background_contrast_4: #6f8887;
-      --background_contrast_5: #b0bdbd;
-      --color_theme_bg_contrast_1: #133b3b;
-      --color_theme_bg_contrast_2: #264b4a;
-      --color_theme_bg_contrast_3: #4b6a69;
-      --color_theme_bg_contrast_4: #6f8887;
-      --color_theme_bg_contrast_5: #b0bdbd;
-      --color_theme_bg_elevated: #133b3b;
-      --color_theme_bg_elevated_secondary: #264b4a;
-      --color_theme_bg_elevated_tertiary: #4b6a69;
-      --color_theme_detail: #1d4443;
-      --background_contrast_pop: rgba(2, 132, 199, 0.4);
-      --color_theme_bg_contrast_pop: rgba(2, 132, 199, 0.4);
-      --theme_bg_is_dark: 1;
-      --print_on_web_bg_color: hsl(178.60465116279076, 21.078431372548938%, 90.99999999999999%);
-      --print_secondary_on_web_bg_color: #9bacab;
-      --background_pop_rgb: 2, 132, 199;
-      --color_theme_bg_pop_rgb: 2, 132, 199;
-      --color_theme_accent_rgb: 2, 132, 199;
-
-      --backdrop: var(--web_bg_color);
-      --backdrop-2: var(--cover_bg_color_secondary);
-      --surface: var(--color_theme_bg_elevated);
-      --surface-2: var(--color_theme_bg_elevated_secondary);
-      --surface-3: var(--color_theme_bg_elevated_tertiary);
-      --ink: var(--print_on_web_bg_color);
-      --ink-strong: var(--cover_print_primary);
-      --muted: var(--print_secondary_on_web_bg_color);
-      --line: var(--color_theme_detail);
-      --line-strong: var(--color_theme_bg_contrast_2);
-      /* The root variables from the Substack theme include a bright blue pop color,
-         but the article view in the screenshot does not use it heavily. The widget
-         therefore keeps visible accents in the white/teal range. */
-      --accent: var(--cover_print_primary);
-      --accent-dark: var(--cover_print_secondary);
-      --accent-soft: rgba(255, 255, 255, 0.10);
-      --accent-muted: var(--background_contrast_4);
-      --teal-border-soft: rgba(255, 255, 255, 0.14);
-      --teal-border-strong: rgba(255, 255, 255, 0.28);
-      --good: #b7e4c7;
-      --bad: #f5b7b1;
-      --shadow: 0 24px 70px rgba(0, 0, 0, 0.26);
-      --article: var(--font_family_body_preset);
-      --heading: var(--font_family_section_headings_preset);
-      --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-    }
-
-    * { box-sizing: border-box; }
-
-    html {
-      background: var(--backdrop);
-      color-scheme: dark;
-    }
-
-    body {
-      margin: 0;
-      color: var(--ink);
-      background: var(--web_bg_color);
-      font-family: var(--article);
-      font-weight: var(--font_weight_body_preset);
-      font-size: 18px;
-      line-height: 1.62;
-    }
-
-    a {
-      color: var(--cover_print_primary);
-      text-decoration-thickness: 1px;
-      text-underline-offset: 3px;
-    }
-
-    .site-shell {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 22px 18px 56px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 10px 0 30px;
-      font-family: var(--ui);
-      color: var(--cover_print_secondary);
-      font-size: 14px;
-    }
-
-    .publication {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--cover_print_primary);
-      font-weight: 700;
-      text-decoration: none;
-    }
-
-    .publication-mark {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      display: inline-grid;
-      place-items: center;
-      color: #0b3b39;
-      background: linear-gradient(135deg, #f4e6bc, #d6b777);
-      border: 1px solid rgba(255, 255, 255, 0.36);
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
-      font-family: var(--ui);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
-    .toplink {
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      border-radius: 999px;
-      padding: 6px 12px;
-      color: var(--cover_print_primary);
-      text-decoration: none;
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .toplink:hover {
-      border-color: rgba(255, 255, 255, 0.45);
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .post-head {
-      max-width: 720px;
-      margin: 0 auto 34px;
-      text-align: left;
-    }
-
-    .kicker {
-      margin: 0 0 12px;
-      font-family: var(--ui);
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--cover_print_secondary);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      margin: 0;
-      font-family: var(--heading);
-      font-size: clamp(2.15rem, 5.6vw, 4.7rem);
-      line-height: 1.02;
-      letter-spacing: -0.045em;
-      font-weight: var(--font_weight_section_headings_preset);
-      color: var(--cover_print_primary);
-      text-wrap: balance;
-    }
-
-    .subtitle {
-      margin: 18px 0 0;
-      color: var(--cover_print_secondary);
-      font-size: clamp(1.03rem, 2.1vw, 1.22rem);
-      line-height: 1.48;
-    }
-
-    .byline {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      margin-top: 24px;
-      font-family: var(--ui);
-      color: var(--cover_print_secondary);
-      font-size: 14px;
-      line-height: 1.35;
-    }
-
-    .avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #f4e6bc, #d6b777);
-      border: 1px solid rgba(255, 255, 255, 0.28);
-      flex: 0 0 auto;
-    }
-
-    .byline strong { display: block; color: var(--cover_print_primary); }
-
-    .article-note {
-      max-width: 720px;
-      margin: 0 auto 28px;
-      padding: 17px 18px;
-      border-left: 3px solid rgba(255, 255, 255, 0.36);
-      background: rgba(19, 59, 59, 0.72);
-      color: var(--ink);
-      font-size: 0.97rem;
-    }
-
-    .calculator-layout {
-      display: grid;
-      grid-template-columns: minmax(295px, 370px) minmax(0, 1fr);
-      gap: 22px;
-      align-items: start;
-      margin-top: 30px;
-    }
-
-    @media (max-width: 900px) {
-      .calculator-layout { grid-template-columns: 1fr; }
-      .post-head, .article-note { max-width: 760px; }
-    }
-
-    .card {
-      background: rgba(19, 59, 59, 0.96);
-      border: 1px solid var(--teal-border-soft);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-    }
-
-    .controls {
-      padding: 22px;
-      position: sticky;
-      top: 18px;
-    }
-
-    @media (max-width: 900px) {
-      .controls { position: static; }
-    }
-
-    .results { padding: 22px; }
-
-    h2 {
-      margin: 0 0 15px;
-      font-family: var(--ui);
-      font-size: 0.92rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--cover_print_primary);
-    }
-
-    p { margin: 0 0 1em; }
-
-    .field { margin-top: 15px; }
-
-    label {
-      display: block;
-      margin: 0 0 6px;
-      font-family: var(--ui);
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.3;
-      color: var(--cover_print_primary);
-    }
-
-    .hint, .smallprint {
-      color: var(--muted);
-      font-family: var(--ui);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .hint { margin-top: 6px; }
-
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    @media (max-width: 560px) {
-      .two-col { grid-template-columns: 1fr; }
-    }
-
-    input, select, button {
-      width: 100%;
-      border: 1px solid var(--teal-border-soft);
-      border-radius: 10px;
-      font: 15px/1.35 var(--ui);
-      color: var(--cover_print_primary);
-      background: var(--surface-2);
-      padding: 10px 11px;
-    }
-
-    input::placeholder { color: var(--muted); }
-
-    input:focus, select:focus, button:focus {
-      outline: 3px solid rgba(255, 255, 255, 0.12);
-      border-color: var(--teal-border-strong);
-    }
-
-    button {
-      margin-top: 16px;
-      border-color: rgba(255, 255, 255, 0.52);
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--cover_print_primary);
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: rgba(255, 255, 255, 0.14);
-      border-color: rgba(255, 255, 255, 0.72);
-    }
-
-    .secondary-button {
-      margin-top: 10px;
-      color: var(--cover_print_primary);
-      background: transparent;
-      border-color: var(--background_contrast_3);
-    }
-
-    .secondary-button:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--cover_print_primary);
-      border-color: rgba(255, 255, 255, 0.46);
-    }
-
-    code {
-      font-family: var(--mono);
-      font-size: 0.88em;
-      padding: 0.1em 0.34em;
-      border-radius: 6px;
-      background: var(--background_contrast_2);
-      color: var(--cover_print_primary);
-    }
-
-    .model-box {
-      margin-top: 18px;
-      padding: 15px;
-      border: 1px solid var(--teal-border-soft);
-      border-radius: 14px;
-      background: rgba(38, 75, 74, 0.72);
-    }
-
-    .model-box p { margin: 0 0 9px; }
-    .model-box p:last-child { margin-bottom: 0; }
-
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin: 0 0 18px;
-    }
-
-    @media (max-width: 980px) {
-      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (max-width: 560px) {
-      .summary { grid-template-columns: 1fr; }
-    }
-
-    .metric {
-      min-height: 106px;
-      border: 1px solid var(--teal-border-soft);
-      border-radius: 14px;
-      background: linear-gradient(180deg, var(--surface-2), var(--surface));
-      padding: 14px;
-    }
-
-    .metric-label {
-      font-family: var(--ui);
-      font-size: 12px;
-      font-weight: 800;
-      color: var(--muted);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .metric-value {
-      margin-top: 4px;
-      font-family: var(--ui);
-      font-size: 1.65rem;
-      font-weight: 850;
-      line-height: 1.05;
-      letter-spacing: -0.035em;
-      color: var(--cover_print_primary);
-    }
-
-    .metric-sub {
-      margin-top: 7px;
-      color: var(--muted);
-      font-family: var(--ui);
-      font-size: 13px;
-      line-height: 1.35;
-    }
-
-    .status { margin-bottom: 15px; }
-    .warn { color: var(--bad); font-weight: 700; }
-    .ok { color: var(--good); font-weight: 700; }
-
-    .table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--teal-border-soft);
-      border-radius: 14px;
-      background: var(--surface);
-    }
-
-    table {
-      width: 100%;
-      min-width: 820px;
-      border-collapse: collapse;
-      font-family: var(--ui);
-      font-size: 14px;
-      line-height: 1.35;
-      color: var(--ink);
-    }
-
-    th, td {
-      padding: 11px 12px;
-      border-bottom: 1px solid var(--teal-border-soft);
-      text-align: right;
-      vertical-align: top;
-    }
-
-    th:first-child, td:first-child,
-    th:last-child, td:last-child { text-align: left; }
-
-    th {
-      position: sticky;
-      top: 0;
-      background: var(--background_contrast_2);
-      color: var(--cover_print_primary);
-      font-size: 11px;
-      font-weight: 850;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      z-index: 1;
-    }
-
-    tbody tr:hover { background: rgba(255, 255, 255, 0.045); }
-    tr:last-child td { border-bottom: 0; }
-
-    .note-cell { color: var(--muted); max-width: 310px; }
-
-    .footer-note {
-      max-width: 720px;
-      margin: 28px auto 0;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255, 255, 255, 0.22);
-      color: var(--cover_print_secondary);
-      font-size: 0.95rem;
-    }
-  </style>
+  <link rel="stylesheet" href="assets/mml-toy.css">
 </head>
-<body>
-  <main class="site-shell">
-    <nav class="topbar" aria-label="Publication">
-      <a class="publication" href="https://mathmeetlife.substack.com/p/why-do-single-crochets-flat-circles">
-        <span class="publication-mark" aria-hidden="true">K</span>
-        <span>Kelly&rsquo;s Substack</span>
-      </a>
-      <a class="toplink" href="https://mathmeetlife.substack.com/p/why-do-single-crochets-flat-circles">Original post</a>
+<body class="mml-widget">
+  <div class="mml-page">
+    <nav class="mml-links" aria-label="Related links">
+      <a href="https://mathmeetlife.substack.com/">Kelly's Substack</a>
+      <a href="https://mathmeetlife.substack.com/p/why-do-single-crochets-flat-circles">Original post</a>
     </nav>
 
-    <header class="post-head">
-      <p class="kicker">Parametric</p>
+    <header class="mml-hero">
+      <div class="mml-tag">Parametric</div>
       <h1>Flat crochet circle stitch calculator</h1>
-      <p class="subtitle">
-        A small companion widget for the geometric model behind flat crochet circles. Enter a target circumference or radius, then tune stitch height and width to generate round-by-round stitch counts.
+      <p class="mml-lede">
+        A small companion widget for the geometric model behind flat crochet circles.
+        Enter a target circumference or radius, then tune stitch height and width to generate
+        round-by-round stitch counts.
       </p>
-      <div class="byline">
-        <span class="avatar" aria-hidden="true"></span>
-        <span><strong>Based on the circle model</strong> C = 2πr, with each round adding roughly one stitch height to the radius.</span>
-      </div>
+      <p class="mml-subnote">
+        Based on the circle model <code>C = 2πr</code>, with each round adding roughly one stitch height to the radius.
+      </p>
+      <p class="mml-subnote">
+        Use one unit system throughout. If <code>h</code> and <code>w</code> are measured in centimetres,
+        enter the target circumference or radius in centimetres as well.
+      </p>
     </header>
 
-    <p class="article-note">
-      Use one unit system throughout. If <code>h</code> and <code>w</code> are measured in centimetres, enter the target circumference or radius in centimetres as well.
-    </p>
-
-    <section class="calculator-layout" aria-label="Calculator">
-      <form class="card controls" id="controls">
-        <h2>Inputs</h2>
-
-        <div class="field">
-          <label for="targetType">Target type</label>
-          <select id="targetType">
-            <option value="circumference" selected>Desired circumference, C</option>
-            <option value="radius">Desired radius, r</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="target" id="targetLabel">Desired circumference, C</label>
-          <input id="target" type="number" inputmode="decimal" min="0" step="any" value="20" />
-          <div class="hint" id="targetHint">Example: 20 cm, 8 inches, or any consistent length unit.</div>
-        </div>
-
-        <div class="two-col">
-          <div class="field">
-            <label for="h">Row height, h</label>
-            <input id="h" type="number" inputmode="decimal" min="0" step="any" value="0.55" />
-          </div>
-          <div class="field">
-            <label for="w">Stitch width, w</label>
-            <input id="w" type="number" inputmode="decimal" min="0" step="any" value="0.55" />
-          </div>
-        </div>
-        <div class="hint">Use any positive values. For example, <code>h = 1</code> and <code>w = 1</code> are valid.</div>
-
-        <div class="two-col">
-          <div class="field">
-            <label for="roundsMode">Rounds to show</label>
-            <select id="roundsMode">
-              <option value="auto" selected>Auto from target and h</option>
-              <option value="manual">Manual</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="rounds">Manual rounds</label>
-            <input id="rounds" type="number" inputmode="numeric" min="1" step="1" value="6" />
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="field">
-            <label for="rounding">Rounding rule</label>
-            <select id="rounding">
-              <option value="nearest" selected>Nearest</option>
-              <option value="floor">Floor</option>
-              <option value="ceil">Ceiling</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="classicMode">Classic comparison</label>
-            <select id="classicMode">
-              <option value="roundedDelta" selected>Aspect-ratio Δ, nearest</option>
-              <option value="six">Always +6</option>
-            </select>
-          </div>
-        </div>
-
-        <button type="submit">Recalculate</button>
-        <button class="secondary-button" id="reset" type="button">Reset to single crochet-ish defaults</button>
-
-        <div class="model-box smallprint">
-          <p><strong>Round model:</strong> <code>C(N) = 2πNh</code></p>
-          <p><strong>Total stitches:</strong> <code>n(N) = round(2πNh / w)</code></p>
-          <p><strong>From circumference:</strong> <code>N = C / 2πh</code> and <code>n = C / w</code></p>
-          <p><strong>From radius:</strong> <code>N = r / h</code> and <code>n = 2πr / w</code></p>
-        </div>
-      </form>
-
-      <section class="card results" aria-live="polite">
-        <h2>Results</h2>
-        <div class="status" id="warnings"></div>
-        <div class="summary" id="summary"></div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Round</th>
-                <th>Radius</th>
-                <th>Circumference</th>
-                <th>Ideal stitches</th>
-                <th>Target stitches</th>
-                <th>Increase</th>
-                <th>Classic count</th>
-                <th>Instruction hint</th>
-              </tr>
-            </thead>
-            <tbody id="rows"></tbody>
-          </table>
-        </div>
-      </section>
+    <section class="mml-section-head">
+      <h2>Inputs</h2>
+      <p>Change the target, stitch proportions, and rounding rule.</p>
     </section>
 
-    <p class="footer-note">
-      This widget is a geometric approximation. Crochet fabric can stretch, tension varies, and joins or chain-ups may absorb part of the rounding error.
+    <article class="mml-card">
+      <div class="mml-form-grid">
+        <fieldset class="mml-field mml-field-full mml-fieldset">
+          <legend>Target type</legend>
+          <div class="mml-radio-grid" role="radiogroup" aria-label="Target type">
+            <label class="mml-choice">
+              <input type="radio" name="targetType" value="circumference" checked>
+              Desired circumference, C
+            </label>
+            <label class="mml-choice">
+              <input type="radio" name="targetType" value="radius">
+              Desired radius, r
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="mml-field">
+          <label for="targetValue">Desired circumference, C</label>
+          <input id="targetValue" class="mml-input" type="number" min="0.001" step="0.1" value="20">
+          <p class="mml-hint">Example: 20 cm, 8 inches, or any consistent length unit.</p>
+        </div>
+
+        <div class="mml-mini-grid mml-field-full">
+          <div class="mml-field">
+            <label for="rowHeight">Row height, h</label>
+            <input id="rowHeight" class="mml-input" type="number" min="0.001" step="0.05" value="1">
+          </div>
+
+          <div class="mml-field">
+            <label for="stitchWidth">Stitch width, w</label>
+            <input id="stitchWidth" class="mml-input" type="number" min="0.001" step="0.05" value="1">
+          </div>
+
+          <div class="mml-field">
+            <label for="manualRounds">Manual rounds</label>
+            <input id="manualRounds" class="mml-input" type="number" min="1" step="1" value="8">
+          </div>
+        </div>
+
+        <p class="mml-hint mml-field-full">
+          Use any positive values. For example, <code>h = 1</code> and <code>w = 1</code> are valid.
+        </p>
+
+        <fieldset class="mml-field mml-field-full mml-fieldset">
+          <legend>Rounds to show</legend>
+          <div class="mml-radio-grid" role="radiogroup" aria-label="Rounds to show">
+            <label class="mml-choice">
+              <input type="radio" name="roundMode" value="auto" checked>
+              Auto from target and h
+            </label>
+            <label class="mml-choice">
+              <input type="radio" name="roundMode" value="manual">
+              Manual
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="mml-field mml-field-full mml-fieldset">
+          <legend>Rounding rule</legend>
+          <div class="mml-radio-grid mml-radio-grid-3" role="radiogroup" aria-label="Rounding rule">
+            <label class="mml-choice">
+              <input type="radio" name="roundingRule" value="nearest" checked>
+              Nearest
+            </label>
+            <label class="mml-choice">
+              <input type="radio" name="roundingRule" value="floor">
+              Floor
+            </label>
+            <label class="mml-choice">
+              <input type="radio" name="roundingRule" value="ceil">
+              Ceiling
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="mml-field mml-field-full mml-fieldset">
+          <legend>Classic comparison</legend>
+          <div class="mml-radio-grid" role="radiogroup" aria-label="Classic comparison">
+            <label class="mml-choice">
+              <input type="radio" name="classicMode" value="aspect" checked>
+              Aspect-ratio Δ, nearest
+            </label>
+            <label class="mml-choice">
+              <input type="radio" name="classicMode" value="six">
+              Always +6
+            </label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="mml-actions">
+        <button class="primary" id="calculateButton" type="button">Recalculate</button>
+        <button id="resetButton" type="button">Reset to single crochet-ish defaults</button>
+      </div>
+
+      <div id="status" class="mml-status" role="status" aria-live="polite"></div>
+
+      <div class="mml-formula" aria-label="Model formulas">
+        <div>Round model: <code>C(N) = 2πNh</code></div>
+        <div>Total stitches: <code>n(N) = round(2πNh / w)</code></div>
+        <div>From circumference: <code>N = C / 2πh</code> and <code>n = C / w</code></div>
+        <div>From radius: <code>N = r / h</code> and <code>n = 2πr / w</code></div>
+      </div>
+    </article>
+
+    <section class="mml-section-head">
+      <h2>Results</h2>
+      <p>Round-by-round stitch counts from the geometric model.</p>
+    </section>
+
+    <article class="mml-results">
+      <div class="mml-metrics" aria-label="Summary">
+        <div class="mml-metric">
+          <div class="mml-metric-label">Rounds shown</div>
+          <div class="mml-metric-value" id="metricRounds">—</div>
+        </div>
+        <div class="mml-metric">
+          <div class="mml-metric-label">Final radius</div>
+          <div class="mml-metric-value" id="metricRadius">—</div>
+        </div>
+        <div class="mml-metric">
+          <div class="mml-metric-label">Final stitches</div>
+          <div class="mml-metric-value" id="metricStitches">—</div>
+        </div>
+        <div class="mml-metric">
+          <div class="mml-metric-label">Approx. Δ / round</div>
+          <div class="mml-metric-value" id="metricDelta">—</div>
+        </div>
+      </div>
+
+      <div class="mml-table-wrap">
+        <table class="mml-table">
+          <thead>
+            <tr>
+              <th>Round</th>
+              <th>Radius</th>
+              <th>Circumference</th>
+              <th>Ideal stitches</th>
+              <th>Target stitches</th>
+              <th>Increase</th>
+              <th>Classic count</th>
+              <th>Instruction hint</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </article>
+
+    <p class="mml-footnote">
+      This widget is a geometric approximation. Crochet fabric can stretch, tension varies,
+      and joins or chain-ups may absorb part of the rounding error.
     </p>
-  </main>
+  </div>
 
   <script>
-    const TAU = Math.PI * 2;
-
     const els = {
-      targetType: document.querySelector('#targetType'),
-      target: document.querySelector('#target'),
-      targetLabel: document.querySelector('#targetLabel'),
-      targetHint: document.querySelector('#targetHint'),
-      h: document.querySelector('#h'),
-      w: document.querySelector('#w'),
-      roundsMode: document.querySelector('#roundsMode'),
-      rounds: document.querySelector('#rounds'),
-      rounding: document.querySelector('#rounding'),
-      classicMode: document.querySelector('#classicMode'),
-      controls: document.querySelector('#controls'),
-      reset: document.querySelector('#reset'),
-      warnings: document.querySelector('#warnings'),
-      summary: document.querySelector('#summary'),
-      rows: document.querySelector('#rows')
+      targetValue: document.getElementById("targetValue"),
+      rowHeight: document.getElementById("rowHeight"),
+      stitchWidth: document.getElementById("stitchWidth"),
+      manualRounds: document.getElementById("manualRounds"),
+      targetLabel: document.querySelector('label[for="targetValue"]'),
+      status: document.getElementById("status"),
+      resultsBody: document.getElementById("resultsBody"),
+      metricRounds: document.getElementById("metricRounds"),
+      metricRadius: document.getElementById("metricRadius"),
+      metricStitches: document.getElementById("metricStitches"),
+      metricDelta: document.getElementById("metricDelta")
     };
 
-    function numberValue(el) {
-      const value = Number(el.value);
-      return Number.isFinite(value) ? value : NaN;
+    function selected(name) {
+      return document.querySelector(`input[name="${name}"]:checked`).value;
     }
 
-    function roundByMode(value, mode) {
-      if (mode === 'floor') return Math.floor(value);
-      if (mode === 'ceil') return Math.ceil(value);
+    function positiveNumber(input, name) {
+      const value = Number(input.value);
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new Error(`${name} must be a positive number.`);
+      }
+      return value;
+    }
+
+    function positiveInteger(input, name) {
+      const value = Math.round(Number(input.value));
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new Error(`${name} must be a positive whole number.`);
+      }
+      input.value = value;
+      return value;
+    }
+
+    function applyRounding(value, rule) {
+      if (rule === "floor") return Math.floor(value);
+      if (rule === "ceil") return Math.ceil(value);
       return Math.round(value);
     }
 
-    function fmt(value, digits = 2) {
-      if (!Number.isFinite(value)) return '—';
-      return value.toLocaleString(undefined, { maximumFractionDigits: digits });
+    function format(value, digits = 2) {
+      if (!Number.isFinite(value)) return "—";
+      if (Math.abs(value) >= 100) return value.toFixed(1).replace(/\.0$/, "");
+      return value.toFixed(digits).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
     }
 
-    function metric(label, value, sub = '') {
-      return `
-        <div class="metric">
-          <div class="metric-label">${label}</div>
-          <div class="metric-value">${value}</div>
-          <div class="metric-sub">${sub}</div>
-        </div>`;
-    }
-
-    function hintForRound(round, target, prevTarget, inc) {
-      if (round === 1) return `${target} stitches into magic ring`;
-      if (inc > 0) {
-        const spacing = prevTarget / inc;
-        if (spacing >= 1) return `add ${inc} increases evenly; about 1 increase every ${fmt(spacing, 1)} old stitches`;
-        return `add ${inc} increases; more than one increase per old stitch on average`;
-      }
-      if (inc === 0) return 'no increases this round';
-      return `decrease ${Math.abs(inc)} evenly; parameters are making the target shrink`;
-    }
-
-    function validate(target, h, w, rounds) {
-      const problems = [];
-      if (!(target > 0)) problems.push('The target value must be greater than 0.');
-      if (!(h > 0)) problems.push('h must be greater than 0.');
-      if (!(w > 0)) problems.push('w must be greater than 0.');
-      if (!(rounds >= 1)) problems.push('Round count must be at least 1.');
-      return problems;
-    }
-
-    function updateTargetCopy() {
-      if (els.targetType.value === 'radius') {
-        els.targetLabel.textContent = 'Desired radius, r';
-        els.targetHint.textContent = 'Example: 4 cm, 1.5 inches, or any consistent length unit.';
-      } else {
-        els.targetLabel.textContent = 'Desired circumference, C';
-        els.targetHint.textContent = 'Example: 20 cm, 8 inches, or any consistent length unit.';
-      }
-    }
-
-    function targetGeometry(target) {
-      if (els.targetType.value === 'radius') {
-        return { radius: target, circumference: TAU * target };
-      }
-      return { radius: target / TAU, circumference: target };
+    function instructionFor(round, increase, count) {
+      if (round === 1) return `Start with ${count} stitches.`;
+      if (increase > 0) return `Increase by ${increase} stitch${increase === 1 ? "" : "es"}.`;
+      if (increase === 0) return "Work even this round.";
+      return `Decrease by ${Math.abs(increase)} stitch${Math.abs(increase) === 1 ? "" : "es"}.`;
     }
 
     function calculate() {
-      updateTargetCopy();
+      try {
+        const targetType = selected("targetType");
+        const target = positiveNumber(els.targetValue, targetType === "radius" ? "Desired radius" : "Desired circumference");
+        const h = positiveNumber(els.rowHeight, "Row height");
+        const w = positiveNumber(els.stitchWidth, "Stitch width");
+        const roundMode = selected("roundMode");
+        const roundingRule = selected("roundingRule");
+        const classicMode = selected("classicMode");
+        const manualRounds = positiveInteger(els.manualRounds, "Manual rounds");
 
-      const target = numberValue(els.target);
-      const h = numberValue(els.h);
-      const w = numberValue(els.w);
-      const rounding = els.rounding.value;
-      const geometry = targetGeometry(target);
-      const autoRoundsRaw = geometry.radius / h;
-      const manualRoundsRaw = numberValue(els.rounds);
-      const manualRounds = Math.max(1, Math.floor(manualRoundsRaw));
-      const rowsToShow = els.roundsMode.value === 'auto'
-        ? Math.max(1, Math.ceil(autoRoundsRaw))
-        : manualRounds;
+        const rawRounds = targetType === "radius" ? target / h : target / (2 * Math.PI * h);
+        const rounds = Math.max(1, roundMode === "manual" ? manualRounds : Math.ceil(rawRounds));
+        const rawDelta = (2 * Math.PI * h) / w;
+        const classicDelta = classicMode === "six" ? 6 : Math.max(1, Math.round(rawDelta));
 
-      const problems = validate(target, h, w, rowsToShow);
-      els.warnings.innerHTML = problems.length ? `<p class="warn">${problems.join(' ')}</p>` : '';
-      if (problems.length) {
-        els.summary.innerHTML = '';
-        els.rows.innerHTML = '';
-        return;
-      }
+        let previous = 0;
+        let finalRadius = 0;
+        let finalStitches = 0;
+        const rows = [];
 
-      const aspect = h / w;
-      const idealIncrease = TAU * aspect;
-      const roundedIncrease = Math.max(0, roundByMode(idealIncrease, rounding));
-      const classicDeltaNearest = Math.max(0, Math.round(idealIncrease));
-      const classicIncrease = els.classicMode.value === 'six' ? 6 : classicDeltaNearest;
-      const exactEdgeStitches = geometry.circumference / w;
-      const roundedEdgeStitches = roundByMode(exactEdgeStitches, rounding);
-      const actualCircumferenceAtRows = TAU * h * rowsToShow;
-      const actualRadiusAtRows = h * rowsToShow;
-      const targetAtRows = roundByMode((TAU * rowsToShow * h) / w, rounding);
-      const targetName = els.targetType.value === 'radius' ? 'radius' : 'circumference';
+        for (let round = 1; round <= rounds; round++) {
+          const radius = round * h;
+          const circumference = 2 * Math.PI * radius;
+          const ideal = circumference / w;
+          const targetStitches = Math.max(1, applyRounding(ideal, roundingRule));
+          const increase = targetStitches - previous;
+          const classicCount = classicDelta * round;
 
-      els.summary.innerHTML = [
-        metric('Final edge count', `${roundedEdgeStitches} sts`, `exact n = ${fmt(exactEdgeStitches, 3)}`),
-        metric('Estimated rounds', `${fmt(autoRoundsRaw, 2)}`, `showing ${rowsToShow} complete rounds`),
-        metric('Increase rate', `${fmt(idealIncrease, 3)}`, `target Δ = ${roundedIncrease}; classic Δ = ${classicIncrease}`),
-        metric('At shown round', `${targetAtRows} sts`, `C ≈ ${fmt(actualCircumferenceAtRows)}; r ≈ ${fmt(actualRadiusAtRows)}`)
-      ].join('');
+          rows.push({
+            round,
+            radius,
+            circumference,
+            ideal,
+            targetStitches,
+            increase,
+            classicCount,
+            instruction: instructionFor(round, increase, targetStitches)
+          });
 
-      const rowHtml = [];
-      let prevTarget = 0;
-      for (let N = 1; N <= rowsToShow; N += 1) {
-        const radius = N * h;
-        const circumference = TAU * radius;
-        const idealStitches = circumference / w;
-        const targetStitches = Math.max(0, roundByMode(idealStitches, rounding));
-        const inc = targetStitches - prevTarget;
-        const classicCount = classicIncrease * N;
-        rowHtml.push(`
-          <tr>
-            <td>Round ${N}</td>
-            <td>${fmt(radius, 3)}</td>
-            <td>${fmt(circumference, 3)}</td>
-            <td>${fmt(idealStitches, 3)}</td>
-            <td><strong>${targetStitches}</strong></td>
-            <td>${inc >= 0 ? '+' : ''}${inc}</td>
-            <td>${classicCount}</td>
-            <td class="note-cell">${hintForRound(N, targetStitches, prevTarget, inc)}</td>
-          </tr>
-        `);
-        prevTarget = targetStitches;
-      }
-      els.rows.innerHTML = rowHtml.join('');
+          previous = targetStitches;
+          finalRadius = radius;
+          finalStitches = targetStitches;
+        }
 
-      const shownValue = els.targetType.value === 'radius' ? actualRadiusAtRows : actualCircumferenceAtRows;
-      const requestedValue = target;
-      const relativeDifference = Math.abs(shownValue - requestedValue) / requestedValue;
-      if (relativeDifference > 0.12 && els.roundsMode.value === 'auto') {
-        els.warnings.innerHTML += `<p class="hint">Auto mode shows whole rounds, so the displayed final ${targetName} differs from the requested value by ${fmt(relativeDifference * 100, 1)}%.</p>`;
-      }
-      if (aspect < 0.5 || aspect > 2.5) {
-        els.warnings.innerHTML += `<p class="hint">h/w = ${fmt(aspect, 2)} is unusual. The math still works, but crochet fabric may not behave like this simple model.</p>`;
+        renderRows(rows);
+        els.metricRounds.textContent = String(rounds);
+        els.metricRadius.textContent = format(finalRadius);
+        els.metricStitches.textContent = String(finalStitches);
+        els.metricDelta.textContent = format(rawDelta);
+
+        const targetDescription = targetType === "radius" ? `target radius ${format(target)}` : `target circumference ${format(target)}`;
+        els.status.textContent = `Calculated ${rounds} round${rounds === 1 ? "" : "s"} for ${targetDescription}.`;
+        els.status.classList.remove("error");
+      } catch (error) {
+        els.status.textContent = error.message;
+        els.status.classList.add("error");
       }
     }
 
-    els.controls.addEventListener('submit', event => {
-      event.preventDefault();
-      calculate();
-    });
+    function renderRows(rows) {
+      els.resultsBody.innerHTML = "";
+      const frag = document.createDocumentFragment();
 
-    for (const el of [els.targetType, els.target, els.h, els.w, els.roundsMode, els.rounds, els.rounding, els.classicMode]) {
-      el.addEventListener('input', calculate);
-      el.addEventListener('change', calculate);
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.round}</td>
+          <td>${format(row.radius)}</td>
+          <td>${format(row.circumference)}</td>
+          <td>${format(row.ideal)}</td>
+          <td>${row.targetStitches}</td>
+          <td>${row.increase >= 0 ? "+" : ""}${row.increase}</td>
+          <td>${row.classicCount}</td>
+          <td>${row.instruction}</td>
+        `;
+        frag.appendChild(tr);
+      }
+
+      els.resultsBody.appendChild(frag);
     }
 
-    els.reset.addEventListener('click', () => {
-      els.targetType.value = 'circumference';
-      els.target.value = '20';
-      els.h.value = '0.55';
-      els.w.value = '0.55';
-      els.roundsMode.value = 'auto';
-      els.rounds.value = '6';
-      els.rounding.value = 'nearest';
-      els.classicMode.value = 'roundedDelta';
+    function updateTargetLabel() {
+      const targetType = selected("targetType");
+      els.targetLabel.textContent = targetType === "radius" ? "Desired radius, r" : "Desired circumference, C";
+    }
+
+    function resetDefaults() {
+      document.querySelector('input[name="targetType"][value="circumference"]').checked = true;
+      document.querySelector('input[name="roundMode"][value="auto"]').checked = true;
+      document.querySelector('input[name="roundingRule"][value="nearest"]').checked = true;
+      document.querySelector('input[name="classicMode"][value="aspect"]').checked = true;
+      els.targetValue.value = "20";
+      els.rowHeight.value = "1";
+      els.stitchWidth.value = "1";
+      els.manualRounds.value = "8";
+      updateTargetLabel();
       calculate();
+    }
+
+    document.getElementById("calculateButton").addEventListener("click", calculate);
+    document.getElementById("resetButton").addEventListener("click", resetDefaults);
+
+    document.querySelectorAll('input[name="targetType"]').forEach(input => {
+      input.addEventListener("change", () => {
+        updateTargetLabel();
+        calculate();
+      });
     });
 
+    document.querySelectorAll("input").forEach(input => {
+      input.addEventListener("input", () => {
+        if (input.type !== "radio") calculate();
+      });
+      input.addEventListener("change", calculate);
+    });
+
+    updateTargetLabel();
     calculate();
   </script>
 </body>

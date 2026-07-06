@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MathMeetLife Toy Template</title>
+  <link rel="stylesheet" href="assets/mml-toy.css" />
+</head>
+<body class="mml-widget">
+  <div class="mml-page">
+    <nav class="mml-links" aria-label="Related links">
+      <a href="https://mathmeetlife.substack.com/"Kelly's Substack</a>
+    </nav>
+
+    <header class="mml-hero">
+      <div class="mml-tag">Parametric</div>
+      <h1>Your toy title</h1>
+      <p class="mml-lede">One or two sentences explaining what the reader can explore.</p>
+      <p class="mml-subnote">A small note about units, assumptions, or interaction.</p>
+    </header>
+
+    <section>
+      <div class="mml-section-head">
+        <h2>Inputs</h2>
+        <p>Describe what changes when the reader edits the controls.</p>
+      </div>
+
+      <article class="mml-card">
+        <h3>Controls</h3>
+        <div class="mml-controls">
+          <div class="mml-control">
+            <label for="exampleRange">Example <output id="exampleOut">5</output></label>
+            <input class="mml-range" id="exampleRange" type="range" min="1" max="10" value="5" />
+          </div>
+        </div>
+        <div class="mml-actions">
+          <button class="mml-button mml-button-primary">Recalculate</button>
+          <button class="mml-button">Reset</button>
+        </div>
+        <div class="mml-formula">Formula or model note goes here.</div>
+      </article>
+    </section>
+
+    <section>
+      <div class="mml-section-head">
+        <h2>Results</h2>
+        <p>Explain what the output means.</p>
+      </div>
+
+      <article class="mml-results">
+        <div class="mml-metrics">
+          <div class="mml-metric">
+            <div class="mml-metric-label">Metric</div>
+            <div class="mml-metric-value">0.000</div>
+          </div>
+        </div>
+        <div class="mml-table-wrap">
+          <table class="mml-table">
+            <thead><tr><th>Column</th><th>Value</th></tr></thead>
+            <tbody><tr><td>Example</td><td>5</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+
+      <p class="mml-footnote">Small-model caveats can go here.</p>
+    </section>
+  </div>
+</body>
+</html>
