@@ -1,0 +1,115 @@
+/*
+  MathMeetLife crochet widget family styles.
+  Load after assets/mml-toy.css for the circle and sphere calculators.
+*/
+
+.mml-output-list,
+body.mml-widget .pattern-preview {
+  display: grid;
+  gap: 9px;
+}
+
+.mml-output-line,
+body.mml-widget .pattern-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: start;
+  padding: 11px 12px;
+  border: 1px solid var(--mml-line-2);
+  border-radius: 13px;
+  background: rgba(227, 237, 237, 0.055);
+}
+
+.mml-preview-key,
+body.mml-widget .round-label {
+  color: var(--mml-accent-dark);
+  font: 900 14px/1.35 var(--mml-sans);
+}
+
+.mml-preview-main,
+body.mml-widget .instruction {
+  min-width: 0;
+}
+
+.mml-preview-value,
+body.mml-widget .stitch-count {
+  white-space: nowrap;
+  color: var(--mml-muted);
+  font-weight: 800;
+}
+
+.mml-preview-meta,
+body.mml-widget .row-meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--mml-muted-2);
+  font: 13px/1.35 var(--mml-sans);
+}
+
+.mml-finish-note,
+body.mml-widget .finish-note {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--mml-line);
+  border-radius: 13px;
+  background: var(--mml-accent-soft);
+  color: var(--mml-accent-dark);
+  font-weight: 800;
+}
+
+body.mml-widget .result-panel pre,
+body.mml-widget .result-panel textarea,
+.mml-result-text {
+  min-height: 420px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+body.mml-widget .result-panel textarea {
+  white-space: pre;
+}
+
+body.mml-widget pre,
+.mml-pre {
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--mml-line);
+  border-radius: 13px;
+  background: rgba(4, 47, 46, 0.86);
+  color: var(--mml-ink);
+  font: 13px/1.45 var(--mml-mono);
+}
+
+
+@media (max-width: 560px) {
+  body.mml-widget .buttons button,
+  body.mml-widget .result-actions button {
+    width: 100%;
+  }
+
+  .mml-output-line,
+  body.mml-widget .pattern-row {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .mml-preview-value,
+  body.mml-widget .stitch-count {
+    grid-column: 2;
+  }
+
+  .mml-tabs,
+  body.mml-widget .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+}
+
+@media print {
+  body.mml-widget .pattern-row {
+    break-inside: avoid;
+    border-color: #ddd;
+    background: white;
+    color: black;
+  }
+}

@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spring Constraint Diagram Toy with Visual Editor</title>
+  <link rel="stylesheet" href="assets/mml-toy.css" />
+  <link rel="stylesheet" href="assets/widgets/graph-lab.css">
+</head>
+<body class="mml-widget">
+  <div class="mml-page page">
+    <nav class="mml-links links mml-no-print" aria-label="Related links">
+      <a href="https://mathmeetlife.substack.com/">Kelly's Substack</a>
+    </nav>
+
+    <header class="mml-hero hero">
+      <div class="mml-tag tag">Visual editor</div>
+      <h1>Spring constraint diagram toy</h1>
+      <p class="mml-lede lede">
+        Edit nodes and edges directly on the canvas, then let springs, repulsion, damping, and optional gravity negotiate the layout.
+      </p>
+      <p class="mml-subnote subnote">
+        Use <strong>Select / move</strong> for normal editing. The JSON stays synced in the data section for copying, saving, or manual edits.
+      </p>
+    </header>
+
+    <section class="mml-section-head section-head">
+      <h2>Visual editor</h2>
+      <p>Blue edges are stretched; red-orange edges are compressed. Fixed nodes are marked with an X.</p>
+    </section>
+
+    <article class="mml-results results mml-editor-panel">
+      <div class="mml-editor-grid editor-grid">
+        <div class="mml-canvas-shell canvas-shell">
+          <div class="mml-toolbar toolbar mml-no-print" role="toolbar" aria-label="Editor tools">
+            <button class="mml-tool-button tool-btn active" id="selectTool" data-tool="select" type="button">Select / move</button>
+            <button class="mml-tool-button tool-btn" id="addNodeTool" data-tool="addNode" type="button">Add node</button>
+            <button class="mml-tool-button tool-btn" id="addEdgeTool" data-tool="addEdge" type="button">Add edge</button>
+            <button class="mml-tool-button tool-btn" id="deleteTool" data-tool="delete" type="button">Delete</button>
+          </div>
+
+          <div class="mml-canvas-wrap canvas-wrap mml-editor-canvas-wrap">
+            <canvas id="canvas" class="mml-canvas"></canvas>
+            <div class="mml-legend legend">
+              <span><i class="mml-dot dot mml-fixed-dot fixed-dot"></i>fixed node</span>
+              <span><i class="mml-dot dot mml-free-dot free-dot"></i>free node</span>
+            </div>
+          </div>
+
+          <p class="mml-mode-help mode-help mml-no-print" id="modeHelp">
+            Select or drag nodes. Click an edge to edit it. Physics can run while you edit.
+          </p>
+        </div>
+
+        <aside class="mml-inspector inspector mml-no-print" id="inspector" aria-label="Selection inspector">
+          <h3>Inspector</h3>
+          <p class="mml-inspector-empty inspector-empty">Select a node or edge to edit its properties.</p>
+        </aside>
+      </div>
+
+      <div class="mml-stat-grid stats mml-editor-stats" aria-label="Simulation summary">
+        <div class="mml-stat">
+          <div class="mml-stat-label">Nodes</div>
+          <div class="mml-stat-value" id="nodesMetric">0</div>
+        </div>
+        <div class="mml-stat">
+          <div class="mml-stat-label">Constraints</div>
+          <div class="mml-stat-value" id="edgesMetric">0</div>
+        </div>
+        <div class="mml-stat">
+          <div class="mml-stat-label">Kinetic energy</div>
+          <div class="mml-stat-value" id="energyMetric">0.000</div>
+        </div>
+        <div class="mml-stat">
+          <div class="mml-stat-label">Mean edge error</div>
+          <div class="mml-stat-value" id="errorMetric">0.000</div>
+        </div>
+        <div class="mml-stat">
+          <div class="mml-stat-label">Gravity</div>
+          <div class="mml-stat-value" id="gravityMetric">off</div>
+        </div>
+      </div>
+    </article>
+
+    <section class="mml-tool-layout tool-layout mml-editor-controls-layout mml-no-print">
+      <article class="mml-card card settings-panel">
+        <h2 class="mml-h2">Simulation controls</h2>
+        <p class="mml-hint hint">
+          Tune the physics while the canvas is running. Use lower tension or timestep values if the system becomes jumpy.
+        </p>
+
+        <div class="mml-controls controls">
+          <div class="mml-control control">
+            <label for="stiffness">Tension <output id="stiffnessOut"></output></label>
+            <input id="stiffness" class="mml-range" type="range" min="0.005" max="0.25" value="0.055" step="0.005" />
+          </div>
+
+          <div class="mml-control control">
+            <label for="damping">Damping <output id="dampingOut"></output></label>
+            <input id="damping" class="mml-range" type="range" min="0" max="0.22" value="0.055" step="0.005" />
+          </div>
+
+          <div class="mml-control control">
+            <label for="timestep">Timestep <output id="timestepOut"></output></label>
+            <input id="timestep" class="mml-range" type="range" min="0.1" max="2.0" value="1.0" step="0.1" />
+          </div>
+
+          <div class="mml-control control">
+            <label for="repulsion">Repulsion <output id="repulsionOut"></output></label>
+            <input id="repulsion" class="mml-range" type="range" min="0" max="1800" value="180" step="10" />
+          </div>
+
+          <div class="mml-control control">
+            <label for="substeps">Substeps <output id="substepsOut"></output></label>
+            <input id="substeps" class="mml-range" type="range" min="1" max="8" value="3" step="1" />
+          </div>
+
+          <div class="mml-control control">
+            <label for="gravity">Gravity <output id="gravityOut"></output></label>
+            <input id="gravity" class="mml-range" type="range" min="0" max="1.2" value="0.18" step="0.02" />
+          </div>
+
+          <label class="mml-check-row check-row" for="gravityEnabled">
+            <input id="gravityEnabled" type="checkbox" />
+            <span>Apply gravity when at least one node is fixed</span>
+          </label>
+        </div>
+
+        <div class="mml-actions actions">
+          <button class="primary mml-button-primary" id="playBtn" type="button">Pause</button>
+          <button id="settleBtn" type="button">Settle 500 steps</button>
+          <button id="jiggleBtn" type="button">Jiggle free nodes</button>
+          <button id="syncBtn" type="button">Sync JSON from canvas</button>
+          <button id="applyBtn" type="button">Reset from JSON</button>
+        </div>
+
+        <div id="status" class="mml-status status" role="status" aria-live="polite"></div>
+      </article>
+
+      <article class="mml-card card">
+        <details class="mml-disclosure disclosure">
+          <summary>Data / JSON</summary>
+          <div class="mml-disclosure-body">
+            <p class="mml-hint hint">
+              Edit the JSON directly, then use <strong>Reset from JSON</strong>. The visual editor keeps these boxes synchronized.
+            </p>
+
+            <div class="mml-grid grid mml-json-grid">
+              <div>
+                <h3>Nodes</h3>
+                <textarea id="nodesInput" class="mml-textarea" spellcheck="false"></textarea>
+                <p class="mml-hint hint">
+                  Required: <code>id</code>, <code>x</code>, <code>y</code>. Optional: <code>label</code>, <code>shape</code>, <code>fixed</code>, <code>mass</code>, <code>radius</code>.
+                </p>
+              </div>
+
+              <div>
+                <h3>Edges and constraints</h3>
+                <textarea id="edgesInput" class="mml-textarea" spellcheck="false"></textarea>
+                <p class="mml-hint hint">
+                  Required: <code>source</code>, <code>target</code>, <code>length</code>. Optional: <code>id</code>, <code>label</code>, <code>stiffness</code>, <code>weight</code>.
+                </p>
+              </div>
+            </div>
+
+            <div class="mml-formula formula" aria-label="Model formula">
+              Spring model: <code>F = k(L - L0)</code>. Repulsion pushes nodes apart. Gravity, when enabled, adds <code>Fy = mg</code> straight down for each free node, but only if at least one node is fixed.
+            </div>
+          </div>
+        </details>
+      </article>
+    </section>
+
+    <section class="mml-no-print">
+      <details class="mml-disclosure disclosure mml-diagnostics">
+        <summary>Edge diagnostics</summary>
+        <div class="mml-disclosure-body">
+          <p class="mml-hint hint">
+            This table is mostly for debugging the spring constraints. Selected edges are highlighted.
+          </p>
+          <div class="mml-table-wrap table-wrap">
+            <table class="mml-table">
+              <thead>
+                <tr>
+                  <th>Edge</th>
+                  <th>Status</th>
+                  <th>Preferred</th>
+                  <th>Actual</th>
+                  <th>Error</th>
+                  <th>Stiffness</th>
+                </tr>
+              </thead>
+              <tbody id="edgeTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <p class="mml-footnote footnote">
+        This is a visual sketching toy, not a full diagram editor. It favors fast testing over polished authoring features.
+      </p>
+    </section>
+  </div>
+
+  <script>
+  const sampleNodes = [
+    { "id": "A", "label": "Start", "shape": "circle", "x": 170, "y": 160, "fixed": true, "mass": 1, "radius": 12 },
+    { "id": "B", "label": "Decision", "shape": "diamond", "x": 560, "y": 120, "mass": 1, "radius": 13 },
+    { "id": "C", "label": "Path C", "shape": "box", "x": 520, "y": 410, "mass": 1, "radius": 12 },
+    { "id": "D", "label": "Anchor", "shape": "circle", "x": 170, "y": 380, "fixed": true, "mass": 1, "radius": 12 },
+    { "id": "E", "label": "Middle", "shape": "circle", "x": 360, "y": 265, "mass": 0.8, "radius": 12 }
+  ];
+
+  const sampleEdges = [
+    { "id": "E1", "source": "A", "target": "B", "label": "next", "length": 250, "stiffness": 1.0 },
+    { "id": "E2", "source": "B", "target": "C", "label": "yes", "length": 210, "stiffness": 1.0 },
+    { "id": "E3", "source": "C", "target": "D", "label": "loop", "length": 250, "stiffness": 1.0 },
+    { "id": "E4", "source": "D", "target": "A", "label": "back", "length": 220, "stiffness": 1.0 },
+    { "id": "E5", "source": "A", "target": "E", "label": "", "length": 160, "stiffness": 1.0 },
+    { "id": "E6", "source": "B", "target": "E", "label": "", "length": 160, "stiffness": 1.0 },
+    { "id": "E7", "source": "C", "target": "E", "label": "", "length": 160, "stiffness": 1.0 },
+    { "id": "E8", "source": "D", "target": "E", "label": "", "length": 160, "stiffness": 1.0 }
+  ];
+
+  const nodesInput = document.getElementById("nodesInput");
+  const edgesInput = document.getElementById("edgesInput");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const edgeTable = document.getElementById("edgeTable");
+  const statusEl = document.getElementById("status");
+  const inspector = document.getElementById("inspector");
+  const modeHelp = document.getElementById("modeHelp");
+
+  const metrics = {
+    nodes: document.getElementById("nodesMetric"),
+    edges: document.getElementById("edgesMetric"),
+    energy: document.getElementById("energyMetric"),
+    error: document.getElementById("errorMetric"),
+    gravity: document.getElementById("gravityMetric")
+  };
+
+  const controls = {
+    stiffness: document.getElementById("stiffness"),
+    damping: document.getElementById("damping"),
+    timestep: document.getElementById("timestep"),
+    repulsion: document.getElementById("repulsion"),
+    substeps: document.getElementById("substeps"),
+    gravity: document.getElementById("gravity"),
+    gravityEnabled: document.getElementById("gravityEnabled")
+  };
+
+  const outputs = {
+    stiffness: document.getElementById("stiffnessOut"),
+    damping: document.getElementById("dampingOut"),
+    timestep: document.getElementById("timestepOut"),
+    repulsion: document.getElementById("repulsionOut"),
+    substeps: document.getElementById("substepsOut"),
+    gravity: document.getElementById("gravityOut")
+  };
+
+  const editor = {
+    tool: "select",
+    selectedType: null,
+    selectedId: null,
+    edgeStartId: null,
+    drag: null
+  };
+
+  let nodes = [];
+  let edges = [];
+  let running = true;
+  let lastEnergy = 0;
+  let meanEdgeError = 0;
+  let frame = 0;
+
+  function cssVar(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function pretty(value) {
+    return JSON.stringify(value, null, 2);
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function updateControlOutputs() {
+    outputs.stiffness.textContent = Number(controls.stiffness.value).toFixed(3);
+    outputs.damping.textContent = Number(controls.damping.value).toFixed(3);
+    outputs.timestep.textContent = Number(controls.timestep.value).toFixed(1);
+    outputs.repulsion.textContent = Math.round(Number(controls.repulsion.value));
+    outputs.substeps.textContent = Math.round(Number(controls.substeps.value));
+    outputs.gravity.textContent = Number(controls.gravity.value).toFixed(2);
+  }
+
+  Object.values(controls).forEach(input => input.addEventListener("input", updateControlOutputs));
+
+  function setStatus(message, isError) {
+    statusEl.textContent = message;
+    statusEl.classList.toggle("error", Boolean(isError));
+  }
+
+  function publicNode(n) {
+    const out = {
+      id: n.id,
+      label: n.label || n.id,
+      shape: n.shape || "circle",
+      x: Math.round(n.x * 10) / 10,
+      y: Math.round(n.y * 10) / 10,
+      mass: n.mass
+    };
+    if (n.fixed) out.fixed = true;
+    if (Number.isFinite(n.radius) && n.radius !== 12) out.radius = n.radius;
+    return out;
+  }
+
+  function publicEdge(e) {
+    const out = {
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      length: e.length,
+      stiffness: e.stiffness
+    };
+    if (e.label) out.label = e.label;
+    if (e.weight !== null && e.weight !== undefined && e.weight !== "") out.weight = e.weight;
+    return out;
+  }
+
+  function syncJSONFromState() {
+    nodesInput.value = pretty(nodes.map(publicNode));
+    edgesInput.value = pretty(edges.map(publicEdge));
+  }
+
+  function makeUniqueNodeId() {
+    let i = nodes.length + 1;
+    let id = "N" + i;
+    while (nodes.some(n => n.id === id)) {
+      i += 1;
+      id = "N" + i;
+    }
+    return id;
+  }
+
+  function makeUniqueEdgeId() {
+    let i = edges.length + 1;
+    let id = "E" + i;
+    while (edges.some(e => e.id === id)) {
+      i += 1;
+      id = "E" + i;
+    }
+    return id;
+  }
+
+  function parseInputs() {
+    const parsedNodes = JSON.parse(nodesInput.value);
+    const parsedEdges = JSON.parse(edgesInput.value);
+
+    if (!Array.isArray(parsedNodes)) throw new Error("Nodes JSON must be an array.");
+    if (!Array.isArray(parsedEdges)) throw new Error("Edges JSON must be an array.");
+
+    const seen = new Set();
+    const cleanNodes = parsedNodes.map((node, index) => {
+      if (typeof node.id !== "string" || !node.id.trim()) throw new Error("Node at index " + index + " needs a string id.");
+      if (seen.has(node.id)) throw new Error("Duplicate node id: " + node.id);
+      seen.add(node.id);
+
+      const x = Number(node.x);
+      const y = Number(node.y);
+      const mass = Number(node.mass);
+      const radius = Number(node.radius);
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Node " + node.id + " needs numeric x and y values.");
+
+      return {
+        id: node.id,
+        label: typeof node.label === "string" && node.label.trim() ? node.label : node.id,
+        shape: ["circle", "box", "diamond"].includes(node.shape) ? node.shape : "circle",
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        fx: 0,
+        fy: 0,
+        mass: Number.isFinite(mass) && mass > 0 ? mass : 1,
+        fixed: Boolean(node.fixed),
+        radius: Number.isFinite(radius) && radius > 2 ? radius : 12
+      };
+    });
+
+    const ids = new Set(cleanNodes.map(n => n.id));
+    const edgeIds = new Set();
+    const cleanEdges = parsedEdges.map((edge, index) => {
+      if (!ids.has(edge.source)) throw new Error("Edge " + index + " has unknown source node: " + edge.source);
+      if (!ids.has(edge.target)) throw new Error("Edge " + index + " has unknown target node: " + edge.target);
+
+      const length = Number(edge.length);
+      const stiffness = Number(edge.stiffness);
+      if (!Number.isFinite(length) || length <= 0) throw new Error("Edge " + index + " needs a positive numeric length.");
+
+      let id = typeof edge.id === "string" && edge.id.trim() ? edge.id : "E" + (index + 1);
+      if (edgeIds.has(id)) id = id + "_" + (index + 1);
+      edgeIds.add(id);
+
+      return {
+        id,
+        source: edge.source,
+        target: edge.target,
+        label: typeof edge.label === "string" ? edge.label : "",
+        length,
+        stiffness: Number.isFinite(stiffness) && stiffness > 0 ? stiffness : 1,
+        weight: edge.weight ?? edge.probability ?? null
+      };
+    });
+
+    return { cleanNodes, cleanEdges };
+  }
+
+  function applyJSONAndReset() {
+    try {
+      const parsed = parseInputs();
+      nodes = parsed.cleanNodes;
+      edges = parsed.cleanEdges;
+      editor.selectedType = null;
+      editor.selectedId = null;
+      editor.edgeStartId = null;
+      editor.drag = null;
+      running = true;
+      document.getElementById("playBtn").textContent = "Pause";
+      setStatus("Loaded " + nodes.length + " nodes and " + edges.length + " constraints.");
+      renderInspector();
+      updateDiagnostics();
+    } catch (err) {
+      setStatus(err.message, true);
+    }
+  }
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function nodeMap() {
+    const map = new Map();
+    nodes.forEach(n => map.set(n.id, n));
+    return map;
+  }
+
+  function clearForces() {
+    for (const n of nodes) {
+      n.fx = 0;
+      n.fy = 0;
+    }
+  }
+
+  function hasFixedNode() {
+    return nodes.some(n => n.fixed);
+  }
+
+  function gravityIsActive() {
+    return controls.gravityEnabled.checked && hasFixedNode();
+  }
+
+  function addGravity(strength) {
+    if (!gravityIsActive() || strength <= 0) return;
+    for (const n of nodes) {
+      if (!n.fixed) n.fy += n.mass * strength;
+    }
+  }
+
+  function addSpringForces(map, globalK) {
+    for (const e of edges) {
+      const a = map.get(e.source);
+      const b = map.get(e.target);
+      if (!a || !b) continue;
+
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      let dist = Math.hypot(dx, dy);
+
+      if (dist < 0.0001) {
+        dx = (Math.random() - 0.5) * 0.01;
+        dy = (Math.random() - 0.5) * 0.01;
+        dist = Math.hypot(dx, dy);
+      }
+
+      const ux = dx / dist;
+      const uy = dy / dist;
+      const force = globalK * e.stiffness * (dist - e.length);
+      const fx = force * ux;
+      const fy = force * uy;
+
+      if (!a.fixed) {
+        a.fx += fx;
+        a.fy += fy;
+      }
+      if (!b.fixed) {
+        b.fx -= fx;
+        b.fy -= fy;
+      }
+    }
+  }
+
+  function addRepulsion(strength) {
+    if (strength <= 0) return;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let d2 = dx * dx + dy * dy;
+
+        if (d2 < 25) {
+          dx += (Math.random() - 0.5) * 2;
+          dy += (Math.random() - 0.5) * 2;
+          d2 = dx * dx + dy * dy + 25;
+        }
+
+        const d = Math.sqrt(d2);
+        const f = strength / d2;
+        const fx = f * dx / d;
+        const fy = f * dy / d;
+
+        if (!a.fixed) {
+          a.fx -= fx;
+          a.fy -= fy;
+        }
+        if (!b.fixed) {
+          b.fx += fx;
+          b.fy += fy;
+        }
+      }
+    }
+  }
+
+  function integrate(dt, damping) {
+    const keep = Math.max(0, 1 - damping);
+    let kinetic = 0;
+
+    for (const n of nodes) {
+      if (n.fixed) {
+        n.vx = 0;
+        n.vy = 0;
+        continue;
+      }
+
+      const ax = n.fx / n.mass;
+      const ay = n.fy / n.mass;
+      n.vx = (n.vx + ax * dt) * keep;
+      n.vy = (n.vy + ay * dt) * keep;
+      n.x += n.vx * dt;
+      n.y += n.vy * dt;
+      kinetic += 0.5 * n.mass * (n.vx * n.vx + n.vy * n.vy);
+    }
+
+    lastEnergy = kinetic;
+  }
+
+  function step() {
+    const map = nodeMap();
+    const globalK = Number(controls.stiffness.value);
+    const damping = Number(controls.damping.value);
+    const dt = Number(controls.timestep.value);
+    const repulsion = Number(controls.repulsion.value);
+    const gravity = Number(controls.gravity.value);
+    const substeps = Number(controls.substeps.value);
+    const smallDt = dt / substeps;
+
+    for (let i = 0; i < substeps; i++) {
+      clearForces();
+      addSpringForces(map, globalK);
+      addRepulsion(repulsion);
+      addGravity(gravity);
+      integrate(smallDt, damping);
+    }
+  }
+
+  function edgeStats() {
+    const map = nodeMap();
+    let totalAbs = 0;
+    const rows = edges.map(e => {
+      const a = map.get(e.source);
+      const b = map.get(e.target);
+      if (!a || !b) return { e, actual: 0, error: 0 };
+      const actual = Math.hypot(b.x - a.x, b.y - a.y);
+      const error = actual - e.length;
+      totalAbs += Math.abs(error);
+      return { e, actual, error };
+    });
+    meanEdgeError = edges.length ? totalAbs / edges.length : 0;
+    return rows;
+  }
+
+  function updateDiagnostics() {
+    const rows = edgeStats();
+    metrics.nodes.textContent = String(nodes.length);
+    metrics.edges.textContent = String(edges.length);
+    metrics.energy.textContent = lastEnergy.toFixed(3);
+    metrics.error.textContent = meanEdgeError.toFixed(3);
+    metrics.gravity.textContent = gravityIsActive() ? Number(controls.gravity.value).toFixed(2) : "off";
+
+    edgeTable.innerHTML = rows.map(row => {
+      const status = Math.abs(row.error) < 1 ? "settled" : row.error > 0 ? "stretched" : "compressed";
+      const selected = editor.selectedType === "edge" && editor.selectedId === row.e.id;
+      return "<tr class='" + (selected ? "selected-row" : "") + "'>" +
+        "<td>" + escapeHTML(row.e.source) + " - " + escapeHTML(row.e.target) + "</td>" +
+        "<td><span class='pill'>" + status + "</span></td>" +
+        "<td>" + row.e.length.toFixed(1) + "</td>" +
+        "<td>" + row.actual.toFixed(1) + "</td>" +
+        "<td>" + row.error.toFixed(1) + "</td>" +
+        "<td>" + row.e.stiffness.toFixed(2) + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function drawNodeShape(n) {
+    const r = n.radius || 12;
+    ctx.beginPath();
+    if (n.shape === "box") {
+      ctx.roundRect(n.x - r, n.y - r, r * 2, r * 2, 5);
+    } else if (n.shape === "diamond") {
+      ctx.moveTo(n.x, n.y - r * 1.25);
+      ctx.lineTo(n.x + r * 1.25, n.y);
+      ctx.lineTo(n.x, n.y + r * 1.25);
+      ctx.lineTo(n.x - r * 1.25, n.y);
+      ctx.closePath();
+    } else {
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    }
+  }
+
+  function drawArrow(a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.001) return;
+
+    const ux = dx / dist;
+    const uy = dy / dist;
+    const endRadius = (b.radius || 12) + 4;
+    const tx = b.x - ux * endRadius;
+    const ty = b.y - uy * endRadius;
+    const size = 7;
+
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - ux * size - uy * size * 0.55, ty - uy * size + ux * size * 0.55);
+    ctx.lineTo(tx - ux * size + uy * size * 0.55, ty - uy * size - ux * size * 0.55);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function draw() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    const map = nodeMap();
+
+    for (const e of edges) {
+      const a = map.get(e.source);
+      const b = map.get(e.target);
+      if (!a || !b) continue;
+
+      const actual = Math.hypot(b.x - a.x, b.y - a.y);
+      const error = actual - e.length;
+      const intensity = Math.min(1, Math.abs(error) / Math.max(1, e.length));
+      const selected = editor.selectedType === "edge" && editor.selectedId === e.id;
+
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineWidth = selected ? 6 : 2 + intensity * 4;
+
+      const stretchRGB = cssVar("--mml-canvas-edge-stretched-rgb", "143, 207, 237");
+      const compressRGB = cssVar("--mml-canvas-edge-compressed-rgb", "217, 130, 107");
+      ctx.strokeStyle = selected
+        ? "rgba(227, 237, 237, 0.96)"
+        : error >= 0
+          ? "rgba(" + stretchRGB + ", " + (0.35 + intensity * 0.45) + ")"
+          : "rgba(" + compressRGB + ", " + (0.32 + intensity * 0.43) + ")";
+      ctx.stroke();
+
+      ctx.fillStyle = ctx.strokeStyle;
+      drawArrow(a, b);
+
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      ctx.fillStyle = cssVar("--mml-canvas-label", "rgba(227, 237, 237, 0.76)");
+      ctx.font = "11px " + cssVar("--mml-mono", "monospace");
+      const edgeText = e.label ? e.label : Math.round(actual) + "/" + e.length;
+      ctx.fillText(edgeText, mx + 5, my - 5);
+    }
+
+    for (const n of nodes) {
+      const selected = editor.selectedType === "node" && editor.selectedId === n.id;
+      const edgeStart = editor.edgeStartId === n.id;
+
+      drawNodeShape(n);
+      ctx.fillStyle = n.fixed ? cssVar("--mml-canvas-node-fixed", "#d9826b") : cssVar("--mml-canvas-node-free", "#8fcfed");
+      ctx.fill();
+      ctx.lineWidth = selected || edgeStart ? 4 : 2.2;
+      ctx.strokeStyle = selected || edgeStart ? "#ffffff" : cssVar("--mml-canvas-node-stroke", "#e3eded");
+      ctx.stroke();
+
+      if (n.fixed) {
+        ctx.beginPath();
+        ctx.moveTo(n.x - 5, n.y - 5);
+        ctx.lineTo(n.x + 5, n.y + 5);
+        ctx.moveTo(n.x + 5, n.y - 5);
+        ctx.lineTo(n.x - 5, n.y + 5);
+        ctx.lineWidth = 1.7;
+        ctx.strokeStyle = cssVar("--mml-canvas-node-stroke", "#e3eded");
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = cssVar("--mml-ink", "#e3eded");
+      ctx.font = "13px " + cssVar("--mml-sans", "system-ui, sans-serif");
+      ctx.fillText(n.label || n.id, n.x + (n.radius || 12) + 5, n.y + 4);
+    }
+  }
+
+  function animate() {
+    if (running && nodes.length) step();
+    draw();
+    frame += 1;
+    if (frame % 12 === 0) updateDiagnostics();
+    requestAnimationFrame(animate);
+  }
+
+  function pointerPoint(ev) {
+    const r = canvas.getBoundingClientRect();
+    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  }
+
+  function findNodeAt(x, y) {
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const r = Math.max(18, (n.radius || 12) + 6);
+      const dx = x - n.x;
+      const dy = y - n.y;
+      if (dx * dx + dy * dy <= r * r) return n;
+    }
+    return null;
+  }
+
+  function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return Math.hypot(px - x1, py - y1);
+
+    let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const x = x1 + t * dx;
+    const y = y1 + t * dy;
+    return Math.hypot(px - x, py - y);
+  }
+
+  function findEdgeAt(x, y) {
+    const map = nodeMap();
+    let best = null;
+    let bestDist = Infinity;
+
+    for (const e of edges) {
+      const a = map.get(e.source);
+      const b = map.get(e.target);
+      if (!a || !b) continue;
+      const d = pointToSegmentDistance(x, y, a.x, a.y, b.x, b.y);
+      if (d < bestDist && d < 10) {
+        best = e;
+        bestDist = d;
+      }
+    }
+
+    return best;
+  }
+
+  function selectNode(id) {
+    editor.selectedType = "node";
+    editor.selectedId = id;
+    renderInspector();
+    updateDiagnostics();
+  }
+
+  function selectEdge(id) {
+    editor.selectedType = "edge";
+    editor.selectedId = id;
+    renderInspector();
+    updateDiagnostics();
+  }
+
+  function clearSelection() {
+    editor.selectedType = null;
+    editor.selectedId = null;
+    renderInspector();
+    updateDiagnostics();
+  }
+
+  function selectedNode() {
+    return editor.selectedType === "node" ? nodes.find(n => n.id === editor.selectedId) : null;
+  }
+
+  function selectedEdge() {
+    return editor.selectedType === "edge" ? edges.find(e => e.id === editor.selectedId) : null;
+  }
+
+  function renameNode(oldId, newId) {
+    newId = String(newId || "").trim();
+    if (!newId || oldId === newId) return false;
+    if (nodes.some(n => n.id === newId)) {
+      setStatus("A node with that id already exists: " + newId, true);
+      renderInspector();
+      return false;
+    }
+
+    const node = nodes.find(n => n.id === oldId);
+    if (!node) return false;
+
+    node.id = newId;
+    for (const e of edges) {
+      if (e.source === oldId) e.source = newId;
+      if (e.target === oldId) e.target = newId;
+    }
+    editor.selectedId = newId;
+    syncJSONFromState();
+    setStatus("Renamed node " + oldId + " to " + newId + ".");
+    return true;
+  }
+
+  function addNodeAt(x, y) {
+    const id = makeUniqueNodeId();
+    const node = {
+      id,
+      label: id,
+      shape: "circle",
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      fx: 0,
+      fy: 0,
+      mass: 1,
+      fixed: false,
+      radius: 12
+    };
+    nodes.push(node);
+    selectNode(id);
+    syncJSONFromState();
+    setStatus("Added node " + id + ".");
+  }
+
+  function addEdge(source, target) {
+    const id = makeUniqueEdgeId();
+    edges.push({
+      id,
+      source,
+      target,
+      label: "",
+      length: 100,
+      stiffness: 1,
+      weight: null
+    });
+    editor.edgeStartId = null;
+    selectEdge(id);
+    syncJSONFromState();
+    setStatus("Added edge " + source + " -> " + target + ".");
+  }
+
+  function deleteNode(id) {
+    nodes = nodes.filter(n => n.id !== id);
+    edges = edges.filter(e => e.source !== id && e.target !== id);
+    clearSelection();
+    editor.edgeStartId = null;
+    syncJSONFromState();
+    setStatus("Deleted node " + id + " and its connected edges.");
+  }
+
+  function deleteEdge(id) {
+    const edge = edges.find(e => e.id === id);
+    edges = edges.filter(e => e.id !== id);
+    clearSelection();
+    syncJSONFromState();
+    setStatus(edge ? "Deleted edge " + edge.source + " -> " + edge.target + "." : "Deleted edge.");
+  }
+
+  function setTool(tool) {
+    editor.tool = tool;
+    editor.edgeStartId = null;
+    document.querySelectorAll(".tool-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tool === tool);
+    });
+
+    canvas.classList.toggle("select-tool", tool === "select");
+
+    const messages = {
+      select: "Select or drag nodes. Click an edge to edit it. Physics can run while you edit.",
+      addNode: "Click anywhere on the canvas to add a new node.",
+      addEdge: "Click a source node, then click a target node to create an edge.",
+      delete: "Click a node or edge to delete it. Deleting a node also removes its edges."
+    };
+    modeHelp.textContent = messages[tool] || "";
+  }
+
+  function field(name, label, value, type, attrs) {
+    const safeName = escapeHTML(name);
+    const safeLabel = escapeHTML(label);
+    const safeValue = escapeHTML(value ?? "");
+    const inputType = type || "text";
+    const attrText = attrs || "";
+    return "<div class='form-row'><label for='field-" + safeName + "'>" + safeLabel + "</label>" +
+      "<input id='field-" + safeName + "' data-field='" + safeName + "' type='" + inputType + "' value='" + safeValue + "' " + attrText + " /></div>";
+  }
+
+  function selectField(name, label, value, options) {
+    const opts = options.map(opt => "<option value='" + escapeHTML(opt) + "'" + (opt === value ? " selected" : "") + ">" + escapeHTML(opt) + "</option>").join("");
+    return "<div class='form-row'><label for='field-" + escapeHTML(name) + "'>" + escapeHTML(label) + "</label>" +
+      "<select id='field-" + escapeHTML(name) + "' data-field='" + escapeHTML(name) + "'>" + opts + "</select></div>";
+  }
+
+  function checkboxField(name, label, checked) {
+    return "<div class='form-row inline'><input id='field-" + escapeHTML(name) + "' data-field='" + escapeHTML(name) + "' type='checkbox' " + (checked ? "checked" : "") + " />" +
+      "<label for='field-" + escapeHTML(name) + "'>" + escapeHTML(label) + "</label></div>";
+  }
+
+  function renderInspector() {
+    const node = selectedNode();
+    const edge = selectedEdge();
+
+    if (node) {
+      inspector.innerHTML = "<h3>Node</h3>" +
+        field("id", "ID", node.id) +
+        field("label", "Label", node.label || node.id) +
+        selectField("shape", "Shape", node.shape || "circle", ["circle", "box", "diamond"]) +
+        field("mass", "Mass", node.mass, "number", "min='0.1' step='0.1'") +
+        field("radius", "Radius", node.radius || 12, "number", "min='3' step='1'") +
+        field("x", "X", Math.round(node.x * 10) / 10, "number", "step='1'") +
+        field("y", "Y", Math.round(node.y * 10) / 10, "number", "step='1'") +
+        checkboxField("fixed", "Fixed", node.fixed) +
+        "<div class='inspector-actions'><button class='danger-btn' id='deleteSelectedBtn' type='button'>Delete node</button></div>";
+      return;
+    }
+
+    if (edge) {
+      inspector.innerHTML = "<h3>Edge</h3>" +
+        field("id", "ID", edge.id) +
+        selectNodeEndpointField("source", "Source", edge.source) +
+        selectNodeEndpointField("target", "Target", edge.target) +
+        field("label", "Label", edge.label || "") +
+        field("length", "Preferred length", edge.length, "number", "min='1' step='1'") +
+        field("stiffness", "Stiffness", edge.stiffness, "number", "min='0.01' step='0.05'") +
+        field("weight", "Weight / probability", edge.weight ?? "", "text") +
+        "<div class='inspector-actions'><button class='danger-btn' id='deleteSelectedBtn' type='button'>Delete edge</button></div>";
+      return;
+    }
+
+    inspector.innerHTML = "<h3>Inspector</h3><p class='inspector-empty'>Select a node or edge to edit its properties.</p>";
+  }
+
+  function selectNodeEndpointField(name, label, value) {
+    const options = nodes.map(n => "<option value='" + escapeHTML(n.id) + "'" + (n.id === value ? " selected" : "") + ">" + escapeHTML(n.id) + "</option>").join("");
+    return "<div class='form-row'><label for='field-" + escapeHTML(name) + "'>" + escapeHTML(label) + "</label>" +
+      "<select id='field-" + escapeHTML(name) + "' data-field='" + escapeHTML(name) + "'>" + options + "</select></div>";
+  }
+
+  inspector.addEventListener("input", ev => {
+    const fieldName = ev.target.dataset.field;
+    if (!fieldName) return;
+
+    const node = selectedNode();
+    const edge = selectedEdge();
+
+    if (node) {
+      if (fieldName === "id") return;
+      if (fieldName === "label") node.label = ev.target.value;
+      if (fieldName === "shape") node.shape = ev.target.value;
+      if (fieldName === "mass") node.mass = Math.max(0.1, Number(ev.target.value) || 1);
+      if (fieldName === "radius") node.radius = Math.max(3, Number(ev.target.value) || 12);
+      if (fieldName === "x") node.x = Number(ev.target.value) || 0;
+      if (fieldName === "y") node.y = Number(ev.target.value) || 0;
+      if (fieldName === "fixed") node.fixed = ev.target.checked;
+      node.vx = 0;
+      node.vy = 0;
+      syncJSONFromState();
+      return;
+    }
+
+    if (edge) {
+      if (fieldName === "id") return;
+      if (fieldName === "source") edge.source = ev.target.value;
+      if (fieldName === "target") edge.target = ev.target.value;
+      if (fieldName === "label") edge.label = ev.target.value;
+      if (fieldName === "length") edge.length = Math.max(1, Number(ev.target.value) || 100);
+      if (fieldName === "stiffness") edge.stiffness = Math.max(0.01, Number(ev.target.value) || 1);
+      if (fieldName === "weight") edge.weight = ev.target.value === "" ? null : ev.target.value;
+      syncJSONFromState();
+    }
+  });
+
+  inspector.addEventListener("change", ev => {
+    const fieldName = ev.target.dataset.field;
+    const node = selectedNode();
+    const edge = selectedEdge();
+
+    if (node && fieldName === "id") {
+      if (renameNode(node.id, ev.target.value)) renderInspector();
+      return;
+    }
+
+    if (edge && fieldName === "id") {
+      const newId = String(ev.target.value || "").trim();
+      if (!newId) {
+        renderInspector();
+        return;
+      }
+      if (edges.some(e => e.id === newId && e !== edge)) {
+        setStatus("An edge with that id already exists: " + newId, true);
+        renderInspector();
+        return;
+      }
+      edge.id = newId;
+      editor.selectedId = newId;
+      syncJSONFromState();
+      setStatus("Renamed edge to " + newId + ".");
+      renderInspector();
+    }
+  });
+
+  inspector.addEventListener("click", ev => {
+    if (ev.target.id !== "deleteSelectedBtn") return;
+    const node = selectedNode();
+    const edge = selectedEdge();
+    if (node) deleteNode(node.id);
+    if (edge) deleteEdge(edge.id);
+  });
+
+  canvas.addEventListener("pointerdown", ev => {
+    const pt = pointerPoint(ev);
+    const node = findNodeAt(pt.x, pt.y);
+    const edge = node ? null : findEdgeAt(pt.x, pt.y);
+
+    if (editor.tool === "addNode") {
+      addNodeAt(pt.x, pt.y);
+      return;
+    }
+
+    if (editor.tool === "addEdge") {
+      if (!node) return;
+      if (!editor.edgeStartId) {
+        editor.edgeStartId = node.id;
+        selectNode(node.id);
+        setStatus("Edge source set to " + node.id + ". Click a target node.");
+        return;
+      }
+      if (editor.edgeStartId === node.id) {
+        editor.edgeStartId = null;
+        setStatus("Edge creation cancelled.");
+        return;
+      }
+      addEdge(editor.edgeStartId, node.id);
+      return;
+    }
+
+    if (editor.tool === "delete") {
+      if (node) {
+        deleteNode(node.id);
+      } else if (edge) {
+        deleteEdge(edge.id);
+      }
+      return;
+    }
+
+    if (editor.tool === "select") {
+      if (node) {
+        selectNode(node.id);
+        editor.drag = {
+          node,
+          offsetX: pt.x - node.x,
+          offsetY: pt.y - node.y
+        };
+        canvas.setPointerCapture(ev.pointerId);
+        canvas.classList.add("dragging");
+        node.vx = 0;
+        node.vy = 0;
+        return;
+      }
+      if (edge) {
+        selectEdge(edge.id);
+        return;
+      }
+      clearSelection();
+    }
+  });
+
+  canvas.addEventListener("pointermove", ev => {
+    if (!editor.drag) return;
+    const pt = pointerPoint(ev);
+    const n = editor.drag.node;
+    n.x = pt.x - editor.drag.offsetX;
+    n.y = pt.y - editor.drag.offsetY;
+    n.vx = 0;
+    n.vy = 0;
+    syncJSONFromState();
+    renderInspector();
+  });
+
+  function endDrag(ev) {
+    if (editor.drag && ev.pointerId !== undefined) {
+      try { canvas.releasePointerCapture(ev.pointerId); } catch (err) {}
+    }
+    editor.drag = null;
+    canvas.classList.remove("dragging");
+  }
+
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+
+  document.querySelectorAll(".tool-btn").forEach(btn => {
+    btn.addEventListener("click", () => setTool(btn.dataset.tool));
+  });
+
+  document.getElementById("applyBtn").addEventListener("click", applyJSONAndReset);
+  document.getElementById("syncBtn").addEventListener("click", () => {
+    syncJSONFromState();
+    setStatus("JSON synced from the current canvas state.");
+  });
+
+  document.getElementById("playBtn").addEventListener("click", ev => {
+    running = !running;
+    ev.target.textContent = running ? "Pause" : "Run";
+  });
+
+  controls.gravityEnabled.addEventListener("change", () => {
+    if (controls.gravityEnabled.checked && !hasFixedNode()) {
+      setStatus("Gravity is checked, but it will not apply until at least one node is fixed.", true);
+    } else if (controls.gravityEnabled.checked) {
+      setStatus("Gravity enabled. Each free node receives a downward force proportional to its mass.");
+    } else {
+      setStatus("Gravity disabled.");
+    }
+    updateDiagnostics();
+  });
+
+  document.getElementById("settleBtn").addEventListener("click", () => {
+    for (let i = 0; i < 500; i++) step();
+    syncJSONFromState();
+    updateDiagnostics();
+    draw();
+    setStatus("Ran 500 settle steps. Kinetic energy: " + lastEnergy.toFixed(4) + ".");
+  });
+
+  document.getElementById("jiggleBtn").addEventListener("click", () => {
+    for (const n of nodes) {
+      if (!n.fixed) {
+        n.x += (Math.random() - 0.5) * 90;
+        n.y += (Math.random() - 0.5) * 90;
+        n.vx = 0;
+        n.vy = 0;
+      }
+    }
+    running = true;
+    document.getElementById("playBtn").textContent = "Pause";
+    syncJSONFromState();
+    setStatus("Free nodes were jiggled. The system is searching again.");
+  });
+
+  window.addEventListener("resize", () => {
+    resizeCanvas();
+    draw();
+  });
+
+  nodesInput.value = pretty(sampleNodes);
+  edgesInput.value = pretty(sampleEdges);
+  updateControlOutputs();
+  setTool("select");
+  resizeCanvas();
+  applyJSONAndReset();
+  animate();
+  </script>
+</body>
+</html>

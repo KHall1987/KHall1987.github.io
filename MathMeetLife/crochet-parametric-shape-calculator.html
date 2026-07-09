@@ -1,0 +1,1117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parametric Crochet Shape Calculator</title>
+  <link rel="stylesheet" href="assets/mml-toy.css">
+  <link rel="stylesheet" href="assets/widgets/crochet.css">
+</head>
+<body class="mml-widget">
+<main class="mml-page">
+  <nav class="mml-links mml-no-print" aria-label="Related links">
+    <a href="https://mathmeetlife.substack.com/">Kelly's Substack</a>
+    <a href="https://mathmeetlife.substack.com/p/generating-parametric-crochet-shapes">Original post</a>
+  </nav>
+
+  <header class="hero mml-hero">
+    <div class="eyebrow mml-eyebrow">Parametric shape pattern generator</div>
+    <h1>Parametric Crochet Shape Calculator</h1>
+    <p class="muted">
+      Choose a sphere, cone, or cylinder, enter size and gauge, then copy a plain round-by-round pattern.
+      The calculator uses the same stitch-count conversion for each shape; only the radius profile changes.
+    </p>
+    <p class="muted">
+      Shared model: <code>stitches ≈ L / w</code>. Joined rounds use <code>L = 2πr</code>; continuous rounds use the local spiral approximation <code>L = sqrt((2πr)^2 + pitch^2)</code>.
+    </p>
+  </header>
+
+  <div class="layout mml-tool-layout">
+    <aside class="panel mml-panel settings-panel mml-tool-sidebar" aria-labelledby="settingsTitle">
+      <section class="section">
+        <h2 id="settingsTitle">Basic settings</h2>
+
+        <fieldset class="full">
+          <legend>Shape</legend>
+          <label class="option">
+            <input type="radio" name="shapeType" value="sphere" checked>
+            Sphere
+            <small>Uses r(s) = R sin(s / R), from pole to pole.</small>
+          </label>
+          <label class="option">
+            <input type="radio" name="shapeType" value="cone">
+            Cone
+            <small>Uses a linear radius profile from tip to base.</small>
+          </label>
+          <label class="option">
+            <input type="radio" name="shapeType" value="cylinder">
+            Cylinder
+            <small>Uses a constant radius for every round.</small>
+          </label>
+        </fieldset>
+
+        <div class="form-grid" style="margin-top: 14px;">
+          <div class="full">
+            <label for="size" id="sizeLabel">Sphere size value</label>
+            <input id="size" type="number" value="14" step="0.01" min="0.01" inputmode="decimal">
+            <span class="hint" id="sizeHint">Use the widest circumference by default, or switch to radius below.</span>
+          </div>
+
+          <fieldset class="full">
+            <legend>Size means</legend>
+            <label class="option">
+              <input type="radio" name="sizeMode" value="C" checked>
+              <span id="circumferenceModeLabel">Circumference C</span>
+              <small id="circumferenceModeHint">Widest circumference of the finished sphere.</small>
+            </label>
+            <label class="option">
+              <input type="radio" name="sizeMode" value="R">
+              <span id="radiusModeLabel">Radius R</span>
+              <small id="radiusModeHint">Radius of the finished sphere.</small>
+            </label>
+          </fieldset>
+
+          <div id="heightControl" class="full" hidden>
+            <label for="shapeHeight" id="heightLabel">Height</label>
+            <input id="shapeHeight" type="number" value="8" step="0.01" min="0.01" inputmode="decimal">
+            <span class="hint" id="heightHint">Height in the same units as the gauge.</span>
+          </div>
+
+          <fieldset id="coneDirectionControl" class="full" hidden>
+            <legend>Cone direction</legend>
+            <label class="option">
+              <input type="radio" name="coneDirection" value="tipToBase" checked>
+              Tip to base
+              <small>Starts at the cone tip and increases toward the base.</small>
+            </label>
+            <label class="option">
+              <input type="radio" name="coneDirection" value="baseToTip">
+              Base to tip
+              <small>Starts at the base and decreases toward the cone tip.</small>
+            </label>
+          </fieldset>
+
+          <div>
+            <label for="w">Stitch width, w</label>
+            <input id="w" type="number" value="1" step="0.01" min="0.01" inputmode="decimal">
+            <span class="hint">Approximate width of one stitch in your gauge swatch.</span>
+          </div>
+
+          <div>
+            <label for="h">Row height, h</label>
+            <input id="h" type="number" value="1" step="0.01" min="0.01" inputmode="decimal">
+            <span class="hint">Approximate height of one round in the same units.</span>
+          </div>
+        </div>
+      </section>
+
+      <details class="advanced mml-disclosure">
+        <summary>Advanced options</summary>
+        <div class="advanced-body mml-disclosure-body">
+          <section class="section">
+            <h3>Terminology</h3>
+            <div class="form-grid">
+              <div>
+                <label for="stitchName">Main stitch</label>
+                <input id="stitchName" type="text" value="SC">
+              </div>
+
+              <div>
+                <label for="incName">Increase</label>
+                <input id="incName" type="text" value="INC">
+              </div>
+
+              <div>
+                <label for="decName">Decrease</label>
+                <input id="decName" type="text" value="DEC">
+              </div>
+
+              <div>
+                <label for="slipName">Slip stitch</label>
+                <input id="slipName" type="text" value="sl st">
+              </div>
+
+              <div class="full">
+                <label for="chainUp">Joined-round chain-up instruction</label>
+                <input id="chainUp" type="text" value="ch 1">
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h3>Construction</h3>
+            <div class="form-grid">
+              <fieldset class="full">
+                <legend>Round construction</legend>
+                <label class="option">
+                  <input type="radio" name="roundMode" value="continuous" checked>
+                  Continuous rounds
+                  <small>Worked as a spiral. Uses the local diagonal path length sqrt(circumference^2 + pitch^2).</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="roundMode" value="joined">
+                  Joined rounds
+                  <small>Each round is closed with sl st, then ch up. Uses circumference only.</small>
+                </label>
+              </fieldset>
+
+              <fieldset id="placementControl" class="full">
+                <legend>Row placement</legend>
+                <label class="option">
+                  <input type="radio" name="placementMode" value="edge" checked>
+                  Top-loop / edge placement
+                  <small id="edgePlacementHint">For a sphere, round 1 is measured at one row-height from the pole. With h = w, this gives about 6 stitches.</small>
+                </label>
+                <label class="option">
+                  <input type="radio" name="placementMode" value="mid">
+                  Band midpoint
+                  <small>Each round represents the middle of its surface band.</small>
+                </label>
+              </fieldset>
+            </div>
+          </section>
+
+          <section class="section">
+            <h3>Output options</h3>
+            <fieldset>
+              <legend>Pattern formatting</legend>
+              <label class="option">
+                <input id="smoothCounts" type="checkbox" checked>
+                Pattern-friendly smoothing
+                <small>Prevents more than one INC per stitch and prevents decreases stronger than DEC around.</small>
+              </label>
+              <label class="option">
+                <input id="stagger" type="checkbox" checked>
+                Stagger shaping placement
+                <small>Rotates the spacing pattern so increases/decreases are less likely to stack.</small>
+              </label>
+              <label class="option">
+                <input id="showIdeal" type="checkbox" checked>
+                Show ideal decimal counts
+                <small>Includes the unrounded mathematical target beside each round.</small>
+              </label>
+              <label class="option">
+                <input id="showAdjusted" type="checkbox" checked>
+                Mark adjusted rows
+                <small>Shows when smoothing changed the raw rounded stitch count.</small>
+              </label>
+              <label class="option">
+                <input id="joinFinalRound" type="checkbox">
+                Add joined-round finish to final round
+                <small>If off, final joined round uses the shape-specific fasten-off note.</small>
+              </label>
+            </fieldset>
+          </section>
+
+          <section class="section">
+            <h3>Model note</h3>
+            <p class="muted">
+              Pattern-friendly smoothing is a constrained rounding pass. It keeps the stitch counts near the mathematical target, but only allows ordinary crochet shaping.
+            </p>
+            <div class="formula">
+              Sphere profile: r(s) = R sin(s / R)<br>
+              Cone profile: r(s) = Rbase * s / S, where S = sqrt(Rbase^2 + H^2)<br>
+              Cylinder profile: r(s) = R<br>
+              Joined-round length: L = 2*pi*r(s)<br>
+              Continuous-round approximation: L = sqrt((2*pi*r(s))^2 + pitch^2)<br>
+              Raw count: Sraw = round(L / w)<br>
+              Smoothed counts must satisfy: ceil(Sprev / 2) &lt;= Snext &lt;= 2*Sprev
+            </div>
+          </section>
+        </div>
+      </details>
+
+      <div class="buttons mml-button-row">
+        <button type="button" class="secondary" onclick="generate()">Update pattern</button>
+        <button type="button" class="secondary" onclick="resetDefaults()">Reset defaults</button>
+      </div>
+      <p class="hint">Most changes update automatically. Use reset if you want to return to the starter settings.</p>
+    </aside>
+
+    <section class="panel mml-panel result-panel mml-tool-main" aria-labelledby="resultTitle">
+      <div class="result-top">
+        <h2 id="resultTitle">Generated pattern</h2>
+        <div id="summary" class="status" aria-live="polite">Pattern will appear below.</div>
+
+        <div class="stats mml-stat-grid" aria-label="Pattern summary">
+          <div class="stat mml-stat"><strong id="statRounds" class="mml-stat-value">-</strong><span class="mml-stat-label">Rounds</span></div>
+          <div class="stat mml-stat"><strong id="statFirst" class="mml-stat-value">-</strong><span class="mml-stat-label">First</span></div>
+          <div class="stat mml-stat"><strong id="statWidest" class="mml-stat-value">-</strong><span class="mml-stat-label">Widest</span></div>
+          <div class="stat mml-stat"><strong id="statPitch" class="mml-stat-value">-</strong><span class="mml-stat-label">Pitch</span></div>
+          <div class="stat mml-stat"><strong id="statSmoothed" class="mml-stat-value">-</strong><span class="mml-stat-label">Smoothed</span></div>
+        </div>
+
+        <div class="result-actions mml-button-row">
+          <button type="button" class="primary" onclick="copyPattern()">Copy plain pattern</button>
+          <button type="button" class="secondary" onclick="downloadPattern()">Download .txt</button>
+          <button type="button" class="secondary" onclick="window.print()">Print</button>
+          <span id="copyStatus" class="copy-status mml-copy-status" aria-live="polite"></span>
+        </div>
+      </div>
+
+      <div class="tabs mml-tabs" role="tablist" aria-label="Result views">
+        <button type="button" class="tab mml-tab" role="tab" id="tab-pattern" aria-controls="pane-pattern" aria-selected="true" onclick="showPane('pattern')">Pattern</button>
+        <button type="button" class="tab mml-tab" role="tab" id="tab-table" aria-controls="pane-table" aria-selected="false" onclick="showPane('table')">Table</button>
+        <button type="button" class="tab mml-tab" role="tab" id="tab-details" aria-controls="pane-details" aria-selected="false" onclick="showPane('details')">Details</button>
+        <button type="button" class="tab mml-tab" role="tab" id="tab-raw" aria-controls="pane-raw" aria-selected="false" onclick="showPane('raw')">Raw text</button>
+      </div>
+
+      <div id="pane-pattern" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-pattern">
+        <div id="patternPreview" class="pattern-preview mml-output-list"></div>
+      </div>
+
+      <div id="pane-table" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-table" hidden>
+        <div class="mml-table-wrap">
+          <table class="mml-table">
+            <thead>
+              <tr>
+                <th>Round</th>
+                <th>Surface position</th>
+                <th>Radius</th>
+                <th>Path length</th>
+                <th>Ideal stitches</th>
+                <th>Raw stitches</th>
+                <th>Final stitches</th>
+                <th>Change</th>
+                <th>Adjusted</th>
+                <th>Instruction hint</th>
+              </tr>
+            </thead>
+            <tbody id="shapeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="pane-details" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-details" hidden>
+        <pre id="detailsOutput"></pre>
+      </div>
+
+      <div id="pane-raw" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-raw" hidden>
+        <textarea id="output" spellcheck="false" aria-label="Raw generated pattern text"></textarea>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+let plainPatternText = "";
+let fullPatternText = "";
+let copyTimer = null;
+
+function getNumber(id) {
+  return parseFloat(document.getElementById(id).value);
+}
+
+function getText(id, fallback) {
+  const value = document.getElementById(id).value.trim();
+  return value || fallback;
+}
+
+function checkedValue(name) {
+  return document.querySelector('input[name="' + name + '"]:checked').value;
+}
+
+function titleCaseShape(shape) {
+  if (shape === "sphere") return "Sphere";
+  if (shape === "cone") return "Cone";
+  return "Cylinder";
+}
+
+function baseRadiusFromSize() {
+  const size = getNumber("size");
+  const mode = checkedValue("sizeMode");
+  return mode === "C" ? size / (2 * Math.PI) : size;
+}
+
+function setShapeUiText(id, text) {
+  document.getElementById(id).textContent = text;
+}
+
+function updateShapeUi() {
+  const shape = checkedValue("shapeType");
+  const heightControl = document.getElementById("heightControl");
+  const coneDirectionControl = document.getElementById("coneDirectionControl");
+  const placementControl = document.getElementById("placementControl");
+
+  if (shape === "sphere") {
+    heightControl.hidden = true;
+    coneDirectionControl.hidden = true;
+    placementControl.hidden = false;
+    setShapeUiText("sizeLabel", "Sphere size value");
+    setShapeUiText("sizeHint", "Use the widest circumference by default, or switch to radius below.");
+    setShapeUiText("circumferenceModeLabel", "Circumference C");
+    setShapeUiText("circumferenceModeHint", "Widest circumference of the finished sphere.");
+    setShapeUiText("radiusModeLabel", "Radius R");
+    setShapeUiText("radiusModeHint", "Radius of the finished sphere.");
+    setShapeUiText("edgePlacementHint", "For a sphere, round 1 is measured at one row-height from the pole. With h = w, this gives about 6 stitches.");
+  } else if (shape === "cone") {
+    heightControl.hidden = false;
+    coneDirectionControl.hidden = false;
+    placementControl.hidden = false;
+    setShapeUiText("sizeLabel", "Cone base size value");
+    setShapeUiText("sizeHint", "Use the base circumference by default, or switch to base radius below.");
+    setShapeUiText("heightLabel", "Cone vertical height, H");
+    setShapeUiText("heightHint", "Vertical height from tip to base center, in the same units as the gauge.");
+    setShapeUiText("circumferenceModeLabel", "Base circumference C");
+    setShapeUiText("circumferenceModeHint", "Circumference around the cone base.");
+    setShapeUiText("radiusModeLabel", "Base radius Rbase");
+    setShapeUiText("radiusModeHint", "Radius of the cone base.");
+    setShapeUiText("edgePlacementHint", "For a cone, edge placement measures each round one row-height farther along the slanted side.");
+  } else {
+    heightControl.hidden = false;
+    coneDirectionControl.hidden = true;
+    placementControl.hidden = true;
+    setShapeUiText("sizeLabel", "Cylinder size value");
+    setShapeUiText("sizeHint", "Use the cylinder circumference by default, or switch to radius below.");
+    setShapeUiText("heightLabel", "Cylinder height, H");
+    setShapeUiText("heightHint", "Height of the cylinder side, in the same units as the gauge.");
+    setShapeUiText("circumferenceModeLabel", "Circumference C");
+    setShapeUiText("circumferenceModeHint", "Circumference around every cylinder round.");
+    setShapeUiText("radiusModeLabel", "Radius R");
+    setShapeUiText("radiusModeHint", "Radius of the cylinder.");
+  }
+}
+
+function getShapeProfile() {
+  const shape = checkedValue("shapeType");
+  const radius = baseRadiusFromSize();
+  const height = getNumber("shapeHeight");
+
+  if (shape === "sphere") {
+    return {
+      shape: shape,
+      name: "sphere",
+      radius: radius,
+      height: null,
+      totalSurfaceDistance: Math.PI * radius,
+      maxCircumference: 2 * Math.PI * radius,
+      radiusAt: function(s) {
+        return Math.max(0, radius * Math.sin(s / radius));
+      },
+      directionLabel: "pole to pole",
+      needsHeight: false
+    };
+  }
+
+  if (shape === "cone") {
+    const slantLength = Math.sqrt(radius * radius + height * height);
+    return {
+      shape: shape,
+      name: "cone",
+      radius: radius,
+      height: height,
+      slantLength: slantLength,
+      totalSurfaceDistance: slantLength,
+      maxCircumference: 2 * Math.PI * radius,
+      radiusAt: function(s) {
+        const clamped = Math.min(Math.max(s, 0), slantLength);
+        return radius * clamped / slantLength;
+      },
+      directionLabel: checkedValue("coneDirection") === "tipToBase" ? "tip to base" : "base to tip",
+      needsHeight: true
+    };
+  }
+
+  return {
+    shape: shape,
+    name: "cylinder",
+    radius: radius,
+    height: height,
+    totalSurfaceDistance: height,
+    maxCircumference: 2 * Math.PI * radius,
+    radiusAt: function() {
+      return radius;
+    },
+    directionLabel: "bottom to top",
+    needsHeight: true
+  };
+}
+
+function circumferenceFromRadius(radius) {
+  return 2 * Math.PI * radius;
+}
+
+function pathLengthFromRadius(radius, pitch, roundMode) {
+  const c = circumferenceFromRadius(radius);
+  if (roundMode === "continuous") {
+    return Math.sqrt(c * c + pitch * pitch);
+  }
+  return c;
+}
+
+function rowSurfacePosition(profile, rowNumber, rowCount, pitch, placement) {
+  const shape = profile.shape;
+
+  if (shape === "sphere") {
+    if (placement === "edge") return rowNumber * pitch;
+    return (rowNumber - 0.5) * pitch;
+  }
+
+  if (shape === "cone") {
+    const direction = checkedValue("coneDirection");
+    let s;
+
+    if (direction === "baseToTip") {
+      if (placement === "edge") {
+        s = profile.totalSurfaceDistance - (rowNumber - 1) * pitch;
+      } else {
+        s = profile.totalSurfaceDistance - (rowNumber - 0.5) * pitch;
+      }
+    } else {
+      if (placement === "edge") {
+        s = rowNumber * pitch;
+      } else {
+        s = (rowNumber - 0.5) * pitch;
+      }
+    }
+
+    return Math.min(Math.max(s, 0), profile.totalSurfaceDistance);
+  }
+
+  return rowNumber * pitch;
+}
+
+function boundaryCountForProfile(profile, h) {
+  const minimum = profile.shape === "sphere" ? 2 : 1;
+  return Math.max(minimum, Math.round(profile.totalSurfaceDistance / h));
+}
+
+function rowCountForProfile(profile, h, placement) {
+  const boundaryCount = boundaryCountForProfile(profile, h);
+
+  if (profile.shape === "sphere" && placement === "edge") {
+    return Math.max(1, boundaryCount - 1);
+  }
+
+  return boundaryCount;
+}
+
+function pitchForProfile(profile, h) {
+  const boundaryCount = boundaryCountForProfile(profile, h);
+  return profile.totalSurfaceDistance / boundaryCount;
+}
+
+function addChunk(chunks, text, count) {
+  if (count <= 0) return;
+
+  if (chunks.length > 0 && chunks[chunks.length - 1].text === text) {
+    chunks[chunks.length - 1].count += count;
+  } else {
+    chunks.push({ text: text, count: count });
+  }
+}
+
+function chunkLabel(chunk) {
+  if (chunk.count <= 1) return chunk.text;
+  return chunk.text + " x " + chunk.count;
+}
+
+function chunksToString(chunks) {
+  if (chunks.length === 0) return "";
+
+  for (let len = 1; len <= Math.floor(chunks.length / 2); len++) {
+    if (chunks.length % len !== 0) continue;
+
+    let ok = true;
+    for (let i = len; i < chunks.length; i++) {
+      const a = chunks[i];
+      const b = chunks[i % len];
+      if (a.text !== b.text || a.count !== b.count) {
+        ok = false;
+        break;
+      }
+    }
+
+    if (ok) {
+      const repeats = chunks.length / len;
+      const unit = chunks.slice(0, len).map(chunkLabel).join(", ");
+      return "(" + unit + ") x " + repeats;
+    }
+  }
+
+  return chunks.map(chunkLabel).join(", ");
+}
+
+function distributeGaps(totalPlainStitches, shapingCount) {
+  if (shapingCount <= 0) return [];
+  const gaps = [];
+  let previous = 0;
+
+  for (let i = 1; i <= shapingCount; i++) {
+    const next = Math.round((i * totalPlainStitches) / shapingCount);
+    gaps.push(next - previous);
+    previous = next;
+  }
+
+  return gaps;
+}
+
+function rotateArray(array, amount) {
+  if (array.length === 0) return array.slice();
+  const n = array.length;
+  const k = ((amount % n) + n) % n;
+  return array.slice(k).concat(array.slice(0, k));
+}
+
+function smoothStitchCounts(rawCounts) {
+  const counts = rawCounts.slice();
+  const n = counts.length;
+
+  if (n <= 1) return counts;
+
+  const maxIterations = Math.max(8, n * 4);
+
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let changed = false;
+
+    for (let i = n - 2; i >= 0; i--) {
+      const next = counts[i + 1];
+      const minAllowed = Math.ceil(next / 2);
+      const maxAllowed = next * 2;
+
+      let value = counts[i];
+
+      if (value < minAllowed) value = minAllowed;
+      if (value > maxAllowed) value = maxAllowed;
+
+      if (value !== counts[i]) {
+        counts[i] = value;
+        changed = true;
+      }
+    }
+
+    for (let i = 1; i < n; i++) {
+      const prev = counts[i - 1];
+      const minAllowed = Math.ceil(prev / 2);
+      const maxAllowed = prev * 2;
+
+      let value = counts[i];
+
+      if (value < minAllowed) value = minAllowed;
+      if (value > maxAllowed) value = maxAllowed;
+
+      if (value !== counts[i]) {
+        counts[i] = value;
+        changed = true;
+      }
+    }
+
+    if (!changed) break;
+  }
+
+  return counts;
+}
+
+function makeStartInstruction(target, stitchName, profile) {
+  if (profile.shape === "sphere") {
+    return stitchName + " x " + target + " in magic ring";
+  }
+
+  if (profile.shape === "cone" && checkedValue("coneDirection") === "tipToBase") {
+    return stitchName + " x " + target + " in magic ring";
+  }
+
+  if (profile.shape === "cone") {
+    return stitchName + " x " + target + " around base opening or foundation ring";
+  }
+
+  return stitchName + " x " + target + " around foundation ring";
+}
+
+function makeIncreaseInstruction(previous, target, stitchName, incName, roundNumber, useStagger) {
+  const incCount = target - previous;
+
+  if (incCount <= 0) return null;
+
+  if (incCount > previous) {
+    const extra = incCount - previous;
+    return incName + " in each st, then add " + extra + " extra increase" + (extra === 1 ? "" : "s") + " evenly";
+  }
+
+  const totalPlainStitches = previous - incCount;
+  let gaps = distributeGaps(totalPlainStitches, incCount);
+
+  if (useStagger && gaps.length > 1) {
+    gaps = rotateArray(gaps, roundNumber - 1);
+  }
+
+  const chunks = [];
+  for (let i = 0; i < gaps.length; i++) {
+    addChunk(chunks, stitchName, gaps[i]);
+    addChunk(chunks, incName, 1);
+  }
+
+  return chunksToString(chunks);
+}
+
+function makeDecreaseInstruction(previous, target, stitchName, decName, roundNumber, useStagger) {
+  const decCount = previous - target;
+
+  if (decCount <= 0) return null;
+
+  const maxOrdinaryDec = Math.floor(previous / 2);
+
+  if (decCount > maxOrdinaryDec) {
+    return "decrease " + decCount + " sts evenly; this may require multi-stitch decreases";
+  }
+
+  const totalPlainStitches = previous - 2 * decCount;
+  let gaps = distributeGaps(totalPlainStitches, decCount);
+
+  if (useStagger && gaps.length > 1) {
+    gaps = rotateArray(gaps, roundNumber - 1);
+  }
+
+  const chunks = [];
+  for (let i = 0; i < gaps.length; i++) {
+    addChunk(chunks, stitchName, gaps[i]);
+    addChunk(chunks, decName, 1);
+  }
+
+  return chunksToString(chunks);
+}
+
+function makeInstruction(previous, target, stitchName, incName, decName, roundNumber, useStagger, profile) {
+  if (previous === 0) {
+    return makeStartInstruction(target, stitchName, profile);
+  }
+
+  if (target > previous) {
+    return makeIncreaseInstruction(previous, target, stitchName, incName, roundNumber, useStagger);
+  }
+
+  if (target < previous) {
+    return makeDecreaseInstruction(previous, target, stitchName, decName, roundNumber, useStagger);
+  }
+
+  return stitchName + " x " + target;
+}
+
+function joinedRoundSuffix(rowNumber, totalRows, slipName, chainUp, joinFinalRound, finalText) {
+  if (rowNumber < totalRows) {
+    return "; " + slipName + " to first st, " + chainUp;
+  }
+
+  if (joinFinalRound) {
+    return "; " + slipName + " to first st";
+  }
+
+  return "; " + finalText;
+}
+
+function finalTextForProfile(profile) {
+  if (profile.shape === "sphere") {
+    return "fasten off or close remaining opening";
+  }
+
+  if (profile.shape === "cone") {
+    return checkedValue("coneDirection") === "baseToTip"
+      ? "fasten off or close remaining tip opening"
+      : "fasten off at base edge";
+  }
+
+  return "fasten off";
+}
+
+function finishLineForProfile(profile, roundMode) {
+  if (roundMode === "joined") return "";
+
+  if (profile.shape === "sphere") {
+    return "Finish: close the remaining opening.";
+  }
+
+  if (profile.shape === "cone" && checkedValue("coneDirection") === "baseToTip") {
+    return "Finish: close the remaining tip opening.";
+  }
+
+  if (profile.shape === "cone") {
+    return "Finish: fasten off at the base edge.";
+  }
+
+  return "Finish: fasten off. Add or join top and bottom pieces if needed.";
+}
+
+function setStat(id, value) {
+  document.getElementById(id).textContent = value;
+}
+
+function clearStats() {
+  setStat("statRounds", "-");
+  setStat("statFirst", "-");
+  setStat("statWidest", "-");
+  setStat("statPitch", "-");
+  setStat("statSmoothed", "-");
+}
+
+function renderPatternRows(rows, finishLine) {
+  const preview = document.getElementById("patternPreview");
+  preview.innerHTML = "";
+
+  for (const row of rows) {
+    const item = document.createElement("div");
+    item.className = "pattern-row mml-output-line";
+
+    const label = document.createElement("div");
+    label.className = "round-label mml-preview-key";
+    label.textContent = "R" + row.number;
+
+    const instruction = document.createElement("div");
+    instruction.className = "instruction mml-preview-main";
+    instruction.textContent = row.instruction;
+
+    const meta = document.createElement("span");
+    meta.className = "row-meta mml-preview-meta";
+    meta.textContent = row.meta;
+    instruction.appendChild(meta);
+
+    const count = document.createElement("div");
+    count.className = "stitch-count mml-preview-value";
+    count.textContent = row.stitches + " sts";
+
+    item.appendChild(label);
+    item.appendChild(instruction);
+    item.appendChild(count);
+    preview.appendChild(item);
+  }
+
+  if (finishLine) {
+    const finish = document.createElement("div");
+    finish.className = "finish-note mml-finish-note";
+    finish.textContent = finishLine;
+    preview.appendChild(finish);
+  }
+}
+
+function renderShapeTable(rows) {
+  const body = document.getElementById("shapeTableBody");
+  body.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    const cells = [
+      "R" + row.number,
+      row.surfacePosition.toFixed(2),
+      row.radius.toFixed(2),
+      row.pathLength.toFixed(2),
+      row.ideal.toFixed(2),
+      row.raw,
+      row.stitches,
+      row.changeLabel,
+      row.adjusted ? "yes" : "no",
+      row.instruction
+    ];
+
+    for (const value of cells) {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      tr.appendChild(td);
+    }
+
+    frag.appendChild(tr);
+  }
+
+  body.appendChild(frag);
+}
+
+function validationMessage(profile, w, h) {
+  if (!Number.isFinite(w) || !Number.isFinite(h) || !Number.isFinite(profile.radius) || w <= 0 || h <= 0 || profile.radius <= 0) {
+    return "Please enter positive numbers for w, h, and size.";
+  }
+
+  if (profile.needsHeight && (!Number.isFinite(profile.height) || profile.height <= 0)) {
+    return "Please enter a positive height for this shape.";
+  }
+
+  if (!Number.isFinite(profile.totalSurfaceDistance) || profile.totalSurfaceDistance <= 0) {
+    return "The current settings do not produce a positive surface distance.";
+  }
+
+  return "";
+}
+
+function clearOutputs(message) {
+  const summary = document.getElementById("summary");
+  summary.innerHTML = '<span class="error">' + message + '</span>';
+  document.getElementById("output").value = "";
+  document.getElementById("detailsOutput").textContent = "";
+  document.getElementById("patternPreview").innerHTML = "";
+  document.getElementById("shapeTableBody").innerHTML = "";
+  plainPatternText = "";
+  fullPatternText = "";
+  clearStats();
+}
+
+function generate() {
+  updateShapeUi();
+
+  const stitchName = getText("stitchName", "SC");
+  const incName = getText("incName", "INC");
+  const decName = getText("decName", "DEC");
+  const slipName = getText("slipName", "sl st");
+  const chainUp = getText("chainUp", "ch 1");
+
+  const w = getNumber("w");
+  const h = getNumber("h");
+  const placement = checkedValue("placementMode");
+  const roundMode = checkedValue("roundMode");
+  const smoothCountsOn = document.getElementById("smoothCounts").checked;
+  const useStagger = document.getElementById("stagger").checked;
+  const showIdeal = document.getElementById("showIdeal").checked;
+  const showAdjusted = document.getElementById("showAdjusted").checked;
+  const joinFinalRound = document.getElementById("joinFinalRound").checked;
+  const profile = getShapeProfile();
+
+  const message = validationMessage(profile, w, h);
+  if (message) {
+    clearOutputs(message);
+    return;
+  }
+
+  const pitch = pitchForProfile(profile, h);
+  const rowCount = rowCountForProfile(profile, h, placement);
+  const rounds = [];
+  let maxStitches = 0;
+
+  for (let i = 1; i <= rowCount; i++) {
+    const s = rowSurfacePosition(profile, i, rowCount, pitch, placement);
+    const radius = profile.radiusAt(s);
+    const length = pathLengthFromRadius(radius, pitch, roundMode);
+    const ideal = length / w;
+    const raw = Math.max(1, Math.round(ideal));
+    rounds.push({ number: i, s: s, radius: radius, length: length, ideal: ideal, raw: raw, stitches: raw });
+  }
+
+  const rawCounts = rounds.map(function(row) { return row.raw; });
+  const finalCounts = smoothCountsOn ? smoothStitchCounts(rawCounts) : rawCounts;
+
+  for (let i = 0; i < rounds.length; i++) {
+    rounds[i].stitches = finalCounts[i];
+    rounds[i].adjusted = finalCounts[i] !== rounds[i].raw;
+    maxStitches = Math.max(maxStitches, finalCounts[i]);
+  }
+
+  const adjustedCount = rounds.filter(function(row) { return row.adjusted; }).length;
+  const shapeTitle = titleCaseShape(profile.shape);
+  const finalText = finalTextForProfile(profile);
+
+  const inputLines = [];
+  inputLines.push("Crochet " + profile.name + " pattern");
+  inputLines.push("");
+  inputLines.push("Inputs:");
+  inputLines.push("  shape = " + profile.name);
+  inputLines.push("  stitch = " + stitchName);
+  inputLines.push("  increase = " + incName);
+  inputLines.push("  decrease = " + decName);
+  if (roundMode === "joined") {
+    inputLines.push("  join = " + slipName + " to first st");
+    inputLines.push("  chain-up = " + chainUp);
+  }
+  inputLines.push("  stitch width w = " + w);
+  inputLines.push("  requested row height h = " + h);
+  inputLines.push("  effective pitch = " + pitch.toFixed(4));
+  inputLines.push("  radius parameter = " + profile.radius.toFixed(4));
+  inputLines.push("  max circumference = " + profile.maxCircumference.toFixed(4));
+
+  if (profile.shape === "sphere") {
+    inputLines.push("  surface distance pole-to-pole = " + profile.totalSurfaceDistance.toFixed(4));
+  } else if (profile.shape === "cone") {
+    inputLines.push("  vertical height H = " + profile.height.toFixed(4));
+    inputLines.push("  slant length S = " + profile.slantLength.toFixed(4));
+    inputLines.push("  direction = " + profile.directionLabel);
+  } else {
+    inputLines.push("  cylinder height H = " + profile.height.toFixed(4));
+  }
+
+  inputLines.push("  round construction = " + (roundMode === "continuous" ? "continuous rounds" : "joined rounds"));
+  if (profile.shape !== "cylinder") {
+    inputLines.push("  row placement = " + (placement === "edge" ? "top-loop / edge placement" : "band midpoint"));
+  }
+  inputLines.push("  pattern-friendly smoothing = " + (smoothCountsOn ? "on" : "off"));
+  inputLines.push("  stagger shaping = " + (useStagger ? "on" : "off"));
+
+  const patternLines = [];
+  const previewRows = [];
+  let previous = 0;
+
+  for (const row of rounds) {
+    let instruction = makeInstruction(previous, row.stitches, stitchName, incName, decName, row.number, useStagger, profile);
+
+    if (roundMode === "joined") {
+      instruction += joinedRoundSuffix(row.number, rounds.length, slipName, chainUp, joinFinalRound, finalText);
+    }
+
+    const change = row.stitches - previous;
+    const changeLabel = previous === 0
+      ? "start"
+      : change > 0
+        ? "+" + change
+        : change < 0
+          ? String(change)
+          : "even";
+
+    let meta = changeLabel;
+    if (showIdeal) meta += ", ideal " + row.ideal.toFixed(2);
+    if (showAdjusted && row.adjusted) meta += ", smoothed from " + row.raw;
+
+    patternLines.push(
+      "R" + row.number + ": " +
+      instruction +
+      " - " + row.stitches + " sts" +
+      " (" + meta + ")"
+    );
+
+    previewRows.push({
+      number: row.number,
+      instruction: instruction,
+      stitches: row.stitches,
+      meta: meta,
+      surfacePosition: row.s,
+      radius: row.radius,
+      pathLength: row.length,
+      ideal: row.ideal,
+      raw: row.raw,
+      changeLabel: changeLabel,
+      adjusted: row.adjusted
+    });
+
+    previous = row.stitches;
+  }
+
+  const finishLine = finishLineForProfile(profile, roundMode);
+  if (finishLine) {
+    patternLines.push("");
+    patternLines.push(finishLine);
+  }
+
+  const mathLines = [];
+  mathLines.push("Math note:");
+  mathLines.push("  The calculator first computes the radius profile r(s), then converts circumference or spiral path length into stitches.");
+  if (profile.shape === "sphere") {
+    mathLines.push("  Sphere profile: r(s) = R sin(s / R), 0 <= s <= pi*R.");
+  } else if (profile.shape === "cone") {
+    mathLines.push("  Cone profile: r(s) = Rbase * s / S, where S = sqrt(Rbase^2 + H^2).");
+  } else {
+    mathLines.push("  Cylinder profile: r(s) = R.");
+  }
+  mathLines.push("  Joined rounds use L = 2*pi*r(s).");
+  mathLines.push("  Continuous rounds use a local spiral approximation: L = sqrt((2*pi*r(s))^2 + pitch^2).");
+  mathLines.push("  Pattern-friendly smoothing then constrains adjacent rows so each transition can be written with ordinary INC/DEC instructions.");
+
+  plainPatternText = ["Crochet " + profile.name + " pattern", "", "Pattern:", ""].concat(patternLines).join("\n");
+  fullPatternText = inputLines.concat(["", "Pattern:", ""], patternLines, [""], mathLines).join("\n");
+
+  document.getElementById("output").value = fullPatternText;
+  document.getElementById("detailsOutput").textContent = fullPatternText;
+  renderPatternRows(previewRows, finishLine);
+  renderShapeTable(previewRows);
+
+  const first = rounds.length ? rounds[0].stitches : 0;
+  document.getElementById("summary").textContent = "Generated " + rounds.length + " rounds for a " + profile.name + " from the current settings.";
+  setStat("statRounds", rounds.length);
+  setStat("statFirst", first + " sts");
+  setStat("statWidest", maxStitches + " sts");
+  setStat("statPitch", pitch.toFixed(3));
+  setStat("statSmoothed", adjustedCount);
+}
+
+function fallbackCopy(text) {
+  const scratch = document.createElement("textarea");
+  scratch.value = text;
+  scratch.setAttribute("readonly", "");
+  scratch.style.position = "fixed";
+  scratch.style.top = "-1000px";
+  document.body.appendChild(scratch);
+  scratch.select();
+  document.execCommand("copy");
+  scratch.remove();
+}
+
+function showCopyStatus(message) {
+  const status = document.getElementById("copyStatus");
+  status.textContent = message;
+  if (copyTimer) clearTimeout(copyTimer);
+  copyTimer = setTimeout(function() {
+    status.textContent = "";
+  }, 2200);
+}
+
+function copyPattern() {
+  const text = plainPatternText || document.getElementById("output").value;
+  if (!text) return;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      showCopyStatus("Copied.");
+    }).catch(function() {
+      fallbackCopy(text);
+      showCopyStatus("Copied.");
+    });
+  } else {
+    fallbackCopy(text);
+    showCopyStatus("Copied.");
+  }
+}
+
+function downloadPattern() {
+  const text = plainPatternText || document.getElementById("output").value;
+  const shape = checkedValue("shapeType");
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "crochet-" + shape + "-pattern.txt";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function showPane(name) {
+  const panes = ["pattern", "table", "details", "raw"];
+  for (const pane of panes) {
+    const isActive = pane === name;
+    document.getElementById("pane-" + pane).hidden = !isActive;
+    document.getElementById("tab-" + pane).setAttribute("aria-selected", isActive ? "true" : "false");
+  }
+}
+
+function setRadio(name, value) {
+  const item = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+  if (item) item.checked = true;
+}
+
+function resetDefaults() {
+  document.getElementById("size").value = "14";
+  document.getElementById("shapeHeight").value = "8";
+  document.getElementById("w").value = "1";
+  document.getElementById("h").value = "1";
+  document.getElementById("stitchName").value = "SC";
+  document.getElementById("incName").value = "INC";
+  document.getElementById("decName").value = "DEC";
+  document.getElementById("slipName").value = "sl st";
+  document.getElementById("chainUp").value = "ch 1";
+  setRadio("shapeType", "sphere");
+  setRadio("sizeMode", "C");
+  setRadio("coneDirection", "tipToBase");
+  setRadio("roundMode", "continuous");
+  setRadio("placementMode", "edge");
+  document.getElementById("smoothCounts").checked = true;
+  document.getElementById("stagger").checked = true;
+  document.getElementById("showIdeal").checked = true;
+  document.getElementById("showAdjusted").checked = true;
+  document.getElementById("joinFinalRound").checked = false;
+  showPane("pattern");
+  generate();
+}
+
+document.querySelectorAll("input").forEach(function(input) {
+  input.addEventListener("input", generate);
+  input.addEventListener("change", generate);
+});
+
+updateShapeUi();
+generate();
+</script>
+</body>
+</html>

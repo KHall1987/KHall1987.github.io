@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Global Geodesic Graph Layout</title>
+<link rel="stylesheet" href="assets/mml-toy.css">
+<link rel="stylesheet" href="assets/widgets/graph-lab.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body class="mml-widget mml-graph-app">
+<div class="mml-graph-shell">
+<aside class="mml-graph-sidebar">
+  <h1>Global geodesic graph</h1>
+  <p>Shortest-path layout with capped long-range guidance, direct edge cleanup, and scale guarding.</p>
+  <div class="row"><button id="ring">Ring</button><button id="sphere">Sphere-ish</button></div>
+  <textarea id="inp" spellcheck="false"></textarea>
+  <button id="apply">Apply graph</button>
+  <div id="err" class="err"></div>
+
+  <div class="section">
+    <div class="check"><input id="autoFreeze" type="checkbox" checked><span>Auto-freeze after cleanup</span></div>
+    <div class="check"><input id="convFreeze" type="checkbox" checked><span>Advance/freeze on convergence</span></div>
+    <div class="check"><input id="preserveScale" type="checkbox" checked><span>Preserve scale during cleanup</span></div>
+    <div class="check"><input id="errorColors" type="checkbox"><span>Color edges by signed error</span></div>
+  </div>
+
+  <label>Geodesic strength</label><input id="geo" type="range" min="0" max=".08" step=".001" value=".026">
+  <label>Edge cleanup strength</label><input id="spring" type="range" min="0" max=".08" step=".001" value=".013">
+  <label>Pair guidance scale</label><input id="pairScale" type="range" min="0" max="12" step=".1" value="2.2">
+  <label>Near-pair radius</label><input id="nearRadius" type="range" min="1" max="8" step=".25" value="3.75">
+  <label>Long-range strength</label><input id="farStrength" type="range" min="0" max="2" step=".02" value=".42">
+  <label>Long-range error cap</label><input id="errorCap" type="range" min="20" max="500" step="10" value="130">
+  <label>Edge priority</label><input id="edgePriority" type="range" min=".5" max="3" step=".05" value="1.55">
+  <label>Residual guidance floor</label><input id="floor" type="range" min="0" max=".25" step=".005" value=".035">
+  <label>Damping</label><input id="damp" type="range" min=".80" max=".995" step=".001" value=".925">
+  <label>Geodesic shaping steps</label><input id="anneal" type="range" min="100" max="8000" step="100" value="2200">
+  <label>Cleanup steps</label><input id="cleanupSteps" type="range" min="0" max="4000" step="100" value="800">
+  <label>Max force per pair</label><input id="forceCap" type="range" min=".5" max="40" step=".5" value="10">
+  <label>Velocity cap</label><input id="velCap" type="range" min="1" max="40" step="1" value="12">
+  <label>Steps / frame</label><input id="steps" type="range" min="1" max="30" step="1" value="5">
+  <label>Reset seed</label><input id="seed" type="number" step="1" value="12345">
+  <div class="hint">Direct edges are always solved against their own edge length. Nearby non-edge pairs match graph distance. Far pairs provide capped weak guidance so they cannot dominate cylinders or other curved surfaces.</div>
+
+  <div class="section">
+    <div class="check"><input id="labels" type="checkbox"><span>Labels</span></div>
+    <div class="check"><input id="hidden" type="checkbox"><span>Show hidden</span></div>
+    <div class="row"><button id="run">Pause</button><button id="reset">Reset</button></div>
+    <div class="row"><button id="restart">Restart solve</button><button id="freeze">Freeze now</button></div>
+  </div>
+  <div id="stats" class="mml-graph-stats"></div>
+</aside>
+<main id="wrap" class="mml-graph-viewport"><div id="labelLayer" class="mml-label-layer"></div></main>
+</div>
+
+<script type="module" id="main-module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const ui = {
+  inp: $('inp'), err: $('err'), wrap: $('wrap'), labelsLayer: $('labelLayer'), stats: $('stats'),
+  autoFreeze: $('autoFreeze'), convFreeze: $('convFreeze'), preserveScale: $('preserveScale'), errorColors: $('errorColors'),
+  geo: $('geo'), spring: $('spring'), pairScale: $('pairScale'), nearRadius: $('nearRadius'), farStrength: $('farStrength'),
+  errorCap: $('errorCap'), edgePriority: $('edgePriority'), floor: $('floor'), damp: $('damp'), anneal: $('anneal'), cleanupSteps: $('cleanupSteps'),
+  forceCap: $('forceCap'), velCap: $('velCap'), steps: $('steps'), seed: $('seed'), labels: $('labels'), hidden: $('hidden'), run: $('run')
+};
+
+const EPS = 1e-3;
+const CONV_INTERVAL = 30;
+const CONV_SAMPLES = 8;
+
+let scene, camera, renderer, ctrl, group, sphereGeom, nodeMat, fixedNodeMat;
+let G, nodes = [], edges = [], map = new Map(), nodeObjects = [], edgeObjects = [], labels = [];
+let running = true, phase = 'geodesic', phaseTick = 0, tick = 0, transitionReason = '';
+let dist = [], componentOf = [], componentCount = 0, edgeSet = new Set(), edgeInfo = new Map(), medianEdgeLen = 90;
+let convergenceHistory = [], cleanupScaleTarget = 0;
+
+const ring = {
+  vertices: ['r0','r1','r2','r3','r4','r5','r6','r7','hub'].map(id => ({ id })),
+  edges: [...Array(8)].flatMap((_, i) => [
+    { source: 'r' + i, target: 'r' + ((i + 1) % 8), length: 85, type: 'neighbor', color: '#d9d9d9' },
+    { source: 'hub', target: 'r' + i, length: 115, type: 'spoke', color: '#9bacab' }
+  ])
+};
+
+function sphereExample() {
+  const g = { vertices: [], edges: [], metadata: { mode: 'joined_rounds' } };
+  const counts = [1, 6, 12, 12, 6, 1];
+  const radii = [0, 85, 145, 145, 85, 0];
+
+  counts.forEach((count, round) => {
+    for (let stitch = 0; stitch < count; stitch++) g.vertices.push({ id: `r${round}s${stitch}`, round, stitch });
+  });
+
+  for (let round = 0; round < counts.length; round++) {
+    const count = counts[round];
+    if (count > 1) {
+      const length = 2 * Math.PI * Math.max(radii[round], 1) / count;
+      for (let stitch = 0; stitch < count; stitch++) {
+        g.edges.push({ source: `r${round}s${stitch}`, target: `r${round}s${(stitch + 1) % count}`, length, type: 'neighbor', color: '#d9d9d9' });
+      }
+    }
+  }
+
+  for (let round = 0; round < counts.length - 1; round++) {
+    const a = counts[round], b = counts[round + 1];
+    for (let stitch = 0; stitch < b; stitch++) {
+      g.edges.push({ source: `r${round}s${Math.floor(stitch * a / b)}`, target: `r${round + 1}s${stitch}`, length: 90, type: 'parent', color: '#9bacab' });
+    }
+    for (let stitch = 0; stitch < a; stitch++) {
+      g.edges.push({ source: `r${round}s${stitch}`, target: `r${round + 1}s${Math.floor(stitch * b / a)}`, length: 90, type: 'parent', color: '#9bacab' });
+    }
+  }
+  return g;
+}
+
+init();
+load(ring);
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color('#042f2e');
+
+  camera = new THREE.PerspectiveCamera(55, ui.wrap.clientWidth / ui.wrap.clientHeight, 0.1, 20000);
+  camera.position.set(0, 0, 720);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setSize(ui.wrap.clientWidth, ui.wrap.clientHeight);
+  ui.wrap.appendChild(renderer.domElement);
+
+  ctrl = new OrbitControls(camera, renderer.domElement);
+  ctrl.enableDamping = true;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+  const light = new THREE.DirectionalLight(0xffffff, 1.3);
+  light.position.set(250, -400, 600);
+  scene.add(light);
+  scene.add(new THREE.AxesHelper(500));
+
+  group = new THREE.Group();
+  scene.add(group);
+
+  sphereGeom = new THREE.SphereGeometry(6, 12, 8);
+  nodeMat = new THREE.MeshStandardMaterial({ color: '#b0bdbd', roughness: 0.75 });
+  fixedNodeMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.65 });
+
+  addEventListener('resize', resize);
+  $('ring').onclick = () => { ui.inp.value = JSON.stringify(ring, null, 2); applyGraph(); };
+  $('sphere').onclick = () => { ui.inp.value = JSON.stringify(sphereExample(), null, 2); applyGraph(); };
+  $('apply').onclick = applyGraph;
+  $('reset').onclick = () => restartSolve({ resetPositions: true });
+  $('restart').onclick = () => restartSolve({ resetPositions: false });
+  $('freeze').onclick = () => freeze('manual freeze');
+  ui.hidden.onchange = updateVisibility;
+  ui.errorColors.onchange = updateEdgeColors;
+  ui.run.onclick = toggleRun;
+}
+
+function applyGraph() {
+  try {
+    ui.err.textContent = '';
+    load(JSON.parse(ui.inp.value));
+  } catch (error) {
+    ui.err.textContent = error.message;
+  }
+}
+
+function normalizeGraph(raw) {
+  if (raw.schema && Array.isArray(raw.vertices) && Array.isArray(raw.edges)) {
+    const vertexKeys = raw.schema.vertices || ['id', 'round', 'stitch', 'kind', 'fixed', 'x', 'y', 'z'];
+    const edgeKeys = raw.schema.edges || ['source', 'target', 'length', 'stiffness', 'type', 'color', 'hidden'];
+    const objectFromRow = (keys, row) => Object.fromEntries(keys.map((key, i) => [key, row[i]]));
+    return {
+      metadata: raw.metadata,
+      vertices: raw.vertices.map(row => Array.isArray(row) ? objectFromRow(vertexKeys, row) : row),
+      edges: raw.edges.map(row => Array.isArray(row) ? objectFromRow(edgeKeys, row) : row)
+    };
+  }
+  return raw;
+}
+
+function load(raw) {
+  clearSceneObjects();
+  G = normalizeGraph(raw);
+  if (!Array.isArray(G.vertices) || !Array.isArray(G.edges)) throw Error('Graph needs vertices[] and edges[]');
+
+  nodes = [];
+  edges = [];
+  map = new Map();
+
+  for (const vertex of G.vertices) {
+    const id = typeof vertex === 'string' ? vertex : vertex.id;
+    if (!id) throw Error('Vertex missing id');
+    map.set(id, nodes.length);
+    nodes.push({
+      id,
+      src: typeof vertex === 'string' ? { id } : vertex,
+      p: new THREE.Vector3(),
+      v: new THREE.Vector3(),
+      f: new THREE.Vector3(),
+      fixed: !!vertex.fixed,
+      hidden: !!vertex.hidden
+    });
+  }
+
+  for (const edge of G.edges) {
+    if (!map.has(edge.source) || !map.has(edge.target)) throw Error(`Unknown endpoint: ${edge.source}->${edge.target}`);
+    const length = Math.max(1e-3, +(edge.length ?? 100));
+    edges.push({
+      a: map.get(edge.source),
+      b: map.get(edge.target),
+      len: length,
+      k: +(edge.stiffness ?? 1),
+      type: edge.type || 'edge',
+      baseColor: edge.color || '#d9d9d9',
+      hidden: !!edge.hidden
+    });
+  }
+
+  edgeSet = buildEdgeSet(edges);
+  edgeInfo = buildEdgeInfo(edges);
+  medianEdgeLen = computeMedianEdgeLength(edges);
+  dist = computeGraphDistances(nodes, edges);
+  componentOf = computeComponents(nodes, edges);
+  componentCount = nodes.length ? Math.max(...componentOf) + 1 : 0;
+
+  restartSolve({ resetPositions: true });
+  makeObjects();
+  ui.inp.value = JSON.stringify(raw, null, 2);
+}
+
+function clearSceneObjects() {
+  for (const object of edgeObjects) {
+    group.remove(object);
+    object.geometry.dispose();
+    object.material.dispose();
+  }
+  for (const object of nodeObjects) {
+    group.remove(object);
+    object.geometry.dispose();
+  }
+  for (const label of labels) label.el.remove();
+  edgeObjects = [];
+  nodeObjects = [];
+  labels = [];
+}
+
+function makeRng(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function restartSolve({ resetPositions }) {
+  tick = 0;
+  phase = 'geodesic';
+  phaseTick = 0;
+  convergenceHistory = [];
+  transitionReason = '';
+  cleanupScaleTarget = 0;
+  running = true;
+  ui.run.textContent = 'Pause';
+
+  if (resetPositions) resetPositionsSeeded();
+  else {
+    zeroVelocities();
+    recenterFreeLayout();
+  }
+  updateEdgeColors();
+}
+
+function resetPositionsSeeded() {
+  const rand = makeRng(Math.trunc(+ui.seed.value || 1));
+  const radius = Math.max(140, Math.sqrt(Math.max(nodes.length, 1)) * 45);
+
+  for (const node of nodes) {
+    const theta = rand() * Math.PI * 2;
+    const zUnit = rand() * 2 - 1;
+    const polar = Math.acos(zUnit);
+    node.p.set(
+      radius * Math.sin(polar) * Math.cos(theta),
+      radius * Math.sin(polar) * Math.sin(theta),
+      radius * Math.cos(polar)
+    );
+    node.v.set(0, 0, 0);
+    node.f.set(0, 0, 0);
+
+    const src = node.src;
+    if (src.fixed && Array.isArray(src.position)) node.p.set(+src.position[0], +src.position[1], +src.position[2]);
+    else if (src.fixed && ['x', 'y', 'z'].every(key => Number.isFinite(+src[key]))) node.p.set(+src.x, +src.y, +src.z);
+  }
+}
+
+function makeObjects() {
+  for (const edge of edges) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(edge.baseColor), transparent: true, opacity: edge.hidden ? 0.35 : 0.82 });
+    const object = new THREE.Line(geo, mat);
+    group.add(object);
+    edgeObjects.push(object);
+  }
+
+  for (const node of nodes) {
+    const object = new THREE.Mesh(sphereGeom.clone(), node.fixed ? fixedNodeMat : nodeMat);
+    object.scale.setScalar(node.fixed ? 1.35 : 1);
+    group.add(object);
+    nodeObjects.push(object);
+
+    const el = document.createElement('div');
+    el.className = 'lab';
+    el.textContent = node.id;
+    el.style.display = 'none';
+    ui.labelsLayer.appendChild(el);
+    labels.push({ node, el });
+  }
+
+  updateVisibility();
+  updateObjects();
+  updateEdgeColors();
+}
+
+function updateVisibility() {
+  const showHidden = ui.hidden.checked;
+  edges.forEach((edge, i) => { edgeObjects[i].visible = !edge.hidden || showHidden; });
+  nodes.forEach((node, i) => { nodeObjects[i].visible = !node.hidden || showHidden; });
+}
+
+function pairKey(a, b) {
+  return a < b ? `${a},${b}` : `${b},${a}`;
+}
+
+function buildEdgeSet(edgeList) {
+  const set = new Set();
+  for (const edge of edgeList) set.add(pairKey(edge.a, edge.b));
+  return set;
+}
+
+function buildEdgeInfo(edgeList) {
+  const info = new Map();
+  for (const edge of edgeList) {
+    const key = pairKey(edge.a, edge.b);
+    const previous = info.get(key);
+    if (!previous || edge.len < previous.len) info.set(key, edge);
+  }
+  return info;
+}
+
+function computeMedianEdgeLength(edgeList) {
+  const lengths = edgeList.map(edge => edge.len).filter(Number.isFinite).sort((a, b) => a - b);
+  return lengths.length ? lengths[Math.floor(lengths.length / 2)] : 90;
+}
+
+function computeGraphDistances(nodeList, edgeList) {
+  const n = nodeList.length;
+  const adjacency = Array.from({ length: n }, () => []);
+  const out = [];
+
+  for (const edge of edgeList) {
+    adjacency[edge.a].push([edge.b, edge.len]);
+    adjacency[edge.b].push([edge.a, edge.len]);
+  }
+
+  for (let source = 0; source < n; source++) {
+    const d = new Float64Array(n);
+    const used = new Uint8Array(n);
+    d.fill(Infinity);
+    d[source] = 0;
+
+    for (let step = 0; step < n; step++) {
+      let u = -1;
+      let best = Infinity;
+      for (let i = 0; i < n; i++) {
+        if (!used[i] && d[i] < best) { best = d[i]; u = i; }
+      }
+      if (u < 0) break;
+      used[u] = 1;
+
+      for (const [v, w] of adjacency[u]) {
+        const next = d[u] + w;
+        if (next < d[v]) d[v] = next;
+      }
+    }
+    out[source] = d;
+  }
+  return out;
+}
+
+function computeComponents(nodeList, edgeList) {
+  const n = nodeList.length;
+  const adjacency = Array.from({ length: n }, () => []);
+  const comp = new Array(n).fill(-1);
+  let id = 0;
+
+  for (const edge of edgeList) {
+    adjacency[edge.a].push(edge.b);
+    adjacency[edge.b].push(edge.a);
+  }
+
+  for (let start = 0; start < n; start++) {
+    if (comp[start] >= 0) continue;
+    const queue = [start];
+    comp[start] = id;
+    for (let head = 0; head < queue.length; head++) {
+      const u = queue[head];
+      for (const v of adjacency[u]) {
+        if (comp[v] < 0) {
+          comp[v] = id;
+          queue.push(v);
+        }
+      }
+    }
+    id++;
+  }
+  return comp;
+}
+
+function toggleRun() {
+  if (phase === 'frozen') {
+    phase = 'cleanup';
+    phaseTick = 0;
+    convergenceHistory = [];
+    transitionReason = 'manual resume';
+    cleanupScaleTarget = cleanupScaleTarget || rmsRadius();
+    running = true;
+    ui.run.textContent = 'Pause';
+    return;
+  }
+  running = !running;
+  ui.run.textContent = running ? 'Pause' : 'Resume';
+}
+
+function step() {
+  if (phase === 'frozen') return;
+  if (phase === 'geodesic') geodesicStep();
+  else cleanupStep();
+  tick++;
+  phaseTick++;
+  updatePhase();
+}
+
+function geodesicStep() {
+  const total = Math.max(1, +ui.anneal.value);
+  const progress = Math.min(1, phaseTick / total);
+  applyPairForces(progress, { cleanup: false });
+  applyEdgeForces(+ui.spring.value * (0.15 + 0.35 * progress));
+  integrate(+ui.damp.value);
+  recenterFreeLayout();
+}
+
+function cleanupStep() {
+  applyPairForces(1, { cleanup: true });
+  applyEdgeForces(+ui.spring.value);
+  integrate(+ui.damp.value);
+  recenterFreeLayout();
+  if (ui.preserveScale.checked) preserveScale();
+}
+
+function applyPairForces(progress, { cleanup }) {
+  const geodesicStrength = +ui.geo.value;
+  const pairScale = +ui.pairScale.value;
+  const floor = +ui.floor.value;
+  const nearLimit = medianEdgeLen * (+ui.nearRadius.value);
+  const farStrength = +ui.farStrength.value;
+  const errorCap = Math.max(1, +ui.errorCap.value);
+  const forceCap = +ui.forceCap.value;
+  const edgePriority = +ui.edgePriority.value;
+
+  const nearWeight = cleanup ? floor : Math.max(floor, Math.pow(1 - progress, 0.65));
+  const farWeight = cleanup ? floor * 0.35 : Math.max(floor * 0.35, Math.pow(1 - progress, 0.9));
+
+  for (const node of nodes) node.f.set(0, 0, 0);
+
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      const directEdge = edgeInfo.get(pairKey(i, j));
+      const graphDistance = dist[i]?.[j];
+
+      if (!Number.isFinite(graphDistance) || graphDistance <= 0) {
+        applyDisconnectedComponentRepulsion(i, j, geodesicStrength, pairScale, forceCap);
+        continue;
+      }
+
+      const delta = b.p.clone().sub(a.p);
+      const distance = Math.max(delta.length(), EPS);
+      const distance2 = distance * distance;
+      let force = null;
+      let cap = forceCap;
+
+      if (directEdge) {
+        const target = directEdge.len;
+        const target2 = target * target;
+        const weight = edgePriority * (cleanup ? 0.18 : 1);
+        force = delta.multiplyScalar(geodesicStrength * weight * 0.5 * (distance2 - target2) / (distance2 + EPS));
+      } else if (graphDistance <= nearLimit) {
+        const target2 = graphDistance * graphDistance;
+        const normalizedDistance = graphDistance / Math.max(nearLimit, EPS);
+        const proximityBlend = 1 - Math.min(1, normalizedDistance);
+        const weight = nearWeight * pairScale * (900 / (target2 + EPS)) * (0.35 + 0.65 * proximityBlend);
+        if (weight <= 0) continue;
+        force = delta.multiplyScalar(geodesicStrength * weight * 0.5 * (distance2 - target2) / (distance2 + EPS));
+        cap *= 0.75;
+      } else {
+        const error = distance - graphDistance;
+        const cappedError = errorCap * Math.tanh(error / errorCap);
+        const distanceFalloff = medianEdgeLen / (graphDistance + medianEdgeLen);
+        const weight = pairScale * farStrength * farWeight * distanceFalloff;
+        if (weight <= 0) continue;
+        force = delta.multiplyScalar(geodesicStrength * weight * cappedError / distance);
+        cap *= 0.45;
+      }
+
+      capVector(force, cap);
+      if (!a.fixed) a.f.add(force);
+      if (!b.fixed) b.f.sub(force);
+    }
+  }
+}
+
+function applyDisconnectedComponentRepulsion(i, j, geodesicStrength, pairScale, forceCap) {
+  if (componentCount <= 1 || componentOf[i] === componentOf[j] || pairScale <= 0) return;
+  const a = nodes[i], b = nodes[j];
+  const delta = b.p.clone().sub(a.p);
+  const distance2 = Math.max(delta.lengthSq(), 1);
+  const distance = Math.sqrt(distance2);
+  const strength = geodesicStrength * pairScale * 120 / (distance2 + 10000);
+  const force = delta.multiplyScalar(-strength / distance);
+  capVector(force, forceCap * 0.25);
+  if (!a.fixed) a.f.add(force);
+  if (!b.fixed) b.f.sub(force);
+}
+
+function applyEdgeForces(strength) {
+  if (strength <= 0) return;
+  const forceCap = +ui.forceCap.value;
+  const edgePriority = +ui.edgePriority.value;
+
+  for (const edge of edges) {
+    const a = nodes[edge.a], b = nodes[edge.b];
+    const delta = b.p.clone().sub(a.p);
+    const distance = Math.max(delta.length(), 1e-4);
+    const force = delta.multiplyScalar(strength * edge.k * edgePriority * (distance - edge.len) / distance);
+    capVector(force, forceCap);
+    if (!a.fixed) a.f.add(force);
+    if (!b.fixed) b.f.sub(force);
+  }
+}
+
+function capVector(vector, cap) {
+  if (cap > 0 && vector.lengthSq() > cap * cap) vector.setLength(cap);
+}
+
+function integrate(damping) {
+  const velocityCap = +ui.velCap.value;
+  for (const node of nodes) {
+    if (node.fixed) continue;
+    node.v.add(node.f).multiplyScalar(damping);
+    if (velocityCap > 0 && node.v.lengthSq() > velocityCap * velocityCap) node.v.setLength(velocityCap);
+    node.p.add(node.v);
+  }
+}
+
+function updatePhase() {
+  if (phase === 'geodesic') {
+    if (converged('objectiveMean', 400, 0.003)) {
+      beginCleanup('geodesic plateau');
+      return;
+    }
+    if (phaseTick >= Math.max(1, +ui.anneal.value)) {
+      beginCleanup('geodesic steps complete');
+      return;
+    }
+  }
+
+  if (phase === 'cleanup') {
+    if (converged('edgeMean', 160, 0.002)) {
+      freeze('cleanup converged');
+      return;
+    }
+    if (ui.autoFreeze.checked && phaseTick >= +ui.cleanupSteps.value) freeze('cleanup steps complete');
+  }
+}
+
+function converged(metricName, minTicks, relativeTolerance) {
+  if (!ui.convFreeze.checked || phaseTick < minTicks || tick % CONV_INTERVAL !== 0) return false;
+  const value = measureErrors()[metricName];
+  if (!Number.isFinite(value)) return false;
+
+  convergenceHistory.push(value);
+  if (convergenceHistory.length > CONV_SAMPLES) convergenceHistory.shift();
+  if (convergenceHistory.length < CONV_SAMPLES) return false;
+
+  const first = convergenceHistory[0];
+  const last = convergenceHistory[convergenceHistory.length - 1];
+  const relativeImprovement = (first - last) / Math.max(first, 1);
+  return relativeImprovement >= 0 && relativeImprovement < relativeTolerance;
+}
+
+function beginCleanup(reason) {
+  phase = 'cleanup';
+  phaseTick = 0;
+  convergenceHistory = [];
+  transitionReason = reason;
+  cleanupScaleTarget = rmsRadius();
+  zeroVelocities();
+}
+
+function freeze(reason) {
+  phase = 'frozen';
+  transitionReason = reason;
+  zeroVelocities();
+  running = false;
+  ui.run.textContent = 'Resume';
+}
+
+function zeroVelocities() {
+  for (const node of nodes) node.v.set(0, 0, 0);
+}
+
+function layoutCenter() {
+  const center = new THREE.Vector3();
+  if (!nodes.length) return center;
+  for (const node of nodes) center.add(node.p);
+  return center.multiplyScalar(1 / nodes.length);
+}
+
+function recenterFreeLayout() {
+  if (!nodes.length || nodes.some(node => node.fixed)) return;
+  const center = layoutCenter();
+  for (const node of nodes) node.p.sub(center);
+}
+
+function rmsRadius() {
+  if (!nodes.length) return 0;
+  const center = layoutCenter();
+  let sum = 0;
+  for (const node of nodes) sum += node.p.distanceToSquared(center);
+  return Math.sqrt(sum / nodes.length);
+}
+
+function preserveScale() {
+  if (nodes.some(node => node.fixed) || cleanupScaleTarget <= EPS) return;
+  const current = rmsRadius();
+  if (current <= EPS) return;
+  const center = layoutCenter();
+  const desired = cleanupScaleTarget / current;
+  const scale = THREE.MathUtils.clamp(1 + (desired - 1) * 0.25, 0.985, 1.015);
+  for (const node of nodes) node.p.sub(center).multiplyScalar(scale).add(center);
+}
+
+function measureErrors() {
+  let edgeSum = 0, edgeMax = 0, maxStretch = 0, maxCompression = 0;
+  for (const edge of edges) {
+    const length = nodes[edge.a].p.distanceTo(nodes[edge.b].p);
+    const signed = length - edge.len;
+    const abs = Math.abs(signed);
+    edgeSum += abs;
+    edgeMax = Math.max(edgeMax, abs);
+    maxStretch = Math.max(maxStretch, signed);
+    maxCompression = Math.max(maxCompression, -signed);
+  }
+
+  const nearLimit = medianEdgeLen * (+ui.nearRadius.value);
+  const errorCap = Math.max(1, +ui.errorCap.value);
+  let nearCount = 0, nearSum = 0, nearMax = 0;
+  let farCount = 0, farCappedSum = 0, farRawMax = 0, farSaturated = 0;
+
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const graphDistance = dist[i]?.[j];
+      if (!Number.isFinite(graphDistance) || graphDistance <= 0) continue;
+
+      const directEdge = edgeInfo.get(pairKey(i, j));
+      const target = directEdge ? directEdge.len : graphDistance;
+      const length = nodes[i].p.distanceTo(nodes[j].p);
+      const error = Math.abs(length - target);
+
+      if (directEdge || graphDistance <= nearLimit) {
+        nearCount++;
+        nearSum += error;
+        nearMax = Math.max(nearMax, error);
+      } else {
+        farCount++;
+        farRawMax = Math.max(farRawMax, error);
+        farCappedSum += Math.abs(errorCap * Math.tanh(error / errorCap));
+        if (error > errorCap * 0.95) farSaturated++;
+      }
+    }
+  }
+
+  const nearMean = nearCount ? nearSum / nearCount : 0;
+  const farCappedMean = farCount ? farCappedSum / farCount : 0;
+  const objectiveMean = (nearSum + farCappedSum * 0.25) / Math.max(1, nearCount + farCount * 0.25);
+
+  return {
+    edgeMean: edges.length ? edgeSum / edges.length : 0,
+    edgeMax,
+    maxStretch,
+    maxCompression,
+    nearMean,
+    nearMax,
+    nearCount,
+    farCappedMean,
+    farRawMax,
+    farCount,
+    farSaturated,
+    objectiveMean,
+    radius: rmsRadius()
+  };
+}
+
+function updateObjects() {
+  edges.forEach((edge, i) => {
+    const a = nodes[edge.a].p;
+    const b = nodes[edge.b].p;
+    const position = edgeObjects[i].geometry.attributes.position;
+    position.setXYZ(0, a.x, a.y, a.z);
+    position.setXYZ(1, b.x, b.y, b.z);
+    position.needsUpdate = true;
+  });
+  nodes.forEach((node, i) => nodeObjects[i].position.copy(node.p));
+  updateEdgeColors();
+}
+
+function updateEdgeColors() {
+  if (!edgeObjects.length) return;
+  const stretchColor = new THREE.Color('#f28b82');
+  const compressionColor = new THREE.Color('#8ab4f8');
+
+  edges.forEach((edge, i) => {
+    const color = new THREE.Color(edge.baseColor);
+    if (ui.errorColors.checked) {
+      const length = nodes[edge.a].p.distanceTo(nodes[edge.b].p);
+      const relative = (length - edge.len) / Math.max(edge.len, 1e-6);
+      const t = Math.min(1, Math.abs(relative) / 0.35);
+      color.lerp(relative >= 0 ? stretchColor : compressionColor, t);
+    }
+    edgeObjects[i].material.color.copy(color);
+  });
+}
+
+function updateLabels() {
+  const show = ui.labels.checked;
+  const width = renderer.domElement.clientWidth;
+  const height = renderer.domElement.clientHeight;
+
+  for (const item of labels) {
+    if (!show || (item.node.hidden && !ui.hidden.checked)) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    const p = item.node.p.clone().project(camera);
+    if (p.z < -1 || p.z > 1) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    item.el.style.display = 'block';
+    item.el.style.left = (p.x * 0.5 + 0.5) * width + 'px';
+    item.el.style.top = (-p.y * 0.5 + 0.5) * height + 'px';
+  }
+}
+
+function updateStats() {
+  const metrics = measureErrors();
+  const phaseTotal = phase === 'geodesic' ? Math.max(1, +ui.anneal.value) : Math.max(1, +ui.cleanupSteps.value);
+  const progress = phase === 'frozen' ? 100 : Math.min(100, 100 * phaseTick / phaseTotal);
+  const saturated = metrics.farCount ? 100 * metrics.farSaturated / metrics.farCount : 0;
+
+  ui.stats.innerHTML =
+    `vertices: ${nodes.length}<br>` +
+    `edges: ${edges.length}<br>` +
+    `components: ${componentCount}<br>` +
+    `phase: ${phase}<br>` +
+    `phase progress: ${progress.toFixed(1)}%<br>` +
+    `mean edge error: ${metrics.edgeMean.toFixed(2)}<br>` +
+    `max edge error: ${metrics.edgeMax.toFixed(2)}<br>` +
+    `max stretch / compression: ${metrics.maxStretch.toFixed(2)} / ${metrics.maxCompression.toFixed(2)}<br>` +
+    `mean near-pair error: ${metrics.nearMean.toFixed(2)}<br>` +
+    `long-range capped error: ${metrics.farCappedMean.toFixed(2)}<br>` +
+    `long-range saturated: ${saturated.toFixed(1)}%<br>` +
+    `near radius: ${(+ui.nearRadius.value).toFixed(2)} edge lengths<br>` +
+    `error cap: ${(+ui.errorCap.value).toFixed(0)}<br>` +
+    `rms radius: ${metrics.radius.toFixed(2)}<br>` +
+    `running: ${running ? 'yes' : 'no'}` +
+    (transitionReason ? `<br>last transition: ${transitionReason}` : '');
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (running) {
+    for (let i = 0; i < +ui.steps.value && running; i++) step();
+  }
+  updateObjects();
+  ctrl.update();
+  renderer.render(scene, camera);
+  updateLabels();
+  updateStats();
+}
+
+function resize() {
+  camera.aspect = ui.wrap.clientWidth / ui.wrap.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(ui.wrap.clientWidth, ui.wrap.clientHeight);
+}
+</script>
+</body>
+</html>

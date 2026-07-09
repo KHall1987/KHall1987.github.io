@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flat Crochet Circle Stitch Calculator</title>
+  <link rel="stylesheet" href="assets/mml-toy.css">
+  <link rel="stylesheet" href="assets/widgets/crochet.css">
+</head>
+<body class="mml-widget">
+<main class="mml-page">
+  <nav class="mml-links mml-no-print" aria-label="Related links">
+    <a href="https://mathmeetlife.substack.com/">Kelly's Substack</a>
+    <a href="https://mathmeetlife.substack.com/p/why-do-single-crochets-flat-circles">Original post</a>
+  </nav>
+
+  <header class="hero mml-hero">
+    <div class="eyebrow mml-eyebrow">Flat circle calculator</div>
+    <h1>Flat Crochet Circle Stitch Calculator</h1>
+    <p class="muted">
+      Enter a target size and gauge, then copy a round-by-round pattern. The geometric comparison details are still available, but the default view focuses on usable instructions.
+    </p>
+    <p class="muted">
+      Based on the circle model <code>C = 2πr</code>, with each round adding roughly one row-height to the radius. Use one unit system throughout.
+    </p>
+  </header>
+
+  <div class="layout mml-tool-layout">
+    <aside class="panel mml-panel settings-panel mml-tool-sidebar" aria-labelledby="settingsTitle">
+      <section class="section">
+        <h2 id="settingsTitle">Basic settings</h2>
+        <div class="form-grid">
+          <div class="full">
+            <label for="targetValue">Circle size value</label>
+            <input id="targetValue" type="number" min="0.001" step="0.1" value="20" inputmode="decimal">
+            <span id="targetHint" class="hint">Use the outside circumference by default, or switch to radius below.</span>
+          </div>
+
+          <fieldset class="full">
+            <legend>Size means</legend>
+            <label class="option">
+              <input type="radio" name="targetType" value="circumference" checked>
+              Circumference C
+              <small>Outside circumference of the finished circle.</small>
+            </label>
+            <label class="option">
+              <input type="radio" name="targetType" value="radius">
+              Radius r
+              <small>Radius from centre to edge.</small>
+            </label>
+          </fieldset>
+
+          <div>
+            <label for="stitchWidth">Stitch width, w</label>
+            <input id="stitchWidth" type="number" min="0.001" step="0.05" value="1" inputmode="decimal">
+            <span class="hint">Approximate width of one stitch in the same units.</span>
+          </div>
+
+          <div>
+            <label for="rowHeight">Row height, h</label>
+            <input id="rowHeight" type="number" min="0.001" step="0.05" value="1" inputmode="decimal">
+            <span class="hint">Approximate height added by one round.</span>
+          </div>
+        </div>
+      </section>
+
+      <details class="advanced mml-disclosure">
+        <summary>Advanced options</summary>
+        <div class="advanced-body mml-disclosure-body">
+          <section class="section">
+            <h3>Terminology</h3>
+            <div class="form-grid">
+              <div>
+                <label for="stitchName">Main stitch</label>
+                <input id="stitchName" type="text" value="SC">
+              </div>
+              <div>
+                <label for="incName">Increase</label>
+                <input id="incName" type="text" value="INC">
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h3>Rounds</h3>
+            <fieldset>
+              <legend>Rounds to show</legend>
+              <label class="option">
+                <input type="radio" name="roundMode" value="auto" checked>
+                Auto from target and h
+                <small>Shows enough rounds to reach or slightly pass the target size.</small>
+              </label>
+              <label class="option">
+                <input type="radio" name="roundMode" value="manual">
+                Manual
+                <small>Use a fixed number of rounds instead.</small>
+              </label>
+            </fieldset>
+
+            <div class="form-grid" style="margin-top: 14px;">
+              <div class="full">
+                <label for="manualRounds">Manual rounds</label>
+                <input id="manualRounds" type="number" min="1" step="1" value="8" inputmode="numeric">
+                <span class="hint">Used only when manual mode is selected.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h3>Rounding and comparison</h3>
+            <fieldset>
+              <legend>Rounding rule</legend>
+              <label class="option">
+                <input type="radio" name="roundingRule" value="nearest" checked>
+                Nearest
+                <small>Best default for staying close to the geometric target.</small>
+              </label>
+              <label class="option">
+                <input type="radio" name="roundingRule" value="floor">
+                Floor
+                <small>Rounds stitch counts down.</small>
+              </label>
+              <label class="option">
+                <input type="radio" name="roundingRule" value="ceil">
+                Ceiling
+                <small>Rounds stitch counts up.</small>
+              </label>
+            </fieldset>
+
+            <fieldset style="margin-top: 14px;">
+              <legend>Classic comparison</legend>
+              <label class="option">
+                <input type="radio" name="classicMode" value="aspect" checked>
+                Aspect-ratio Δ, nearest
+                <small>Compares against the rounded increase rate implied by h and w.</small>
+              </label>
+              <label class="option">
+                <input type="radio" name="classicMode" value="six">
+                Always +6
+                <small>Compares against the common six-increase circle.</small>
+              </label>
+            </fieldset>
+          </section>
+
+          <section class="section">
+            <h3>Model note</h3>
+            <div class="formula" aria-label="Model formulas">
+              Round model: C(N) = 2*pi*N*h<br>
+              Total stitches: n(N) = round(2*pi*N*h / w)<br>
+              From circumference: N = C / (2*pi*h), n = C / w<br>
+              From radius: N = r / h, n = 2*pi*r / w
+            </div>
+          </section>
+        </div>
+      </details>
+
+      <div class="buttons mml-button-row">
+        <button type="button" class="secondary" id="calculateButton">Update pattern</button>
+        <button type="button" class="secondary" id="resetButton">Reset defaults</button>
+      </div>
+      <p class="hint">Most changes update automatically. Use reset to return to the starter single-crochet-like defaults.</p>
+    </aside>
+
+    <section class="panel mml-panel result-panel mml-tool-main" aria-labelledby="resultTitle">
+      <div class="result-top">
+        <h2 id="resultTitle">Generated pattern</h2>
+        <div id="status" class="status" role="status" aria-live="polite">Pattern will appear below.</div>
+
+        <div class="stats mml-stat-grid" aria-label="Circle summary">
+          <div class="stat mml-stat"><strong id="metricRounds" class="mml-stat-value">-</strong><span class="mml-stat-label">Rounds</span></div>
+          <div class="stat mml-stat"><strong id="metricRadius" class="mml-stat-value">-</strong><span class="mml-stat-label">Final radius</span></div>
+          <div class="stat mml-stat"><strong id="metricCircumference" class="mml-stat-value">-</strong><span class="mml-stat-label">Final circ.</span></div>
+          <div class="stat mml-stat"><strong id="metricStitches" class="mml-stat-value">-</strong><span class="mml-stat-label">Final sts</span></div>
+          <div class="stat mml-stat"><strong id="metricDelta" class="mml-stat-value">-</strong><span class="mml-stat-label">Δ / round</span></div>
+        </div>
+
+        <div class="result-actions mml-button-row">
+          <button type="button" class="primary" id="copyPatternButton">Copy plain pattern</button>
+          <button type="button" class="secondary" id="downloadPatternButton">Download .txt</button>
+          <button type="button" class="secondary" onclick="window.print()">Print</button>
+          <span id="copyStatus" class="copy-status mml-copy-status" aria-live="polite"></span>
+        </div>
+      </div>
+
+      <div class="tabs mml-tabs" role="tablist" aria-label="Result views">
+        <button type="button" class="tab mml-tab" role="tab" id="tab-pattern" aria-controls="pane-pattern" aria-selected="true" data-pane="pattern">Pattern</button>
+        <button type="button" class="tab mml-tab" role="tab" id="tab-table" aria-controls="pane-table" aria-selected="false" data-pane="table">Table</button>
+        <button type="button" class="tab mml-tab" role="tab" id="tab-details" aria-controls="pane-details" aria-selected="false" data-pane="details">Details</button>
+        <button type="button" class="tab mml-tab" role="tab" id="tab-raw" aria-controls="pane-raw" aria-selected="false" data-pane="raw">Raw text</button>
+      </div>
+
+      <div id="pane-pattern" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-pattern">
+        <div id="patternPreview" class="pattern-preview mml-output-list"></div>
+      </div>
+
+      <div id="pane-table" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-table" hidden>
+        <div class="mml-table-wrap">
+          <table class="mml-table">
+            <thead>
+              <tr>
+                <th>Round</th>
+                <th>Radius</th>
+                <th>Circumference</th>
+                <th>Ideal stitches</th>
+                <th>Target stitches</th>
+                <th>Increase</th>
+                <th>Classic count</th>
+                <th>Instruction</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="pane-details" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-details" hidden>
+        <pre id="detailsOutput" class="mml-pre"></pre>
+      </div>
+
+      <div id="pane-raw" class="pane mml-pane" role="tabpanel" aria-labelledby="tab-raw" hidden>
+        <textarea id="rawOutput" spellcheck="false" aria-label="Raw generated pattern text"></textarea>
+      </div>
+    </section>
+  </div>
+
+  <p class="mml-footnote">
+    This widget is a geometric approximation. Crochet fabric can stretch, tension varies, and joins or chain-ups may absorb part of the rounding error.
+  </p>
+</main>
+
+<script>
+const els = {
+  targetValue: document.getElementById("targetValue"),
+  rowHeight: document.getElementById("rowHeight"),
+  stitchWidth: document.getElementById("stitchWidth"),
+  manualRounds: document.getElementById("manualRounds"),
+  stitchName: document.getElementById("stitchName"),
+  incName: document.getElementById("incName"),
+  targetHint: document.getElementById("targetHint"),
+  status: document.getElementById("status"),
+  resultsBody: document.getElementById("resultsBody"),
+  patternPreview: document.getElementById("patternPreview"),
+  detailsOutput: document.getElementById("detailsOutput"),
+  rawOutput: document.getElementById("rawOutput"),
+  metricRounds: document.getElementById("metricRounds"),
+  metricRadius: document.getElementById("metricRadius"),
+  metricCircumference: document.getElementById("metricCircumference"),
+  metricStitches: document.getElementById("metricStitches"),
+  metricDelta: document.getElementById("metricDelta"),
+  copyStatus: document.getElementById("copyStatus")
+};
+
+let plainPatternText = "";
+let fullDetailsText = "";
+let copyTimer = null;
+
+function selected(name) {
+  return document.querySelector('input[name="' + name + '"]:checked').value;
+}
+
+function getText(input, fallback) {
+  const value = input.value.trim();
+  return value || fallback;
+}
+
+function positiveNumber(input, name) {
+  const value = Number(input.value);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(name + " must be a positive number.");
+  }
+  return value;
+}
+
+function positiveInteger(input, name) {
+  const value = Math.round(Number(input.value));
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(name + " must be a positive whole number.");
+  }
+  input.value = value;
+  return value;
+}
+
+function applyRounding(value, rule) {
+  if (rule === "floor") return Math.floor(value);
+  if (rule === "ceil") return Math.ceil(value);
+  return Math.round(value);
+}
+
+function format(value, digits = 2) {
+  if (!Number.isFinite(value)) return "-";
+  if (Math.abs(value) >= 100) return value.toFixed(1).replace(/\.0$/, "");
+  return value.toFixed(digits).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+}
+
+function addChunk(chunks, text, count) {
+  if (count <= 0) return;
+  if (chunks.length && chunks[chunks.length - 1].text === text) {
+    chunks[chunks.length - 1].count += count;
+  } else {
+    chunks.push({ text, count });
+  }
+}
+
+function chunkLabel(chunk) {
+  if (chunk.count <= 1) return chunk.text;
+  return chunk.text + " x " + chunk.count;
+}
+
+function chunksToString(chunks) {
+  if (!chunks.length) return "";
+
+  for (let len = 1; len <= Math.floor(chunks.length / 2); len++) {
+    if (chunks.length % len !== 0) continue;
+
+    let ok = true;
+    for (let i = len; i < chunks.length; i++) {
+      const a = chunks[i];
+      const b = chunks[i % len];
+      if (a.text !== b.text || a.count !== b.count) {
+        ok = false;
+        break;
+      }
+    }
+
+    if (ok) {
+      const repeats = chunks.length / len;
+      const unit = chunks.slice(0, len).map(chunkLabel).join(", ");
+      return "(" + unit + ") x " + repeats;
+    }
+  }
+
+  return chunks.map(chunkLabel).join(", ");
+}
+
+function distributeGaps(totalPlainStitches, shapingCount) {
+  if (shapingCount <= 0) return [];
+  const gaps = [];
+  let previous = 0;
+
+  for (let i = 1; i <= shapingCount; i++) {
+    const next = Math.round((i * totalPlainStitches) / shapingCount);
+    gaps.push(next - previous);
+    previous = next;
+  }
+
+  return gaps;
+}
+
+function instructionFor(round, previous, target, stitchName, incName) {
+  const increase = target - previous;
+
+  if (round === 1 || previous === 0) {
+    return stitchName + " x " + target + " in magic ring";
+  }
+
+  if (increase === 0) {
+    return stitchName + " x " + target;
+  }
+
+  if (increase < 0) {
+    return "Reduce by " + Math.abs(increase) + " stitch" + (Math.abs(increase) === 1 ? "" : "es") + " evenly";
+  }
+
+  if (increase > previous) {
+    const extra = increase - previous;
+    return incName + " in each st, then add " + extra + " extra increase" + (extra === 1 ? "" : "s") + " evenly";
+  }
+
+  const plain = previous - increase;
+  const gaps = distributeGaps(plain, increase);
+  const chunks = [];
+
+  for (const gap of gaps) {
+    addChunk(chunks, stitchName, gap);
+    addChunk(chunks, incName, 1);
+  }
+
+  return chunksToString(chunks);
+}
+
+function calculate() {
+  try {
+    const targetType = selected("targetType");
+    const target = positiveNumber(els.targetValue, targetType === "radius" ? "Desired radius" : "Desired circumference");
+    const h = positiveNumber(els.rowHeight, "Row height");
+    const w = positiveNumber(els.stitchWidth, "Stitch width");
+    const stitchName = getText(els.stitchName, "SC");
+    const incName = getText(els.incName, "INC");
+    const roundMode = selected("roundMode");
+    const roundingRule = selected("roundingRule");
+    const classicMode = selected("classicMode");
+    const manualRounds = positiveInteger(els.manualRounds, "Manual rounds");
+
+    const rawRounds = targetType === "radius" ? target / h : target / (2 * Math.PI * h);
+    const rounds = Math.max(1, roundMode === "manual" ? manualRounds : Math.ceil(rawRounds));
+    const rawDelta = (2 * Math.PI * h) / w;
+    const classicDelta = classicMode === "six" ? 6 : Math.max(1, Math.round(rawDelta));
+
+    let previous = 0;
+    let finalRadius = 0;
+    let finalCircumference = 0;
+    let finalStitches = 0;
+    const rows = [];
+
+    for (let round = 1; round <= rounds; round++) {
+      const radius = round * h;
+      const circumference = 2 * Math.PI * radius;
+      const ideal = circumference / w;
+      const targetStitches = Math.max(1, applyRounding(ideal, roundingRule));
+      const increase = targetStitches - previous;
+      const classicCount = classicDelta * round;
+      const instruction = instructionFor(round, previous, targetStitches, stitchName, incName);
+
+      rows.push({
+        round,
+        radius,
+        circumference,
+        ideal,
+        targetStitches,
+        increase,
+        classicCount,
+        instruction
+      });
+
+      previous = targetStitches;
+      finalRadius = radius;
+      finalCircumference = circumference;
+      finalStitches = targetStitches;
+    }
+
+    renderPattern(rows);
+    renderTable(rows);
+    buildTextOutputs(rows, { targetType, target, h, w, stitchName, incName, roundMode, roundingRule, classicMode, rawDelta, classicDelta });
+
+    els.metricRounds.textContent = String(rounds);
+    els.metricRadius.textContent = format(finalRadius);
+    els.metricCircumference.textContent = format(finalCircumference);
+    els.metricStitches.textContent = String(finalStitches);
+    els.metricDelta.textContent = format(rawDelta);
+
+    const targetDescription = targetType === "radius" ? "target radius " + format(target) : "target circumference " + format(target);
+    els.status.textContent = "Calculated " + rounds + " round" + (rounds === 1 ? "" : "s") + " for " + targetDescription + ".";
+    els.status.classList.remove("error");
+  } catch (error) {
+    els.status.textContent = error.message;
+    els.status.classList.add("error");
+    clearResults();
+  }
+}
+
+function renderPattern(rows) {
+  els.patternPreview.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  for (const row of rows) {
+    const item = document.createElement("div");
+    item.className = "pattern-row mml-output-line";
+
+    const label = document.createElement("div");
+    label.className = "round-label mml-preview-key";
+    label.textContent = "R" + row.round;
+
+    const instruction = document.createElement("div");
+    instruction.className = "instruction mml-preview-main";
+    instruction.textContent = row.instruction;
+
+    const meta = document.createElement("span");
+    meta.className = "row-meta mml-preview-meta";
+    meta.textContent = "increase " + signed(row.increase) + ", ideal " + format(row.ideal) + ", classic " + row.classicCount;
+    instruction.appendChild(meta);
+
+    const count = document.createElement("div");
+    count.className = "stitch-count mml-preview-value";
+    count.textContent = row.targetStitches + " sts";
+
+    item.append(label, instruction, count);
+    frag.appendChild(item);
+  }
+
+  els.patternPreview.appendChild(frag);
+}
+
+function renderTable(rows) {
+  els.resultsBody.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    const cells = [
+      row.round,
+      format(row.radius),
+      format(row.circumference),
+      format(row.ideal),
+      row.targetStitches,
+      signed(row.increase),
+      row.classicCount,
+      row.instruction
+    ];
+
+    for (const value of cells) {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      tr.appendChild(td);
+    }
+
+    frag.appendChild(tr);
+  }
+
+  els.resultsBody.appendChild(frag);
+}
+
+function buildTextOutputs(rows, settings) {
+  const patternLines = [];
+  patternLines.push("Flat crochet circle pattern");
+  patternLines.push("");
+
+  for (const row of rows) {
+    patternLines.push("R" + row.round + ": " + row.instruction + " - " + row.targetStitches + " sts");
+  }
+
+  plainPatternText = patternLines.join("\n");
+
+  const detailLines = [];
+  detailLines.push("Flat crochet circle stitch calculator");
+  detailLines.push("");
+  detailLines.push("Inputs:");
+  detailLines.push("  target type = " + settings.targetType);
+  detailLines.push("  target value = " + settings.target);
+  detailLines.push("  stitch = " + settings.stitchName);
+  detailLines.push("  increase = " + settings.incName);
+  detailLines.push("  row height h = " + settings.h);
+  detailLines.push("  stitch width w = " + settings.w);
+  detailLines.push("  rounds mode = " + settings.roundMode);
+  detailLines.push("  rounding rule = " + settings.roundingRule);
+  detailLines.push("  classic comparison = " + settings.classicMode);
+  detailLines.push("  raw delta per round = " + settings.rawDelta.toFixed(4));
+  detailLines.push("  classic delta = " + settings.classicDelta);
+  detailLines.push("");
+  detailLines.push("Round details:");
+
+  for (const row of rows) {
+    detailLines.push(
+      "  R" + row.round +
+      ": radius " + format(row.radius) +
+      ", circumference " + format(row.circumference) +
+      ", ideal " + format(row.ideal) +
+      ", target " + row.targetStitches +
+      ", increase " + signed(row.increase) +
+      ", classic " + row.classicCount
+    );
+  }
+
+  detailLines.push("");
+  detailLines.push("Math note:");
+  detailLines.push("  C(N) = 2*pi*N*h");
+  detailLines.push("  n(N) = round(C(N) / w), using the selected rounding rule.");
+  detailLines.push("  The classic comparison is shown only as a reference line; it does not change the generated target stitch counts.");
+
+  fullDetailsText = detailLines.join("\n");
+  els.detailsOutput.textContent = fullDetailsText;
+  els.rawOutput.value = plainPatternText + "\n\n" + fullDetailsText;
+}
+
+function signed(value) {
+  return (value >= 0 ? "+" : "") + value;
+}
+
+function clearResults() {
+  els.patternPreview.innerHTML = "";
+  els.resultsBody.innerHTML = "";
+  els.detailsOutput.textContent = "";
+  els.rawOutput.value = "";
+  plainPatternText = "";
+  fullDetailsText = "";
+  els.metricRounds.textContent = "-";
+  els.metricRadius.textContent = "-";
+  els.metricCircumference.textContent = "-";
+  els.metricStitches.textContent = "-";
+  els.metricDelta.textContent = "-";
+}
+
+function updateTargetLabel() {
+  const targetType = selected("targetType");
+  els.targetHint.textContent = targetType === "radius"
+    ? "This value is the radius from centre to edge. Use the same units as your gauge."
+    : "This value is the outside circumference. Use the same units as your gauge.";
+}
+
+function updateManualRoundState() {
+  const isManual = selected("roundMode") === "manual";
+  els.manualRounds.disabled = !isManual;
+}
+
+function resetDefaults() {
+  document.querySelector('input[name="targetType"][value="circumference"]').checked = true;
+  document.querySelector('input[name="roundMode"][value="auto"]').checked = true;
+  document.querySelector('input[name="roundingRule"][value="nearest"]').checked = true;
+  document.querySelector('input[name="classicMode"][value="aspect"]').checked = true;
+  els.targetValue.value = "20";
+  els.rowHeight.value = "1";
+  els.stitchWidth.value = "1";
+  els.manualRounds.value = "8";
+  els.stitchName.value = "SC";
+  els.incName.value = "INC";
+  updateTargetLabel();
+  updateManualRoundState();
+  calculate();
+}
+
+function showPane(name) {
+  document.querySelectorAll('[role="tab"][data-pane]').forEach(tab => {
+    const active = tab.dataset.pane === name;
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  document.querySelectorAll('[role="tabpanel"]').forEach(panel => {
+    panel.hidden = panel.id !== "pane-" + name;
+  });
+}
+
+async function copyPattern() {
+  if (!plainPatternText) return;
+
+  try {
+    await navigator.clipboard.writeText(plainPatternText);
+    showCopyStatus("Copied.");
+  } catch (error) {
+    els.rawOutput.hidden = false;
+    els.rawOutput.focus();
+    els.rawOutput.select();
+    showCopyStatus("Select and copy from Raw text.");
+  }
+}
+
+function showCopyStatus(message) {
+  if (copyTimer) window.clearTimeout(copyTimer);
+  els.copyStatus.textContent = message;
+  copyTimer = window.setTimeout(() => {
+    els.copyStatus.textContent = "";
+  }, 2200);
+}
+
+function downloadPattern() {
+  const text = plainPatternText || els.rawOutput.value;
+  if (!text) return;
+
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "flat-crochet-circle-pattern.txt";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("calculateButton").addEventListener("click", calculate);
+document.getElementById("resetButton").addEventListener("click", resetDefaults);
+document.getElementById("copyPatternButton").addEventListener("click", copyPattern);
+document.getElementById("downloadPatternButton").addEventListener("click", downloadPattern);
+
+document.querySelectorAll('[role="tab"][data-pane]').forEach(tab => {
+  tab.addEventListener("click", () => showPane(tab.dataset.pane));
+});
+
+document.querySelectorAll('input[name="targetType"]').forEach(input => {
+  input.addEventListener("change", () => {
+    updateTargetLabel();
+    calculate();
+  });
+});
+
+document.querySelectorAll('input[name="roundMode"]').forEach(input => {
+  input.addEventListener("change", () => {
+    updateManualRoundState();
+    calculate();
+  });
+});
+
+document.querySelectorAll("input").forEach(input => {
+  input.addEventListener("input", () => {
+    if (input.type !== "radio") calculate();
+  });
+  input.addEventListener("change", calculate);
+});
+
+updateTargetLabel();
+updateManualRoundState();
+calculate();
+</script>
+</body>
+</html>
