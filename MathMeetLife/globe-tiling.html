@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rotated Land / Sea Grid</title>
+<link rel="stylesheet" href="assets/mml-toy.css">
+<link rel="stylesheet" href="assets/widgets/graph-lab.css">
+<link rel="stylesheet" href="assets/widgets/rotated-land-grid.css">
+</head>
+<body class="mml-widget mml-graph-app">
+<div class="app mml-graph-shell">
+  <aside class="mml-graph-sidebar">
+    <div class="eyebrow">Spherical grid classifier</div>
+    <h1>Rotated Land / Sea Grid</h1>
+    <p>Define a variable latitude grid around any spherical axis. The globe is the main view; the flat map is the calculation surface.</p>
+
+    <h2>Grid axis</h2>
+    <div class="row three">
+      <div class="field">
+        <label for="northLat">North latitude</label>
+        <input id="northLat" type="number" min="-90" max="90" step="0.1" value="20">
+      </div>
+      <div class="field">
+        <label for="northLon">North longitude</label>
+        <input id="northLon" type="number" min="-180" max="180" step="0.1" value="-30">
+      </div>
+      <div class="field">
+        <label for="roll">Roll</label>
+        <input id="roll" type="number" min="-180" max="180" step="0.1" value="0">
+      </div>
+    </div>
+    <div id="southPoleReadout" class="pole-readout">South pole: 20.0°S, 150.0°E</div>
+    <div class="buttons">
+      <button id="applyRotation" class="primary">Apply axis</button>
+      <button id="standardAxis">Standard poles</button>
+      <button id="pacificAxis">Pacific / Atlantic</button>
+      <button id="pickPole">Pick north pole on globe</button>
+    </div>
+    <p class="help">The roll rotates longitude zero around the selected axis. Picking a pole uses the next click on the globe.</p>
+
+    <h2>Layout generator</h2>
+    <div class="row">
+      <div class="field">
+        <label for="rowCount">Rows</label>
+        <input id="rowCount" type="number" min="1" max="180" value="24">
+      </div>
+      <div class="field">
+        <label for="equatorColumns">Equator columns</label>
+        <input id="equatorColumns" type="number" min="1" max="720" value="48">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="minimumColumns">Minimum columns</label>
+        <input id="minimumColumns" type="number" min="1" max="100" value="1">
+      </div>
+      <div class="field">
+        <label for="roundingMode">Rounding</label>
+        <select id="roundingMode">
+          <option value="round">Nearest</option>
+          <option value="ceil">Up</option>
+          <option value="floor">Down</option>
+        </select>
+      </div>
+    </div>
+    <div class="buttons">
+      <button id="generateLayout" class="primary">Generate layout</button>
+      <button data-preset="15">15 rows</button>
+      <button data-preset="19">19 rows</button>
+      <button data-preset="35">35 rows</button>
+    </div>
+
+    <div class="field">
+      <label for="columnsInput">Columns per row, north to south</label>
+      <textarea id="columnsInput" spellcheck="false"></textarea>
+      <p class="help">Comma, space, semicolon, or line separated.</p>
+    </div>
+    <button id="applyLayout" class="primary">Apply custom layout</button>
+
+    <h2>Classification</h2>
+    <div class="field">
+      <div class="label-row"><label for="seaThreshold">Sea maximum</label><span id="seaValue" class="value">25%</span></div>
+      <input id="seaThreshold" type="range" min="0" max="99" value="25">
+    </div>
+    <div class="field">
+      <div class="label-row"><label for="landThreshold">Land minimum</label><span id="landValue" class="value">75%</span></div>
+      <input id="landThreshold" type="range" min="1" max="100" value="75">
+    </div>
+    <div class="checks">
+      <label><input id="preserveSmallLand" type="checkbox" checked> Preserve small land cells as mixed</label>
+    </div>
+    <div class="field">
+      <div class="label-row"><label for="minimumLandPresence">Minimum visible land</label><span id="minimumLandValue" class="value">2.0%</span></div>
+      <input id="minimumLandPresence" type="range" min="0.1" max="25" step="0.1" value="2">
+      <p class="help">A cell below the sea maximum is promoted to mixed when it contains at least this much land. This helps retain islands at coarse resolutions.</p>
+    </div>
+    <div class="field">
+      <div class="label-row"><label for="cellOpacity">Cell opacity</label><span id="opacityValue" class="value">72%</span></div>
+      <input id="cellOpacity" type="range" min="10" max="100" value="72">
+    </div>
+    <div class="checks">
+      <label><input id="showBackground" type="checkbox" checked> Show land texture</label>
+      <label><input id="showGrid" type="checkbox" checked> Show grid lines</label>
+      <label><input id="showPoles" type="checkbox" checked> Show rotated poles</label>
+      <label><input id="showLabels" type="checkbox"> Show flat-view cell IDs</label>
+    </div>
+
+    <h2>Export</h2>
+    <div class="buttons">
+      <button id="exportJson">JSON</button>
+      <button id="exportCsv">CSV</button>
+      <button id="exportSvg">Flat SVG</button>
+      <button id="exportGlobe">Globe PNG</button>
+    </div>
+    <div id="status" class="status">Loading embedded land mask…</div>
+  </aside>
+
+  <main class="mml-graph-viewport">
+    <div class="toolbar">
+      <div class="metrics stats">
+        <div class="metric stat"><b id="metricRows">—</b><span>rows</span></div>
+        <div class="metric stat"><b id="metricCells">—</b><span>cells</span></div>
+        <div class="metric stat"><b id="metricLand">—</b><span>land cells</span></div>
+        <div class="metric stat"><b id="metricMixed">—</b><span>mixed cells</span></div>
+        <div class="metric stat"><b id="metricSea">—</b><span>sea cells</span></div>
+      </div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--sea)"></i>Sea</span>
+        <span><i class="swatch" style="background:var(--mixed)"></i>Mixed</span>
+        <span><i class="swatch" style="background:var(--land)"></i>Land</span>
+      </div>
+    </div>
+
+    <div class="view-switcher mml-tabs" id="viewSwitcher" role="group" aria-label="Map view">
+      <button class="mml-tab" type="button" data-view-mode="globe" aria-pressed="true">Globe</button>
+      <button class="mml-tab" type="button" data-view-mode="analysis" aria-pressed="false">Grid editor</button>
+      <button class="mml-tab" type="button" data-view-mode="stacked" aria-pressed="false">Both stacked</button>
+    </div>
+
+    <div class="views">
+      <section class="view-card mml-panel" id="globeView">
+        <div class="view-head">
+          <div>
+            <h3>Orthographic globe</h3>
+            <p>Drag to rotate. Cell geometry is evaluated on the sphere.</p>
+          </div>
+          <div class="view-actions">
+            <button id="centerAxis">Center north pole</button>
+            <button id="resetView">Reset view</button>
+          </div>
+        </div>
+        <div class="globe-wrap">
+          <canvas id="globeCanvas" width="520" height="520" aria-label="Interactive orthographic globe"></canvas>
+          <div class="globe-note">Drag: rotate view · Click: select cell</div>
+        </div>
+      </section>
+
+      <section class="view-card mml-panel" id="analysisView" hidden>
+        <div class="view-head">
+          <div>
+            <h3>Rotated grid editor</h3>
+            <p>Internal equirectangular calculation surface relative to the selected poles.</p>
+          </div>
+        </div>
+        <div class="analysis-wrap">
+          <canvas id="analysisCanvas" width="1080" height="540"></canvas>
+          <svg id="analysisSvg" viewBox="0 0 360 180" preserveAspectRatio="none" aria-label="Rotated equirectangular grid editor">
+            <g id="analysisGrid"></g>
+            <g id="analysisLabels" pointer-events="none"></g>
+          </svg>
+        </div>
+      </section>
+    </div>
+
+    <div id="details" class="details mml-panel">Hover over either view to inspect a cell. Click a cell to pin its details.</div>
+  </main>
+</div>
+<div id="tooltip"></div>
+<canvas id="sourceCanvas" hidden></canvas>
+<script>
+(() => {
+  'use strict';
+
+  const SOURCE_URI = './assets/images/land-mask-2160x1080.png';
+  const NS = 'http://www.w3.org/2000/svg';
+  const DEG = Math.PI / 180;
+  const RAD = 180 / Math.PI;
+  const ANALYSIS_WIDTH = 1080;
+  const ANALYSIS_HEIGHT = 540;
+  const GLOBE_SIZE = 520;
+  const COLORS = {
+    sea: '#3979a8',
+    mixed: '#858b91',
+    land: '#4f8a3c'
+  };
+  const RGB = {
+    sea: [57, 121, 168],
+    mixed: [133, 139, 145],
+    land: [79, 138, 60],
+    waterBase: [219, 237, 247],
+    landBase: [205, 225, 190],
+    neutralBase: [229, 235, 239]
+  };
+
+  const ids = [
+    'northLat','northLon','roll','southPoleReadout','applyRotation','standardAxis','pacificAxis','pickPole',
+    'rowCount','equatorColumns','minimumColumns','roundingMode','generateLayout','columnsInput','applyLayout',
+    'seaThreshold','landThreshold','seaValue','landValue','preserveSmallLand','minimumLandPresence','minimumLandValue','cellOpacity','opacityValue',
+    'showBackground','showGrid','showPoles','showLabels','exportJson','exportCsv','exportSvg','exportGlobe',
+    'status','metricRows','metricCells','metricLand','metricMixed','metricSea','details','tooltip',
+    'globeCanvas','analysisCanvas','analysisSvg','analysisGrid','analysisLabels','sourceCanvas','centerAxis','resetView',
+    'viewSwitcher','globeView','analysisView'
+  ];
+  const els = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+  const state = {
+    source: null,
+    rotatedMask: null,
+    tables: null,
+    frame: null,
+    rotation: { northLon: -30, northLat: 20, roll: 0 },
+    layout: [],
+    cells: [],
+    rowStarts: [],
+    cellMap: new Map(),
+    analysisRectMap: new Map(),
+    renderedHoverId: null,
+    renderedSelectedId: null,
+    thresholds: { sea: 0.25, land: 0.75 },
+    smallLand: { enabled: true, minimum: 0.02 },
+    viewMode: 'globe',
+    opacity: 0.72,
+    selectedCellId: null,
+    hoverCellId: null,
+    view: { lon: -20, lat: 12 },
+    pickPoleMode: false,
+    busy: false,
+    globeRenderPending: false
+  };
+
+  function setStatus(message, type = '') {
+    els.status.textContent = message;
+    els.status.className = `status${type ? ` ${type}` : ''}`;
+  }
+
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+  function wrapLon(value) { return ((value + 180) % 360 + 360) % 360 - 180; }
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function cross(a, b) {
+    return [
+      a[1] * b[2] - a[2] * b[1],
+      a[2] * b[0] - a[0] * b[2],
+      a[0] * b[1] - a[1] * b[0]
+    ];
+  }
+  function normalize(v) {
+    const length = Math.hypot(v[0], v[1], v[2]) || 1;
+    return [v[0] / length, v[1] / length, v[2] / length];
+  }
+  function lonLatToVector(longitude, latitude) {
+    const lon = longitude * DEG;
+    const lat = latitude * DEG;
+    const cosLat = Math.cos(lat);
+    return [cosLat * Math.cos(lon), cosLat * Math.sin(lon), Math.sin(lat)];
+  }
+  function vectorToLonLat(v) {
+    return {
+      longitude: Math.atan2(v[1], v[0]) * RAD,
+      latitude: Math.asin(clamp(v[2], -1, 1)) * RAD
+    };
+  }
+  function formatLat(value) { return `${Math.abs(value).toFixed(2)}°${value >= 0 ? 'N' : 'S'}`; }
+  function formatLon(value) { return `${Math.abs(wrapLon(value)).toFixed(2)}°${wrapLon(value) >= 0 ? 'E' : 'W'}`; }
+
+  function createFrame(northLongitude, northLatitude, rollDegrees) {
+    const zAxis = normalize(lonLatToVector(northLongitude, northLatitude));
+    let reference = [1, 0, 0];
+    if (Math.abs(dot(reference, zAxis)) > 0.95) reference = [0, 1, 0];
+    const projection = dot(reference, zAxis);
+    let xAxis = normalize([
+      reference[0] - zAxis[0] * projection,
+      reference[1] - zAxis[1] * projection,
+      reference[2] - zAxis[2] * projection
+    ]);
+    let yAxis = normalize(cross(zAxis, xAxis));
+    const roll = rollDegrees * DEG;
+    const c = Math.cos(roll);
+    const s = Math.sin(roll);
+    const rolledX = [
+      xAxis[0] * c + yAxis[0] * s,
+      xAxis[1] * c + yAxis[1] * s,
+      xAxis[2] * c + yAxis[2] * s
+    ];
+    const rolledY = [
+      -xAxis[0] * s + yAxis[0] * c,
+      -xAxis[1] * s + yAxis[1] * c,
+      -xAxis[2] * s + yAxis[2] * c
+    ];
+    return { xAxis: rolledX, yAxis: rolledY, zAxis };
+  }
+
+  function rotatedVectorToOriginal(v, frame = state.frame) {
+    return [
+      frame.xAxis[0] * v[0] + frame.yAxis[0] * v[1] + frame.zAxis[0] * v[2],
+      frame.xAxis[1] * v[0] + frame.yAxis[1] * v[1] + frame.zAxis[1] * v[2],
+      frame.xAxis[2] * v[0] + frame.yAxis[2] * v[1] + frame.zAxis[2] * v[2]
+    ];
+  }
+
+  function rotatedToOriginal(longitude, latitude, frame = state.frame) {
+    return vectorToLonLat(rotatedVectorToOriginal(lonLatToVector(longitude, latitude), frame));
+  }
+
+  function originalVectorToRotated(v, frame = state.frame) {
+    return [dot(v, frame.xAxis), dot(v, frame.yAxis), dot(v, frame.zAxis)];
+  }
+
+  function updateSouthPoleReadout() {
+    const northLat = Number(els.northLat.value) || 0;
+    const northLon = wrapLon(Number(els.northLon.value) || 0);
+    els.southPoleReadout.textContent = `South pole: ${formatLat(-northLat)}, ${formatLon(northLon + 180)}`;
+  }
+
+  function generateColumnCounts(rowCount, equatorColumns, minimumColumns, roundingMode) {
+    const rounding = Math[roundingMode] || Math.round;
+    const counts = [];
+    for (let row = 0; row < rowCount; row++) {
+      const centerLatitude = 90 - (row + 0.5) * (180 / rowCount);
+      const raw = equatorColumns * Math.cos(centerLatitude * DEG);
+      counts.push(Math.max(minimumColumns, rounding(raw)));
+    }
+    return counts;
+  }
+
+  function createGrid(columnsPerRow) {
+    const rowCount = columnsPerRow.length;
+    const latitudeStep = 180 / rowCount;
+    const cells = [];
+    const rowStarts = [];
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+      rowStarts.push(cells.length);
+      const latMax = 90 - rowIndex * latitudeStep;
+      const latMin = latMax - latitudeStep;
+      const columnCount = columnsPerRow[rowIndex];
+      const longitudeStep = 360 / columnCount;
+      for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+        const lonMin = -180 + columnIndex * longitudeStep;
+        const lonMax = lonMin + longitudeStep;
+        cells.push({
+          id: `R${String(rowIndex + 1).padStart(2, '0')}C${String(columnIndex + 1).padStart(3, '0')}`,
+          row: rowIndex + 1,
+          column: columnIndex + 1,
+          rowIndex,
+          columnIndex,
+          columnCount,
+          latMin,
+          latMax,
+          lonMin,
+          lonMax,
+          landFraction: 0,
+          category: 'sea'
+        });
+      }
+    }
+    return { cells, rowStarts };
+  }
+
+  function parseLayout(text) {
+    const tokens = text.trim().split(/[\s,;]+/).filter(Boolean);
+    if (!tokens.length) throw new Error('Enter at least one column count.');
+    const values = tokens.map(Number);
+    if (values.some(value => !Number.isInteger(value) || value < 1 || value > 2000)) {
+      throw new Error('Column counts must be whole numbers from 1 to 2000.');
+    }
+    if (values.length > 360) throw new Error('The first pass supports up to 360 rows.');
+    if (values.reduce((a, b) => a + b, 0) > 50000) throw new Error('This layout exceeds the 50,000-cell safety limit.');
+    return values;
+  }
+
+  function generateFromInputs(rowOverride = null) {
+    const rows = rowOverride ?? Number(els.rowCount.value);
+    const equator = Number(els.equatorColumns.value);
+    const minimum = Number(els.minimumColumns.value);
+    if (!Number.isInteger(rows) || rows < 1 || rows > 180) throw new Error('Rows must be from 1 to 180.');
+    if (!Number.isInteger(equator) || equator < 1 || equator > 720) throw new Error('Equator columns must be from 1 to 720.');
+    if (!Number.isInteger(minimum) || minimum < 1 || minimum > equator) throw new Error('Minimum columns must not exceed equator columns.');
+    els.rowCount.value = String(rows);
+    return generateColumnCounts(rows, equator, minimum, els.roundingMode.value);
+  }
+
+  function sampleSourceBrightness(longitude, latitude) {
+    const source = state.source;
+    let x = Math.floor(((wrapLon(longitude) + 180) / 360) * source.width);
+    let y = Math.floor(((90 - clamp(latitude, -90, 90)) / 180) * source.height);
+    x = ((x % source.width) + source.width) % source.width;
+    y = clamp(y, 0, source.height - 1);
+    return source.data[(y * source.width + x) * 4];
+  }
+
+  const analysisTrig = (() => {
+    const lonCos = new Float32Array(ANALYSIS_WIDTH);
+    const lonSin = new Float32Array(ANALYSIS_WIDTH);
+    const latCos = new Float32Array(ANALYSIS_HEIGHT);
+    const latSin = new Float32Array(ANALYSIS_HEIGHT);
+    for (let x = 0; x < ANALYSIS_WIDTH; x++) {
+      const lon = (-180 + ((x + 0.5) / ANALYSIS_WIDTH) * 360) * DEG;
+      lonCos[x] = Math.cos(lon);
+      lonSin[x] = Math.sin(lon);
+    }
+    for (let y = 0; y < ANALYSIS_HEIGHT; y++) {
+      const lat = (90 - ((y + 0.5) / ANALYSIS_HEIGHT) * 180) * DEG;
+      latCos[y] = Math.cos(lat);
+      latSin[y] = Math.sin(lat);
+    }
+    return { lonCos, lonSin, latCos, latSin };
+  })();
+
+  function generateRotatedMask() {
+    const mask = new Uint8ClampedArray(ANALYSIS_WIDTH * ANALYSIS_HEIGHT);
+    const frame = state.frame;
+    const { lonCos, lonSin, latCos, latSin } = analysisTrig;
+    for (let y = 0; y < ANALYSIS_HEIGHT; y++) {
+      const clat = latCos[y];
+      const vz = latSin[y];
+      for (let x = 0; x < ANALYSIS_WIDTH; x++) {
+        const vx = clat * lonCos[x];
+        const vy = clat * lonSin[x];
+        const ox = frame.xAxis[0] * vx + frame.yAxis[0] * vy + frame.zAxis[0] * vz;
+        const oy = frame.xAxis[1] * vx + frame.yAxis[1] * vy + frame.zAxis[1] * vz;
+        const oz = frame.xAxis[2] * vx + frame.yAxis[2] * vy + frame.zAxis[2] * vz;
+        const lon = Math.atan2(oy, ox) * RAD;
+        const lat = Math.asin(clamp(oz, -1, 1)) * RAD;
+        mask[y * ANALYSIS_WIDTH + x] = sampleSourceBrightness(lon, lat);
+      }
+    }
+    state.rotatedMask = mask;
+  }
+
+  function buildAreaTables(mask) {
+    const stride = ANALYSIS_WIDTH + 1;
+    const size = (ANALYSIS_WIDTH + 1) * (ANALYSIS_HEIGHT + 1);
+    const landTable = new Float32Array(size);
+    const totalTable = new Float32Array(size);
+    for (let y = 1; y <= ANALYSIS_HEIGHT; y++) {
+      const latitude = 90 - ((y - 0.5) / ANALYSIS_HEIGHT) * 180;
+      const weight = Math.max(0, Math.cos(latitude * DEG));
+      let rowLand = 0;
+      let rowTotal = 0;
+      const sourceRow = (y - 1) * ANALYSIS_WIDTH;
+      for (let x = 1; x <= ANALYSIS_WIDTH; x++) {
+        rowLand += (mask[sourceRow + x - 1] / 255) * weight;
+        rowTotal += weight;
+        const index = y * stride + x;
+        landTable[index] = landTable[index - stride] + rowLand;
+        totalTable[index] = totalTable[index - stride] + rowTotal;
+      }
+    }
+    state.tables = { width: ANALYSIS_WIDTH, height: ANALYSIS_HEIGHT, stride, landTable, totalTable };
+  }
+
+  function rectangleSum(table, stride, x0, y0, x1, y1) {
+    return table[y1 * stride + x1] - table[y0 * stride + x1] - table[y1 * stride + x0] + table[y0 * stride + x0];
+  }
+
+  function getLandFraction(cell) {
+    const { width, height, stride, landTable, totalTable } = state.tables;
+    const x0 = clamp(Math.floor(((cell.lonMin + 180) / 360) * width), 0, width);
+    const x1 = clamp(Math.ceil(((cell.lonMax + 180) / 360) * width), 0, width);
+    const y0 = clamp(Math.floor(((90 - cell.latMax) / 180) * height), 0, height);
+    const y1 = clamp(Math.ceil(((90 - cell.latMin) / 180) * height), 0, height);
+    const land = rectangleSum(landTable, stride, x0, y0, x1, y1);
+    const total = rectangleSum(totalTable, stride, x0, y0, x1, y1);
+    return total > 0 ? clamp(land / total, 0, 1) : 0;
+  }
+
+  function classify(fraction) {
+    if (fraction <= state.thresholds.sea) {
+      const preservedSmallLand = state.smallLand.enabled && fraction >= state.smallLand.minimum;
+      return { category: preservedSmallLand ? 'mixed' : 'sea', preservedSmallLand };
+    }
+    if (fraction >= state.thresholds.land) return { category: 'land', preservedSmallLand: false };
+    return { category: 'mixed', preservedSmallLand: false };
+  }
+
+  function applyClassification(cell) {
+    const result = classify(cell.landFraction);
+    cell.category = result.category;
+    cell.preservedSmallLand = result.preservedSmallLand;
+  }
+
+  function rebuildCells(columnsPerRow = state.layout) {
+    if (!state.tables || !columnsPerRow.length) return;
+    state.layout = [...columnsPerRow];
+    const built = createGrid(columnsPerRow);
+    state.cells = built.cells;
+    state.rowStarts = built.rowStarts;
+    state.cellMap = new Map(state.cells.map(cell => [cell.id, cell]));
+    for (const cell of state.cells) {
+      cell.landFraction = getLandFraction(cell);
+      applyClassification(cell);
+    }
+    state.selectedCellId = null;
+    state.hoverCellId = null;
+    els.columnsInput.value = columnsPerRow.join(', ');
+    els.rowCount.value = String(columnsPerRow.length);
+    renderAnalysisGrid();
+    updateMetrics();
+    scheduleGlobeRender();
+  }
+
+  function reclassifyCells() {
+    for (const cell of state.cells) applyClassification(cell);
+    for (const rect of els.analysisGrid.querySelectorAll('rect')) {
+      const cell = cellById(rect.dataset.cellId);
+      if (cell) rect.setAttribute('fill', COLORS[cell.category]);
+    }
+    updateMetrics();
+    scheduleGlobeRender();
+  }
+
+  function cellById(id) { return state.cellMap.get(id) || null; }
+
+  function cellFromRotated(longitude, latitude) {
+    if (!state.layout.length) return null;
+    const rows = state.layout.length;
+    const rowIndex = clamp(Math.floor(((90 - clamp(latitude, -90, 90)) / 180) * rows), 0, rows - 1);
+    const columns = state.layout[rowIndex];
+    const normalizedLon = ((longitude + 180) % 360 + 360) % 360;
+    const columnIndex = clamp(Math.floor((normalizedLon / 360) * columns), 0, columns - 1);
+    return state.cells[state.rowStarts[rowIndex] + columnIndex] || null;
+  }
+
+  function cellFromOriginalVector(vector) {
+    const rotated = originalVectorToRotated(vector);
+    const lon = Math.atan2(rotated[1], rotated[0]) * RAD;
+    const lat = Math.asin(clamp(rotated[2], -1, 1)) * RAD;
+    return cellFromRotated(lon, lat);
+  }
+
+  function mixRgb(a, b, amount) {
+    return [
+      Math.round(a[0] + (b[0] - a[0]) * amount),
+      Math.round(a[1] + (b[1] - a[1]) * amount),
+      Math.round(a[2] + (b[2] - a[2]) * amount)
+    ];
+  }
+
+  function drawAnalysisBackground() {
+    const canvas = els.analysisCanvas;
+    const ctx = canvas.getContext('2d');
+    const image = ctx.createImageData(ANALYSIS_WIDTH, ANALYSIS_HEIGHT);
+    for (let i = 0; i < state.rotatedMask.length; i++) {
+      const land = state.rotatedMask[i] / 255;
+      const color = mixRgb(RGB.waterBase, RGB.landBase, land);
+      const p = i * 4;
+      image.data[p] = color[0];
+      image.data[p + 1] = color[1];
+      image.data[p + 2] = color[2];
+      image.data[p + 3] = 255;
+    }
+    ctx.putImageData(image, 0, 0);
+    canvas.style.visibility = els.showBackground.checked ? 'visible' : 'hidden';
+  }
+
+  function renderAnalysisGrid() {
+    els.analysisGrid.replaceChildren();
+    state.analysisRectMap = new Map();
+    state.renderedHoverId = null;
+    state.renderedSelectedId = null;
+    const fragment = document.createDocumentFragment();
+    for (const cell of state.cells) {
+      const rect = document.createElementNS(NS, 'rect');
+      rect.setAttribute('x', String(cell.lonMin + 180));
+      rect.setAttribute('y', String(90 - cell.latMax));
+      rect.setAttribute('width', String(cell.lonMax - cell.lonMin));
+      rect.setAttribute('height', String(cell.latMax - cell.latMin));
+      rect.setAttribute('fill', COLORS[cell.category]);
+      rect.setAttribute('fill-opacity', String(state.opacity));
+      rect.setAttribute('stroke', '#1f2b33');
+      rect.setAttribute('stroke-width', els.showGrid.checked ? '0.18' : '0');
+      rect.setAttribute('vector-effect', 'non-scaling-stroke');
+      rect.setAttribute('tabindex', '0');
+      rect.setAttribute('role', 'button');
+      rect.dataset.cellId = cell.id;
+      rect.setAttribute('aria-label', `${cell.id}, ${cell.category}, ${(cell.landFraction * 100).toFixed(1)} percent land`);
+      state.analysisRectMap.set(cell.id, rect);
+      rect.addEventListener('pointermove', event => inspectCell(cell, event, false));
+      rect.addEventListener('pointerleave', clearHover);
+      rect.addEventListener('click', () => selectCell(cell));
+      rect.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectCell(cell);
+        }
+      });
+      fragment.appendChild(rect);
+    }
+    els.analysisGrid.appendChild(fragment);
+    renderAnalysisLabels();
+    syncCellClasses();
+  }
+
+  function renderAnalysisLabels() {
+    els.analysisLabels.replaceChildren();
+    if (!els.showLabels.checked || state.cells.length > 1200) return;
+    const fragment = document.createDocumentFragment();
+    for (const cell of state.cells) {
+      const width = cell.lonMax - cell.lonMin;
+      const height = cell.latMax - cell.latMin;
+      if (width < 4 || height < 3) continue;
+      const text = document.createElementNS(NS, 'text');
+      text.setAttribute('x', String(cell.lonMin + 180 + width / 2));
+      text.setAttribute('y', String(90 - cell.latMax + height / 2));
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('dominant-baseline', 'central');
+      text.setAttribute('font-size', String(Math.min(2.5, width * 0.18, height * 0.35)));
+      text.setAttribute('fill', '#17202a');
+      text.setAttribute('opacity', '0.78');
+      text.textContent = cell.id;
+      fragment.appendChild(text);
+    }
+    els.analysisLabels.appendChild(fragment);
+  }
+
+  function updateMetrics() {
+    const counts = { land: 0, mixed: 0, sea: 0 };
+    for (const cell of state.cells) counts[cell.category]++;
+    els.metricRows.textContent = state.layout.length.toLocaleString();
+    els.metricCells.textContent = state.cells.length.toLocaleString();
+    els.metricLand.textContent = counts.land.toLocaleString();
+    els.metricMixed.textContent = counts.mixed.toLocaleString();
+    els.metricSea.textContent = counts.sea.toLocaleString();
+  }
+
+  function detailHtml(cell, pinned = false) {
+    const center = rotatedToOriginal((cell.lonMin + cell.lonMax) / 2, (cell.latMin + cell.latMax) / 2);
+    const preservationNote = cell.preservedSmallLand ? ' — small-land preservation applied' : '';
+    return `<b>${cell.id}</b>${pinned ? ' (pinned)' : ''} — <b>${cell.category}</b>, ${(cell.landFraction * 100).toFixed(2)}% land${preservationNote}<br>` +
+      `Rotated row ${cell.row}, column ${cell.column} of ${cell.columnCount}; ` +
+      `lat ${cell.latMin.toFixed(3)}° to ${cell.latMax.toFixed(3)}°, lon ${cell.lonMin.toFixed(3)}° to ${cell.lonMax.toFixed(3)}°<br>` +
+      `Cell centre in ordinary coordinates: ${formatLat(center.latitude)}, ${formatLon(center.longitude)}`;
+  }
+
+  function inspectCell(cell, event, pinned) {
+    state.hoverCellId = cell.id;
+    els.tooltip.style.display = 'block';
+    els.tooltip.style.left = `${event.clientX + 12}px`;
+    els.tooltip.style.top = `${event.clientY + 12}px`;
+    els.tooltip.innerHTML = detailHtml(cell, pinned);
+    if (!state.selectedCellId) els.details.innerHTML = detailHtml(cell, false);
+    syncCellClasses();
+  }
+
+  function clearHover() {
+    state.hoverCellId = null;
+    els.tooltip.style.display = 'none';
+    if (!state.selectedCellId) els.details.textContent = 'Hover over either view to inspect a cell. Click a cell to pin its details.';
+    syncCellClasses();
+  }
+
+  function selectCell(cell) {
+    state.selectedCellId = cell.id;
+    els.details.innerHTML = detailHtml(cell, true);
+    syncCellClasses();
+    scheduleGlobeRender();
+  }
+
+  function syncCellClasses() {
+    const affected = new Set([
+      state.renderedHoverId,
+      state.renderedSelectedId,
+      state.hoverCellId,
+      state.selectedCellId
+    ]);
+    for (const id of affected) {
+      if (!id) continue;
+      const rect = state.analysisRectMap.get(id);
+      if (!rect) continue;
+      rect.classList.toggle('hovered', id === state.hoverCellId);
+      rect.classList.toggle('selected', id === state.selectedCellId);
+    }
+    state.renderedHoverId = state.hoverCellId;
+    state.renderedSelectedId = state.selectedCellId;
+  }
+
+  function createViewBasis() {
+    const lon = state.view.lon * DEG;
+    const lat = state.view.lat * DEG;
+    const center = lonLatToVector(state.view.lon, state.view.lat);
+    const east = [-Math.sin(lon), Math.cos(lon), 0];
+    const north = normalize(cross(center, east));
+    return { center, east, north };
+  }
+
+  const globeGeometry = (() => {
+    const center = GLOBE_SIZE / 2;
+    const radius = GLOBE_SIZE * 0.466;
+    const indices = [];
+    const east = [];
+    const north = [];
+    const depth = [];
+    for (let y = 0; y < GLOBE_SIZE; y++) {
+      for (let x = 0; x < GLOBE_SIZE; x++) {
+        const u = (x + 0.5 - center) / radius;
+        const v = (y + 0.5 - center) / radius;
+        const r2 = u * u + v * v;
+        if (r2 <= 1) {
+          indices.push(y * GLOBE_SIZE + x);
+          east.push(u);
+          north.push(-v);
+          depth.push(Math.sqrt(Math.max(0, 1 - r2)));
+        }
+      }
+    }
+    return {
+      center,
+      radius,
+      indices: Uint32Array.from(indices),
+      east: Float32Array.from(east),
+      north: Float32Array.from(north),
+      depth: Float32Array.from(depth)
+    };
+  })();
+
+  function renderGlobe() {
+    state.globeRenderPending = false;
+    if (!state.source || !state.cells.length) return;
+    const canvas = els.globeCanvas;
+    const ctx = canvas.getContext('2d');
+    const image = ctx.createImageData(GLOBE_SIZE, GLOBE_SIZE);
+    for (let i = 0; i < image.data.length; i += 4) {
+      image.data[i] = 232;
+      image.data[i + 1] = 238;
+      image.data[i + 2] = 242;
+      image.data[i + 3] = 255;
+    }
+    const view = createViewBasis();
+    const geom = globeGeometry;
+    const alpha = state.opacity * 0.82;
+    for (let k = 0; k < geom.indices.length; k++) {
+      const u = geom.east[k];
+      const n = geom.north[k];
+      const d = geom.depth[k];
+      const vector = [
+        view.east[0] * u + view.north[0] * n + view.center[0] * d,
+        view.east[1] * u + view.north[1] * n + view.center[1] * d,
+        view.east[2] * u + view.north[2] * n + view.center[2] * d
+      ];
+      const ll = vectorToLonLat(vector);
+      const brightness = els.showBackground.checked ? sampleSourceBrightness(ll.longitude, ll.latitude) / 255 : 0.5;
+      const base = els.showBackground.checked ? mixRgb(RGB.waterBase, RGB.landBase, brightness) : RGB.neutralBase;
+      const cell = cellFromOriginalVector(vector);
+      let color = mixRgb(base, RGB[cell.category], alpha);
+      if (cell.id === state.selectedCellId) color = mixRgb(color, [255, 255, 255], 0.24);
+      const p = geom.indices[k] * 4;
+      image.data[p] = color[0];
+      image.data[p + 1] = color[1];
+      image.data[p + 2] = color[2];
+      image.data[p + 3] = 255;
+    }
+    ctx.putImageData(image, 0, 0);
+    drawGlobeOverlay(ctx, view);
+  }
+
+  function scheduleGlobeRender() {
+    if (state.globeRenderPending) return;
+    state.globeRenderPending = true;
+    requestAnimationFrame(renderGlobe);
+  }
+
+  function projectVector(vector, view) {
+    const depth = dot(vector, view.center);
+    if (depth < 0) return null;
+    return {
+      x: globeGeometry.center + globeGeometry.radius * dot(vector, view.east),
+      y: globeGeometry.center - globeGeometry.radius * dot(vector, view.north),
+      depth
+    };
+  }
+
+  function drawSampledLine(ctx, view, points, strokeStyle, lineWidth) {
+    ctx.beginPath();
+    let drawing = false;
+    for (const vector of points) {
+      const p = projectVector(vector, view);
+      if (!p) {
+        drawing = false;
+        continue;
+      }
+      if (!drawing) {
+        ctx.moveTo(p.x, p.y);
+        drawing = true;
+      } else {
+        ctx.lineTo(p.x, p.y);
+      }
+    }
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+
+  function rotatedPointVector(longitude, latitude) {
+    return rotatedVectorToOriginal(lonLatToVector(longitude, latitude));
+  }
+
+  function drawGlobeOverlay(ctx, view) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(globeGeometry.center, globeGeometry.center, globeGeometry.radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    if (els.showGrid.checked) {
+      const rows = state.layout.length;
+      const latStep = 180 / rows;
+      for (let row = 1; row < rows; row++) {
+        const latitude = 90 - row * latStep;
+        const points = [];
+        for (let lon = -180; lon <= 180; lon += 4) points.push(rotatedPointVector(lon, latitude));
+        drawSampledLine(ctx, view, points, 'rgba(22,31,38,.58)', 0.65);
+      }
+      for (let row = 0; row < rows; row++) {
+        const columns = state.layout[row];
+        const latMax = 90 - row * latStep;
+        const latMin = latMax - latStep;
+        const lonStep = 360 / columns;
+        const segments = Math.max(5, Math.ceil(latStep / 2));
+        for (let column = 0; column < columns; column++) {
+          const longitude = -180 + column * lonStep;
+          const points = [];
+          for (let i = 0; i <= segments; i++) {
+            points.push(rotatedPointVector(longitude, latMin + (latMax - latMin) * (i / segments)));
+          }
+          drawSampledLine(ctx, view, points, 'rgba(22,31,38,.54)', 0.62);
+        }
+      }
+    }
+
+    if (state.selectedCellId) {
+      const cell = cellById(state.selectedCellId);
+      if (cell) {
+        const points = [];
+        const steps = 30;
+        for (let i = 0; i <= steps; i++) points.push(rotatedPointVector(cell.lonMin + (cell.lonMax - cell.lonMin) * i / steps, cell.latMax));
+        for (let i = 1; i <= steps; i++) points.push(rotatedPointVector(cell.lonMax, cell.latMax - (cell.latMax - cell.latMin) * i / steps));
+        for (let i = 1; i <= steps; i++) points.push(rotatedPointVector(cell.lonMax - (cell.lonMax - cell.lonMin) * i / steps, cell.latMin));
+        for (let i = 1; i <= steps; i++) points.push(rotatedPointVector(cell.lonMin, cell.latMin + (cell.latMax - cell.latMin) * i / steps));
+        drawSampledLine(ctx, view, points, 'rgba(255,255,255,.98)', 3.4);
+        drawSampledLine(ctx, view, points, 'rgba(15,23,28,.96)', 1.45);
+      }
+    }
+
+    if (els.showPoles.checked) {
+      drawPoleMarker(ctx, view, state.frame.zAxis, '#fff', '#b22525', 'N');
+      drawPoleMarker(ctx, view, state.frame.zAxis.map(value => -value), '#fff', '#285f82', 'S');
+    }
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(globeGeometry.center, globeGeometry.center, globeGeometry.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(28,42,51,.72)';
+    ctx.lineWidth = 1.7;
+    ctx.stroke();
+  }
+
+  function drawPoleMarker(ctx, view, vector, ring, fill, label) {
+    const point = projectVector(vector, view);
+    if (!point) return;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 6.5, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = ring;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, point.x, point.y + 0.5);
+  }
+
+  function globeEventVector(event) {
+    const rect = els.globeCanvas.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * GLOBE_SIZE;
+    const y = ((event.clientY - rect.top) / rect.height) * GLOBE_SIZE;
+    const u = (x - globeGeometry.center) / globeGeometry.radius;
+    const n = -(y - globeGeometry.center) / globeGeometry.radius;
+    const r2 = u * u + n * n;
+    if (r2 > 1) return null;
+    const d = Math.sqrt(Math.max(0, 1 - r2));
+    const view = createViewBasis();
+    return normalize([
+      view.east[0] * u + view.north[0] * n + view.center[0] * d,
+      view.east[1] * u + view.north[1] * n + view.center[1] * d,
+      view.east[2] * u + view.north[2] * n + view.center[2] * d
+    ]);
+  }
+
+  function applyRotationFromControls() {
+    const northLat = Number(els.northLat.value);
+    const northLon = Number(els.northLon.value);
+    const roll = Number(els.roll.value);
+    if (![northLat, northLon, roll].every(Number.isFinite)) throw new Error('Pole and roll values must be numeric.');
+    if (northLat < -90 || northLat > 90) throw new Error('North-pole latitude must be between -90 and 90.');
+    if (northLon < -180 || northLon > 180) throw new Error('North-pole longitude must be between -180 and 180.');
+    state.rotation = { northLat, northLon: wrapLon(northLon), roll: wrapLon(roll) };
+    state.frame = createFrame(state.rotation.northLon, state.rotation.northLat, state.rotation.roll);
+    updateSouthPoleReadout();
+  }
+
+  function rebuildRotation() {
+    if (!state.source || state.busy) return;
+    try { applyRotationFromControls(); } catch (error) { setStatus(error.message, 'error'); return; }
+    state.busy = true;
+    els.applyRotation.disabled = true;
+    setStatus('Rotating the source land mask and rebuilding area tables…', 'busy');
+    requestAnimationFrame(() => setTimeout(() => {
+      try {
+        generateRotatedMask();
+        buildAreaTables(state.rotatedMask);
+        drawAnalysisBackground();
+        const layout = state.layout.length ? state.layout : generateFromInputs();
+        rebuildCells(layout);
+        setStatus(`Ready. Axis ${formatLat(state.rotation.northLat)}, ${formatLon(state.rotation.northLon)}; ${state.layout.length} rows and ${state.cells.length.toLocaleString()} cells.`);
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || 'Rotation failed.', 'error');
+      } finally {
+        state.busy = false;
+        els.applyRotation.disabled = false;
+      }
+    }, 0));
+  }
+
+  function downloadBlob(filename, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function downloadText(filename, content, type) {
+    downloadBlob(filename, new Blob([content], { type }));
+  }
+
+  function exportJson() {
+    const south = { latitude: -state.rotation.northLat, longitude: wrapLon(state.rotation.northLon + 180) };
+    const payload = {
+      coordinateSystem: 'rotated-spherical',
+      analysisProjection: 'equirectangular',
+      displayProjection: 'orthographic',
+      northPole: { latitude: state.rotation.northLat, longitude: state.rotation.northLon },
+      southPole: south,
+      rollDegrees: state.rotation.roll,
+      analysisResolution: [ANALYSIS_WIDTH, ANALYSIS_HEIGHT],
+      rowOrder: 'north-to-south in rotated coordinates',
+      columnsPerRow: state.layout,
+      thresholds: state.thresholds,
+      smallLandPreservation: state.smallLand,
+      cells: state.cells.map(cell => ({
+        id: cell.id,
+        row: cell.row,
+        column: cell.column,
+        columnCount: cell.columnCount,
+        rotatedBounds: { latMin: cell.latMin, latMax: cell.latMax, lonMin: cell.lonMin, lonMax: cell.lonMax },
+        landFraction: cell.landFraction,
+        category: cell.category,
+        preservedSmallLand: cell.preservedSmallLand
+      }))
+    };
+    downloadText('rotated-land-grid.json', JSON.stringify(payload, null, 2), 'application/json');
+  }
+
+  function exportCsv() {
+    const header = ['id','row','column','column_count','rotated_lat_min','rotated_lat_max','rotated_lon_min','rotated_lon_max','land_fraction','category','preserved_small_land'];
+    const rows = state.cells.map(c => [c.id,c.row,c.column,c.columnCount,c.latMin,c.latMax,c.lonMin,c.lonMax,c.landFraction,c.category,c.preservedSmallLand]);
+    downloadText('rotated-land-grid.csv', [header, ...rows].map(row => row.join(',')).join('\n'), 'text/csv;charset=utf-8');
+  }
+
+  function escapeXml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;' }[char]));
+  }
+
+  function exportSvg() {
+    const background = els.showBackground.checked ? `<image href="${els.analysisCanvas.toDataURL('image/png')}" x="0" y="0" width="360" height="180" preserveAspectRatio="none"/>` : '<rect width="360" height="180" fill="#e5ebef"/>';
+    const rects = state.cells.map(cell => `<rect x="${cell.lonMin + 180}" y="${90 - cell.latMax}" width="${cell.lonMax - cell.lonMin}" height="${cell.latMax - cell.latMin}" fill="${COLORS[cell.category]}" fill-opacity="${state.opacity}" stroke="#1f2b33" stroke-width="${els.showGrid.checked ? 0.18 : 0}"/>`).join('');
+    const metadata = escapeXml(JSON.stringify({ northPole: state.rotation, columnsPerRow: state.layout, thresholds: state.thresholds, smallLandPreservation: state.smallLand }));
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="${NS}" width="1440" height="720" viewBox="0 0 360 180"><metadata>${metadata}</metadata>${background}<g>${rects}</g></svg>`;
+    downloadText('rotated-land-grid.svg', svg, 'image/svg+xml');
+  }
+
+  function exportGlobe() {
+    els.globeCanvas.toBlob(blob => {
+      if (blob) downloadBlob('rotated-land-grid-globe.png', blob);
+    }, 'image/png');
+  }
+
+  function syncThresholds() {
+    let sea = Number(els.seaThreshold.value) / 100;
+    let land = Number(els.landThreshold.value) / 100;
+    if (sea >= land) {
+      if (document.activeElement === els.seaThreshold) {
+        land = Math.min(1, sea + 0.01);
+        els.landThreshold.value = String(Math.round(land * 100));
+      } else {
+        sea = Math.max(0, land - 0.01);
+        els.seaThreshold.value = String(Math.round(sea * 100));
+      }
+    }
+    state.thresholds = { sea, land };
+    els.seaValue.textContent = `${Math.round(sea * 100)}%`;
+    els.landValue.textContent = `${Math.round(land * 100)}%`;
+    reclassifyCells();
+  }
+
+  function syncSmallLand() {
+    state.smallLand = {
+      enabled: els.preserveSmallLand.checked,
+      minimum: Number(els.minimumLandPresence.value) / 100
+    };
+    els.minimumLandPresence.disabled = !state.smallLand.enabled;
+    els.minimumLandValue.textContent = `${(state.smallLand.minimum * 100).toFixed(1)}%`;
+    reclassifyCells();
+  }
+
+  function setViewMode(mode) {
+    const validMode = ['globe', 'analysis', 'stacked'].includes(mode) ? mode : 'globe';
+    state.viewMode = validMode;
+    els.globeView.hidden = validMode === 'analysis';
+    els.analysisView.hidden = validMode === 'globe';
+    for (const button of els.viewSwitcher.querySelectorAll('[data-view-mode]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.viewMode === validMode));
+    }
+    if (validMode !== 'analysis') scheduleGlobeRender();
+  }
+
+  els.northLat.addEventListener('input', updateSouthPoleReadout);
+  els.northLon.addEventListener('input', updateSouthPoleReadout);
+  els.applyRotation.addEventListener('click', rebuildRotation);
+  els.standardAxis.addEventListener('click', () => {
+    els.northLat.value = '90';
+    els.northLon.value = '0';
+    els.roll.value = '0';
+    rebuildRotation();
+  });
+  els.pacificAxis.addEventListener('click', () => {
+    els.northLat.value = '20';
+    els.northLon.value = '-30';
+    els.roll.value = '0';
+    rebuildRotation();
+  });
+  els.pickPole.addEventListener('click', () => {
+    state.pickPoleMode = !state.pickPoleMode;
+    els.pickPole.classList.toggle('active', state.pickPoleMode);
+    els.pickPole.textContent = state.pickPoleMode ? 'Click globe to set pole' : 'Pick north pole on globe';
+  });
+
+  els.generateLayout.addEventListener('click', () => {
+    try { rebuildCells(generateFromInputs()); setStatus(`Layout updated: ${state.layout.length} rows, ${state.cells.length.toLocaleString()} cells.`); }
+    catch (error) { setStatus(error.message, 'error'); }
+  });
+  document.querySelectorAll('[data-preset]').forEach(button => button.addEventListener('click', () => {
+    try { rebuildCells(generateFromInputs(Number(button.dataset.preset))); setStatus(`Layout updated: ${state.layout.length} rows, ${state.cells.length.toLocaleString()} cells.`); }
+    catch (error) { setStatus(error.message, 'error'); }
+  }));
+  els.applyLayout.addEventListener('click', () => {
+    try { rebuildCells(parseLayout(els.columnsInput.value)); setStatus(`Custom layout applied: ${state.layout.length} rows, ${state.cells.length.toLocaleString()} cells.`); }
+    catch (error) { setStatus(error.message, 'error'); }
+  });
+  els.seaThreshold.addEventListener('input', syncThresholds);
+  els.landThreshold.addEventListener('input', syncThresholds);
+  els.preserveSmallLand.addEventListener('change', syncSmallLand);
+  els.minimumLandPresence.addEventListener('input', syncSmallLand);
+  els.viewSwitcher.addEventListener('click', event => {
+    const button = event.target.closest('[data-view-mode]');
+    if (button) setViewMode(button.dataset.viewMode);
+  });
+  els.cellOpacity.addEventListener('input', () => {
+    state.opacity = Number(els.cellOpacity.value) / 100;
+    els.opacityValue.textContent = `${Math.round(state.opacity * 100)}%`;
+    for (const rect of els.analysisGrid.querySelectorAll('rect')) rect.setAttribute('fill-opacity', String(state.opacity));
+    scheduleGlobeRender();
+  });
+  els.showBackground.addEventListener('change', () => {
+    els.analysisCanvas.style.visibility = els.showBackground.checked ? 'visible' : 'hidden';
+    scheduleGlobeRender();
+  });
+  els.showGrid.addEventListener('change', () => {
+    for (const rect of els.analysisGrid.querySelectorAll('rect')) rect.setAttribute('stroke-width', els.showGrid.checked ? '0.18' : '0');
+    scheduleGlobeRender();
+  });
+  els.showPoles.addEventListener('change', scheduleGlobeRender);
+  els.showLabels.addEventListener('change', renderAnalysisLabels);
+  els.exportJson.addEventListener('click', exportJson);
+  els.exportCsv.addEventListener('click', exportCsv);
+  els.exportSvg.addEventListener('click', exportSvg);
+  els.exportGlobe.addEventListener('click', exportGlobe);
+  els.centerAxis.addEventListener('click', () => {
+    state.view.lon = state.rotation.northLon;
+    state.view.lat = state.rotation.northLat;
+    scheduleGlobeRender();
+  });
+  els.resetView.addEventListener('click', () => {
+    state.view.lon = -20;
+    state.view.lat = 12;
+    scheduleGlobeRender();
+  });
+
+  let drag = null;
+  els.globeCanvas.addEventListener('pointerdown', event => {
+    drag = { x: event.clientX, y: event.clientY, lon: state.view.lon, lat: state.view.lat, moved: false };
+    els.globeCanvas.setPointerCapture(event.pointerId);
+    els.globeCanvas.classList.add('dragging');
+  });
+  els.globeCanvas.addEventListener('pointermove', event => {
+    if (drag) {
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      if (Math.hypot(dx, dy) > 3) drag.moved = true;
+      if (drag.moved) {
+        state.view.lon = wrapLon(drag.lon - dx * 0.38);
+        state.view.lat = clamp(drag.lat + dy * 0.28, -89.5, 89.5);
+        scheduleGlobeRender();
+      }
+      return;
+    }
+    const vector = globeEventVector(event);
+    if (!vector) { clearHover(); return; }
+    const cell = cellFromOriginalVector(vector);
+    if (cell) inspectCell(cell, event, false);
+  });
+  els.globeCanvas.addEventListener('pointerleave', () => { if (!drag) clearHover(); });
+  els.globeCanvas.addEventListener('pointerup', event => {
+    const moved = drag && drag.moved;
+    drag = null;
+    els.globeCanvas.classList.remove('dragging');
+    if (moved) return;
+    const vector = globeEventVector(event);
+    if (!vector) return;
+    if (state.pickPoleMode) {
+      const ll = vectorToLonLat(vector);
+      els.northLat.value = ll.latitude.toFixed(2);
+      els.northLon.value = wrapLon(ll.longitude).toFixed(2);
+      state.pickPoleMode = false;
+      els.pickPole.classList.remove('active');
+      els.pickPole.textContent = 'Pick north pole on globe';
+      rebuildRotation();
+      return;
+    }
+    const cell = cellFromOriginalVector(vector);
+    if (cell) selectCell(cell);
+  });
+  els.globeCanvas.addEventListener('pointercancel', () => {
+    drag = null;
+    els.globeCanvas.classList.remove('dragging');
+  });
+
+  const image = new Image();
+  image.onload = () => {
+    const canvas = els.sourceCanvas;
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(image, 0, 0);
+    state.source = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    state.frame = createFrame(state.rotation.northLon, state.rotation.northLat, state.rotation.roll);
+    state.layout = generateFromInputs();
+    rebuildRotation();
+  };
+  image.onerror = () => setStatus('The embedded land mask could not be decoded.', 'error');
+  image.src = SOURCE_URI;
+  updateSouthPoleReadout();
+  setViewMode('globe');
+  syncSmallLand();
+})();
+</script>
+</body>
+</html>
