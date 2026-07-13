@@ -1,0 +1,517 @@
+/*
+ * Rotated Land / Sea Grid
+ * Map-specific styling layered on MathMeetLife's shared widget styles:
+ *   assets/mml-toy.css
+ *   assets/widgets/graph-lab.css
+ */
+
+:root {
+  --sea: #3979a8;
+  --mixed: #858b91;
+  --land: #4f8a3c;
+  --danger: #ffb7a8;
+}
+
+body.mml-widget.mml-graph-app {
+  min-height: 100vh;
+  overflow: auto;
+}
+
+body.mml-widget .app.mml-graph-shell {
+  min-height: 100vh;
+  height: auto;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+}
+
+body.mml-widget .mml-graph-sidebar {
+  padding: 18px;
+}
+
+body.mml-widget .mml-graph-sidebar .eyebrow {
+  margin-bottom: 12px;
+}
+
+body.mml-widget .mml-graph-sidebar h1 {
+  max-width: 320px;
+  font-size: clamp(27px, 3vw, 36px);
+  letter-spacing: -0.04em;
+}
+
+body.mml-widget .mml-graph-sidebar > p {
+  margin: 10px 0 18px;
+  color: var(--mml-muted);
+  font-size: 14px;
+}
+
+body.mml-widget .mml-graph-sidebar h2 {
+  margin: 20px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--mml-line);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+body.mml-widget .field {
+  margin: 11px 0;
+}
+
+body.mml-widget .field > label,
+body.mml-widget .label-row label {
+  display: block;
+  margin: 0 0 6px;
+}
+
+body.mml-widget .label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+body.mml-widget .value {
+  color: var(--mml-accent-dark);
+  font: 700 12px/1.2 var(--mml-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+body.mml-widget .row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+body.mml-widget .row.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.mml-widget .mml-graph-sidebar input,
+body.mml-widget .mml-graph-sidebar select,
+body.mml-widget .mml-graph-sidebar textarea {
+  width: 100%;
+}
+
+body.mml-widget .mml-graph-sidebar input[type="range"] {
+  min-height: 24px;
+  padding: 0;
+}
+
+body.mml-widget .mml-graph-sidebar textarea {
+  min-height: 112px;
+}
+
+body.mml-widget .buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+body.mml-widget .mml-graph-sidebar .buttons button {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+body.mml-widget .mml-graph-sidebar > button.primary {
+  width: 100%;
+  margin-top: 2px;
+}
+
+body.mml-widget .checks {
+  display: grid;
+  gap: 8px;
+  margin: 11px 0;
+}
+
+body.mml-widget .checks label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  color: var(--mml-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+body.mml-widget .checks input {
+  width: auto;
+  min-height: 0;
+  margin: 0.12rem 0 0;
+  flex: 0 0 auto;
+  accent-color: var(--mml-accent);
+}
+
+body.mml-widget .help {
+  margin: 6px 0 0;
+  color: var(--mml-muted-2);
+  font: 12px/1.45 var(--mml-sans);
+}
+
+body.mml-widget .pole-readout,
+body.mml-widget .status,
+body.mml-widget .details {
+  border: 1px solid var(--mml-line);
+  border-radius: 13px;
+  background: rgba(4, 47, 46, 0.58);
+  color: var(--mml-muted);
+}
+
+body.mml-widget .pole-readout {
+  padding: 9px 11px;
+  font: 12px/1.4 var(--mml-mono);
+}
+
+body.mml-widget .status {
+  min-height: 42px;
+  margin-top: 12px;
+  padding: 10px 12px;
+}
+
+body.mml-widget .status.error {
+  border-color: rgba(217, 130, 107, 0.46);
+  background: rgba(217, 130, 107, 0.12);
+  color: var(--danger);
+}
+
+body.mml-widget .status.busy {
+  border-color: rgba(143, 207, 237, 0.42);
+  background: rgba(143, 207, 237, 0.10);
+  color: var(--mml-blue);
+}
+
+body.mml-widget .mml-graph-viewport {
+  display: flex;
+  min-width: 0;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 35% 15%, rgba(143, 207, 237, 0.08), transparent 30%),
+    var(--mml-bg);
+}
+
+body.mml-widget .toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+}
+
+body.mml-widget .metrics.stats {
+  display: grid;
+  flex: 1 1 640px;
+  grid-template-columns: repeat(5, minmax(94px, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+body.mml-widget .metric.stat {
+  min-width: 0;
+  padding: 11px 12px;
+}
+
+body.mml-widget .metric b {
+  display: block;
+  color: var(--mml-ink);
+  font: 800 17px/1.15 var(--mml-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+body.mml-widget .metric span {
+  display: block;
+  margin-top: 4px;
+  color: var(--mml-muted);
+  font: 700 10px/1.2 var(--mml-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+body.mml-widget .legend {
+  position: static;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border: 1px solid var(--mml-line);
+  border-radius: 999px;
+  background: rgba(4, 47, 46, 0.72);
+  color: var(--mml-muted);
+  font: 12px/1 var(--mml-sans);
+  pointer-events: auto;
+}
+
+body.mml-widget .legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.mml-widget .swatch {
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(227, 237, 237, 0.34);
+  border-radius: 50%;
+}
+
+body.mml-widget .view-switcher.mml-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--mml-line);
+  border-radius: 14px;
+  background: rgba(19, 59, 59, 0.72);
+  box-shadow: var(--mml-shadow);
+}
+
+body.mml-widget .view-switcher .mml-tab {
+  width: auto;
+}
+
+body.mml-widget .view-switcher .mml-tab[aria-pressed="true"] {
+  border-color: var(--mml-ink);
+  background: var(--mml-ink);
+  color: var(--mml-bg);
+}
+
+body.mml-widget .views {
+  display: block;
+  min-width: 0;
+}
+
+body.mml-widget .view-card {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+body.mml-widget .view-card + .view-card {
+  margin-top: 14px;
+}
+
+body.mml-widget .view-card[hidden] {
+  display: none;
+}
+
+body.mml-widget .view-head {
+  min-height: 60px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--mml-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(227, 237, 237, 0.035);
+}
+
+body.mml-widget .view-head p {
+  margin: 4px 0 0;
+  color: var(--mml-muted);
+  font-size: 12px;
+}
+
+body.mml-widget .view-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+body.mml-widget .view-actions button {
+  width: auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+body.mml-widget .globe-wrap {
+  position: relative;
+  width: min(100%, 760px);
+  min-height: 320px;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 48% 42%, #f8fbfc, #dce7ed 70%, #cfdae1);
+}
+
+body.mml-widget #globeCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+body.mml-widget #globeCanvas.dragging {
+  cursor: grabbing;
+}
+
+body.mml-widget .globe-note {
+  position: absolute;
+  left: 12px;
+  bottom: 11px;
+  padding: 6px 9px;
+  border: 1px solid rgba(4, 47, 46, 0.18);
+  border-radius: 999px;
+  background: rgba(248, 251, 252, 0.88);
+  color: #355354;
+  font: 11px/1.2 var(--mml-sans);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+body.mml-widget .analysis-wrap {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  background: #dceef7;
+}
+
+body.mml-widget #analysisCanvas,
+body.mml-widget #analysisSvg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+body.mml-widget #analysisSvg {
+  overflow: visible;
+}
+
+body.mml-widget #analysisGrid rect {
+  transition: fill 80ms linear;
+}
+
+body.mml-widget #analysisGrid rect.hovered {
+  stroke: white !important;
+  stroke-width: 1.1 !important;
+}
+
+body.mml-widget #analysisGrid rect.selected {
+  stroke: #111 !important;
+  stroke-width: 1.6 !important;
+}
+
+body.mml-widget #analysisLabels text {
+  pointer-events: none;
+}
+
+body.mml-widget .details {
+  min-height: 48px;
+  padding: 11px 13px;
+}
+
+body.mml-widget .details b {
+  color: var(--mml-ink);
+}
+
+body.mml-widget #tooltip {
+  position: fixed;
+  z-index: 20;
+  display: none;
+  max-width: 285px;
+  padding: 8px 10px;
+  border: 1px solid var(--mml-line);
+  border-radius: 10px;
+  background: rgba(4, 47, 46, 0.95);
+  color: var(--mml-ink);
+  box-shadow: var(--mml-shadow);
+  font: 12px/1.45 var(--mml-sans);
+  pointer-events: none;
+}
+
+@media (max-width: 1120px) {
+  body.mml-widget .metrics.stats {
+    grid-template-columns: repeat(3, minmax(94px, 1fr));
+  }
+
+  body.mml-widget .globe-wrap {
+    max-width: 640px;
+  }
+}
+
+@media (max-width: 850px) {
+  body.mml-widget .app.mml-graph-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(70vh, 1fr);
+  }
+
+  body.mml-widget .mml-graph-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--mml-line);
+  }
+
+  body.mml-widget .mml-graph-viewport {
+    min-height: 70vh;
+  }
+}
+
+@media (max-width: 720px) {
+  body.mml-widget .toolbar {
+    display: grid;
+  }
+
+  body.mml-widget .metrics.stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.mml-widget .legend {
+    justify-self: start;
+    border-radius: 14px;
+  }
+
+  body.mml-widget .view-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  body.mml-widget .view-actions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  body.mml-widget .mml-graph-sidebar,
+  body.mml-widget .mml-graph-viewport {
+    padding: 12px;
+  }
+
+  body.mml-widget .row,
+  body.mml-widget .row.three {
+    grid-template-columns: 1fr;
+  }
+
+  body.mml-widget .metrics.stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  body.mml-widget .buttons,
+  body.mml-widget .view-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  body.mml-widget .mml-graph-sidebar .buttons button,
+  body.mml-widget .view-actions button,
+  body.mml-widget .view-switcher .mml-tab {
+    width: 100%;
+  }
+
+  body.mml-widget .view-switcher.mml-tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  body.mml-widget .globe-wrap {
+    min-height: 280px;
+  }
+}
