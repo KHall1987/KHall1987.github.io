@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Two-Axis Coordinated Motion Calculator</title>
+  <script>
+    // When this file is hosted beside the MathMeetLife calculator, reuse the
+    // reference page's linked stylesheets. The built-in CSS below remains as
+    // a complete fallback when the page is opened as a local file or offline.
+    (() => {
+      const referencePaths = [
+        "./crochet-parametric-shape-calculator.html",
+        "https://khall1987.github.io/MathMeetLife/crochet-parametric-shape-calculator.html"
+      ];
+
+      const addReferenceStyles = async () => {
+        for (const referencePath of referencePaths) {
+          const controller = new AbortController();
+          const timer = window.setTimeout(() => controller.abort(), 2500);
+          try {
+            const referenceUrl = new URL(referencePath, window.location.href);
+            if (referenceUrl.href === window.location.href) continue;
+            const response = await fetch(referenceUrl.href, {
+              credentials: "same-origin",
+              signal: controller.signal
+            });
+            if (!response.ok) continue;
+
+            const source = await response.text();
+            const referenceDoc = new DOMParser().parseFromString(source, "text/html");
+            const links = [...referenceDoc.querySelectorAll('link[rel~="stylesheet"][href]')];
+
+            for (const sourceLink of links) {
+              const href = new URL(sourceLink.getAttribute("href"), referenceUrl).href;
+              if ([...document.styleSheets].some((sheet) => sheet.href === href)) continue;
+              const link = document.createElement("link");
+              link.rel = "stylesheet";
+              link.href = href;
+              link.dataset.mathMeetLifeTheme = "linked";
+              document.head.appendChild(link);
+            }
+
+            // Some standalone calculators keep their shared theme inline.
+            // Use those rules only when no external stylesheet was present.
+            if (links.length === 0) {
+              for (const sourceStyle of referenceDoc.querySelectorAll("head style")) {
+                const style = document.createElement("style");
+                style.dataset.mathMeetLifeTheme = "inline";
+                style.textContent = sourceStyle.textContent;
+                document.head.appendChild(style);
+              }
+            }
+
+            document.documentElement.dataset.siteTheme = "mathmeetlife";
+            return;
+          } catch (error) {
+            // Try the next source. Cross-origin HTML fetches may be blocked
+            // when the calculator is opened directly from disk.
+          } finally {
+            window.clearTimeout(timer);
+          }
+        }
+      };
+
+      addReferenceStyles();
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f2ea;
+      --panel: #fffdf8;
+      --panel-2: #f2ede3;
+      --text: #25221d;
+      --muted: #6d665b;
+      --border: #d8d0c2;
+      --accent: #315f58;
+      --accent-soft: #e5efec;
+      --danger: #9f342b;
+      --danger-soft: #faece8;
+      --ok: #356756;
+      --ok-soft: #e8f1ec;
+      --path: #315f58;
+      --xaxis: #a84c3d;
+      --yaxis: #607d3b;
+      --grid: #ddd6ca;
+      --axis: #8c8375;
+      --shadow: 0 12px 32px rgba(68, 54, 34, 0.08);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button, input { font: inherit; }
+
+    .page {
+      width: min(1260px, calc(100% - 28px));
+      margin: 28px auto 56px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: clamp(1.55rem, 3vw, 2.35rem);
+      line-height: 1.12;
+      margin: 0 0 8px;
+      letter-spacing: -0.025em;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 650;
+    }
+
+    h2 {
+      font-size: 1.05rem;
+      margin: 0 0 14px;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      margin: 0 0 10px;
+    }
+
+    p { margin: 0; }
+    .subtitle { color: var(--muted); max-width: 780px; }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 650;
+      box-shadow: none;
+    }
+
+    .btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 24%, transparent); outline-offset: 2px; }
+    .btn.primary { background: var(--accent); color: #fffdf8; border-color: var(--accent); }
+    .btn.primary:hover { filter: brightness(0.94); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      padding: 17px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .section {
+      padding: 15px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section:first-of-type { border-top: 0; padding-top: 0; }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 0.79rem;
+      font-weight: 650;
+    }
+
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 9px 10px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+
+    .axis-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-weight: 750;
+    }
+
+    .dot { width: 9px; height: 9px; border-radius: 999px; }
+    .dot.x { background: var(--xaxis); }
+    .dot.y { background: var(--yaxis); }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 9px;
+    }
+
+    .formula-box {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      display: grid;
+      gap: 5px;
+    }
+
+    .formula-box code {
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: normal;
+    }
+
+    .content {
+      display: grid;
+      gap: 18px;
+    }
+
+    .status {
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      border: 1px solid transparent;
+    }
+
+    .status.ok { background: var(--ok-soft); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+    .status.error { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+
+    .summary-panel { padding: 17px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .metric {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .metric .label { color: var(--muted); font-size: 0.75rem; margin-bottom: 4px; }
+    .metric .value { font-size: 1.08rem; font-weight: 780; overflow-wrap: anywhere; }
+    .metric .note { color: var(--muted); font-size: 0.72rem; margin-top: 3px; }
+
+    .tables {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      min-width: 460px;
+    }
+
+    th, td {
+      text-align: right;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th:first-child, td:first-child { text-align: left; }
+    thead th { color: var(--muted); background: var(--panel-2); font-weight: 750; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    .chart-panel { padding: 15px; }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .chart-card {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--panel-2);
+      overflow: hidden;
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 13px 5px;
+    }
+
+    .chart-title { font-weight: 760; font-size: 0.9rem; }
+    .chart-subtitle { color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      color: var(--muted);
+      font-size: 0.7rem;
+    }
+
+    .legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .legend i { width: 13px; height: 3px; border-radius: 3px; display: inline-block; }
+
+    .canvas-wrap {
+      position: relative;
+      height: 300px;
+      padding: 0 5px 5px;
+    }
+
+    canvas { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+
+    .chart-tooltip {
+      position: absolute;
+      z-index: 5;
+      min-width: 168px;
+      max-width: 235px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      color: var(--text);
+      box-shadow: 0 10px 24px rgba(20, 30, 50, 0.18);
+      font-size: 0.72rem;
+      line-height: 1.35;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-50%);
+      transition: opacity 70ms linear;
+      backdrop-filter: blur(5px);
+    }
+
+    .chart-tooltip.visible { opacity: 1; }
+    .chart-tooltip-title { font-weight: 780; margin-bottom: 5px; }
+    .chart-tooltip-time { color: var(--muted); margin-bottom: 5px; }
+    .chart-tooltip-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0; }
+    .chart-tooltip-row.active { font-weight: 780; }
+    .chart-tooltip-series { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+    .chart-tooltip-dot { width: 8px; height: 8px; border-radius: 999px; flex: 0 0 auto; }
+    .chart-tooltip-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .timeline { padding: 16px; }
+    .timeline-bar {
+      display: flex;
+      width: 100%;
+      min-height: 42px;
+      border-radius: 9px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+    }
+
+    .timeline-segment {
+      display: grid;
+      place-items: center;
+      min-width: 2px;
+      border-right: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      font-size: 0.65rem;
+      padding: 4px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .timeline-segment:nth-child(odd) { background: color-mix(in srgb, var(--accent) 12%, var(--panel-2)); }
+    .timeline-segment:nth-child(even) { background: color-mix(in srgb, var(--yaxis) 10%, var(--panel-2)); }
+    .timeline-segment:last-child { border-right: 0; }
+
+    .timeline-key {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 7px 12px;
+      color: var(--muted);
+      font-size: 0.73rem;
+      margin-top: 10px;
+    }
+
+    .notice {
+      padding: 14px 16px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .notice strong { color: var(--text); }
+
+    .hover-help {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 1050px) {
+      .layout { grid-template-columns: 1fr; }
+      .controls { position: static; }
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      .page { width: min(100% - 18px, 1500px); margin-top: 10px; }
+      header { display: grid; }
+      .header-actions { justify-content: flex-start; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tables { grid-template-columns: 1fr; }
+      .canvas-wrap { height: 265px; }
+    }
+
+    @media print {
+      body { background: white; }
+      .page { width: 100%; margin: 0; }
+      .controls, .header-actions { display: none; }
+      .layout { grid-template-columns: 1fr; }
+      .panel { box-shadow: none; break-inside: avoid; }
+      .chart-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>Two-Axis Coordinated Motion Calculator</h1>
+        <p class="subtitle">Enter start and end points plus the X/Y motion limits. The page projects those limits onto one straight path and builds a zero-to-zero, jerk-limited S-curve profile.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn" id="exampleBtn" type="button">Load example</button>
+        <button class="btn" id="csvBtn" type="button">Download CSV</button>
+        <button class="btn" id="printBtn" type="button">Print</button>
+        <button class="btn primary" id="calculateBtn" type="button">Calculate</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel controls">
+        <div class="section">
+          <h2>Move geometry</h2>
+          <div class="field-grid">
+            <label>Start X<input id="startX" type="number" step="any" value="0"></label>
+            <label>Start Y<input id="startY" type="number" step="any" value="0"></label>
+            <label>End X<input id="endX" type="number" step="any" value="300"></label>
+            <label>End Y<input id="endY" type="number" step="any" value="400"></label>
+            <label>Distance unit<input id="unit" type="text" value="mm" maxlength="12"></label>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="axis-heading"><span class="dot x"></span> X-axis limits</div>
+          <div class="field-grid four">
+            <label>Max velocity<input id="xVel" type="number" min="0" step="any" value="120"></label>
+            <label>Max acceleration<input id="xAcc" type="number" min="0" step="any" value="300"></label>
+            <label>Max deceleration<input id="xDec" type="number" min="0" step="any" value="300"></label>
+            <label>Max jerk<input id="xJerk" type="number" min="0" step="any" value="2000"></label>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="axis-heading"><span class="dot y"></span> Y-axis limits</div>
+          <div class="field-grid four">
+            <label>Max velocity<input id="yVel" type="number" min="0" step="any" value="200"></label>
+            <label>Max acceleration<input id="yAcc" type="number" min="0" step="any" value="250"></label>
+            <label>Max deceleration<input id="yDec" type="number" min="0" step="any" value="250"></label>
+            <label>Max jerk<input id="yJerk" type="number" min="0" step="any" value="1500"></label>
+          </div>
+          <p class="hint">Velocity: unit/s · acceleration: unit/s² · jerk: unit/s³</p>
+        </div>
+
+        <div class="section">
+          <h3>Calculation model</h3>
+          <div class="formula-box">
+            <code>[L = √(dX² + dY²)]</code>
+            <code>[kX = |dX| ÷ L] &nbsp; [kY = |dY| ÷ L]</code>
+            <code>[Path limit = smaller(axis limit ÷ axis ratio)]</code>
+            <code>[Axis limit = path limit × axis ratio]</code>
+          </div>
+          <p class="hint">The generated graph uses a seven-segment S-curve where possible. Short moves automatically reduce peak speed and may omit constant-acceleration or cruise segments.</p>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="panel summary-panel">
+          <div id="status" class="status ok">Ready.</div>
+          <div class="metric-grid">
+            <div class="metric"><div class="label">Path length</div><div class="value" id="pathLength">—</div><div class="note" id="moveVector">—</div></div>
+            <div class="metric"><div class="label">Move time</div><div class="value" id="moveTime">—</div><div class="note" id="profileType">—</div></div>
+            <div class="metric"><div class="label">Peak path speed</div><div class="value" id="peakSpeed">—</div><div class="note" id="speedNote">—</div></div>
+            <div class="metric"><div class="label">Axis ratios</div><div class="value" id="ratios">—</div><div class="note">Projection onto the shared path</div></div>
+          </div>
+
+          <div class="tables">
+            <div>
+              <h3>Calculated command limits</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Quantity</th><th>Path</th><th>X</th><th>Y</th><th>Limiter</th></tr></thead>
+                  <tbody id="limitTable"></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3>Actual profile peaks</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Quantity</th><th>Path</th><th>X</th><th>Y</th></tr></thead>
+                  <tbody id="peakTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel timeline">
+          <h2>Motion phases</h2>
+          <div id="timelineBar" class="timeline-bar"></div>
+          <div id="timelineKey" class="timeline-key"></div>
+        </div>
+
+        <div class="panel chart-panel">
+          <p class="hover-help">Hover over any line to snap to the nearest sample. The crosshair marks the time, the highlighted ring identifies the nearest series, and the tooltip names the graph and reports all values at that instant.</p>
+          <div class="chart-grid">
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Position</div><div class="chart-subtitle" id="positionSubtitle">Path and axis position</div></div><div class="legend"></div></div>
+              <div class="canvas-wrap"><canvas id="positionChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Velocity</div><div class="chart-subtitle" id="velocitySubtitle">Signed axis velocities</div></div><div class="legend"></div></div>
+              <div class="canvas-wrap"><canvas id="velocityChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Acceleration</div><div class="chart-subtitle" id="accelerationSubtitle">Signed axis accelerations</div></div><div class="legend"></div></div>
+              <div class="canvas-wrap"><canvas id="accelerationChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Jerk</div><div class="chart-subtitle" id="jerkSubtitle">Piecewise-constant S-curve jerk</div></div><div class="legend"></div></div>
+              <div class="canvas-wrap"><canvas id="jerkChart"></canvas></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="panel notice">
+          <strong>Engineering note:</strong> This is a planning and visualization tool, not a motion controller. A straight commanded path still depends on simultaneous axis start, compatible controller interpolation, servo response, following-error limits, mechanics, and vendor-specific motion behavior. Verify the resulting settings on the actual machine at a safe reduced speed.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    "use strict";
+
+    const $ = (id) => document.getElementById(id);
+    const EPS = 1e-10;
+    let currentResult = null;
+
+    const inputIds = [
+      "startX", "startY", "endX", "endY", "unit",
+      "xVel", "xAcc", "xDec", "xJerk",
+      "yVel", "yAcc", "yDec", "yJerk"
+    ];
+
+    function readNumber(id) {
+      const value = Number($(id).value);
+      if (!Number.isFinite(value)) throw new Error(`Enter a valid number for ${$(id).closest("label")?.firstChild?.textContent || id}.`);
+      return value;
+    }
+
+    function getInputs() {
+      return {
+        x0: readNumber("startX"), y0: readNumber("startY"),
+        x1: readNumber("endX"), y1: readNumber("endY"),
+        unit: $("unit").value.trim() || "unit",
+        x: { v: readNumber("xVel"), a: readNumber("xAcc"), d: readNumber("xDec"), j: readNumber("xJerk") },
+        y: { v: readNumber("yVel"), a: readNumber("yAcc"), d: readNumber("yDec"), j: readNumber("yJerk") }
+      };
+    }
+
+    function phaseForVelocity(v, accelLimit, jerkLimit) {
+      const threshold = (accelLimit * accelLimit) / jerkLimit;
+      if (v <= threshold + EPS) {
+        const tj = Math.sqrt(Math.max(0, v / jerkLimit));
+        return { tj, tc: 0, aPeak: jerkLimit * tj, total: 2 * tj };
+      }
+      const tj = accelLimit / jerkLimit;
+      const tc = Math.max(0, v / accelLimit - tj);
+      return { tj, tc, aPeak: accelLimit, total: 2 * tj + tc };
+    }
+
+    function buildProfile(length, vMax, aMax, dMax, jMax) {
+      const distanceNeeded = (v) => {
+        const pa = phaseForVelocity(v, aMax, jMax);
+        const pd = phaseForVelocity(v, dMax, jMax);
+        return 0.5 * v * (pa.total + pd.total);
+      };
+
+      let vPeak;
+      let cruiseTime;
+      const distanceAtVmax = distanceNeeded(vMax);
+
+      if (distanceAtVmax <= length + EPS) {
+        vPeak = vMax;
+        cruiseTime = Math.max(0, (length - distanceAtVmax) / vPeak);
+      } else {
+        let lo = 0;
+        let hi = vMax;
+        for (let i = 0; i < 100; i += 1) {
+          const mid = (lo + hi) / 2;
+          if (distanceNeeded(mid) > length) hi = mid;
+          else lo = mid;
+        }
+        vPeak = (lo + hi) / 2;
+        cruiseTime = 0;
+      }
+
+      const pa = phaseForVelocity(vPeak, aMax, jMax);
+      const pd = phaseForVelocity(vPeak, dMax, jMax);
+
+      const definitions = [
+        ["Acceleration jerk up", pa.tj, +jMax],
+        ["Constant acceleration", pa.tc, 0],
+        ["Acceleration jerk down", pa.tj, -jMax],
+        ["Constant velocity", cruiseTime, 0],
+        ["Deceleration jerk down", pd.tj, -jMax],
+        ["Constant deceleration", pd.tc, 0],
+        ["Deceleration jerk up", pd.tj, +jMax]
+      ];
+
+      const segments = [];
+      let t = 0, s = 0, v = 0, a = 0;
+
+      for (const [label, duration, jerk] of definitions) {
+        if (duration <= EPS) continue;
+        const segment = { label, duration, jerk, t0: t, s0: s, v0: v, a0: a };
+        segments.push(segment);
+        s += v * duration + 0.5 * a * duration * duration + (jerk * duration ** 3) / 6;
+        v += a * duration + 0.5 * jerk * duration * duration;
+        a += jerk * duration;
+        t += duration;
+      }
+
+      return {
+        vPeak, cruiseTime, pa, pd, segments, totalTime: t,
+        pathJerk: jMax,
+        type: cruiseTime > 1e-8 ? "S-curve with cruise" : "Short-move S-curve"
+      };
+    }
+
+    function stateAt(profile, time) {
+      if (time <= 0) return { s: 0, v: 0, a: 0, j: profile.segments[0]?.jerk || 0 };
+      if (time >= profile.totalTime) return { s: null, v: 0, a: 0, j: 0 };
+      let seg = profile.segments[profile.segments.length - 1];
+      for (const candidate of profile.segments) {
+        if (time <= candidate.t0 + candidate.duration + EPS) {
+          seg = candidate;
+          break;
+        }
+      }
+      const u = Math.max(0, Math.min(seg.duration, time - seg.t0));
+      return {
+        s: seg.s0 + seg.v0 * u + 0.5 * seg.a0 * u * u + (seg.jerk * u ** 3) / 6,
+        v: seg.v0 + seg.a0 * u + 0.5 * seg.jerk * u * u,
+        a: seg.a0 + seg.jerk * u,
+        j: seg.jerk
+      };
+    }
+
+    function projectedPathLimit(xLimit, yLimit, kx, ky) {
+      const xProjected = kx > EPS ? xLimit / kx : Infinity;
+      const yProjected = ky > EPS ? yLimit / ky : Infinity;
+      const value = Math.min(xProjected, yProjected);
+      let limiter;
+      if (!Number.isFinite(xProjected)) limiter = "Y";
+      else if (!Number.isFinite(yProjected)) limiter = "X";
+      else if (Math.abs(xProjected - yProjected) <= Math.max(1, value) * 1e-9) limiter = "X + Y";
+      else limiter = xProjected < yProjected ? "X" : "Y";
+      return { value, limiter, xProjected, yProjected };
+    }
+
+    function calculate() {
+      try {
+        const input = getInputs();
+        for (const [axisName, axis] of [["X", input.x], ["Y", input.y]]) {
+          for (const [key, value] of Object.entries(axis)) {
+            if (!(value > 0)) throw new Error(`${axisName}-axis ${key.toUpperCase()} limit must be greater than zero.`);
+          }
+        }
+
+        const dx = input.x1 - input.x0;
+        const dy = input.y1 - input.y0;
+        const length = Math.hypot(dx, dy);
+        if (!(length > EPS)) throw new Error("The start and end points are the same; no movement was requested.");
+
+        const kx = Math.abs(dx) / length;
+        const ky = Math.abs(dy) / length;
+        const qx = dx / length;
+        const qy = dy / length;
+
+        const limits = {
+          velocity: projectedPathLimit(input.x.v, input.y.v, kx, ky),
+          acceleration: projectedPathLimit(input.x.a, input.y.a, kx, ky),
+          deceleration: projectedPathLimit(input.x.d, input.y.d, kx, ky),
+          jerk: projectedPathLimit(input.x.j, input.y.j, kx, ky)
+        };
+
+        const profile = buildProfile(
+          length,
+          limits.velocity.value,
+          limits.acceleration.value,
+          limits.deceleration.value,
+          limits.jerk.value
+        );
+
+        const sampleCount = 700;
+        const samples = [];
+        for (let i = 0; i <= sampleCount; i += 1) {
+          const t = profile.totalTime * (i / sampleCount);
+          const state = stateAt(profile, t);
+          const s = state.s === null ? length : Math.max(0, Math.min(length, state.s));
+          samples.push({
+            t,
+            pathPos: s,
+            xPos: input.x0 + qx * s,
+            yPos: input.y0 + qy * s,
+            pathVel: state.v,
+            xVel: qx * state.v,
+            yVel: qy * state.v,
+            pathAcc: state.a,
+            xAcc: qx * state.a,
+            yAcc: qy * state.a,
+            pathJerk: state.j,
+            xJerk: qx * state.j,
+            yJerk: qy * state.j
+          });
+        }
+
+        const actual = {
+          pathV: profile.vPeak,
+          pathA: profile.pa.aPeak,
+          pathD: profile.pd.aPeak,
+          pathJ: limits.jerk.value,
+          xV: kx * profile.vPeak,
+          yV: ky * profile.vPeak,
+          xA: kx * profile.pa.aPeak,
+          yA: ky * profile.pa.aPeak,
+          xD: kx * profile.pd.aPeak,
+          yD: ky * profile.pd.aPeak,
+          xJ: kx * limits.jerk.value,
+          yJ: ky * limits.jerk.value
+        };
+
+        currentResult = { input, dx, dy, length, kx, ky, qx, qy, limits, profile, samples, actual };
+        render(currentResult);
+        setStatus("Calculation complete. All plotted axis values stay within the entered limits.", false);
+      } catch (error) {
+        currentResult = null;
+        setStatus(error.message || String(error), true);
+        clearResults();
+      }
+    }
+
+    function fmt(value, digits = 4) {
+      if (!Number.isFinite(value)) return "—";
+      const abs = Math.abs(value);
+      if (abs !== 0 && (abs >= 1e6 || abs < 1e-4)) return value.toExponential(3);
+      return new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }).format(value);
+    }
+
+    function setStatus(message, isError) {
+      const el = $("status");
+      el.textContent = message;
+      el.className = `status ${isError ? "error" : "ok"}`;
+    }
+
+    function clearResults() {
+      for (const id of ["pathLength", "moveVector", "moveTime", "profileType", "peakSpeed", "speedNote", "ratios"]) $(id).textContent = "—";
+      $("limitTable").innerHTML = "";
+      $("peakTable").innerHTML = "";
+      $("timelineBar").innerHTML = "";
+      $("timelineKey").innerHTML = "";
+      for (const id of ["positionChart", "velocityChart", "accelerationChart", "jerkChart"]) {
+        const canvas = $(id);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function limitRow(label, pathValue, xValue, yValue, limiter, unit) {
+      return `<tr><td>${label}</td><td>${fmt(pathValue)} ${unit}</td><td>${fmt(xValue)} ${unit}</td><td>${fmt(yValue)} ${unit}</td><td>${limiter}</td></tr>`;
+    }
+
+    function peakRow(label, pathValue, xValue, yValue, unit) {
+      return `<tr><td>${label}</td><td>${fmt(pathValue)} ${unit}</td><td>${fmt(xValue)} ${unit}</td><td>${fmt(yValue)} ${unit}</td></tr>`;
+    }
+
+    function render(r) {
+      const u = r.input.unit;
+      $("pathLength").textContent = `${fmt(r.length)} ${u}`;
+      $("moveVector").textContent = `dX ${fmt(r.dx)} ${u} · dY ${fmt(r.dy)} ${u}`;
+      $("moveTime").textContent = `${fmt(r.profile.totalTime)} s`;
+      $("profileType").textContent = r.profile.type;
+      $("peakSpeed").textContent = `${fmt(r.profile.vPeak)} ${u}/s`;
+      $("speedNote").textContent = r.profile.vPeak < r.limits.velocity.value * (1 - 1e-8) ? "Reduced by move length" : "Reached coordinated limit";
+      $("ratios").textContent = `kX ${fmt(r.kx)} · kY ${fmt(r.ky)}`;
+
+      $("limitTable").innerHTML =
+        limitRow("Velocity", r.limits.velocity.value, r.kx * r.limits.velocity.value, r.ky * r.limits.velocity.value, r.limits.velocity.limiter, `${u}/s`) +
+        limitRow("Acceleration", r.limits.acceleration.value, r.kx * r.limits.acceleration.value, r.ky * r.limits.acceleration.value, r.limits.acceleration.limiter, `${u}/s²`) +
+        limitRow("Deceleration", r.limits.deceleration.value, r.kx * r.limits.deceleration.value, r.ky * r.limits.deceleration.value, r.limits.deceleration.limiter, `${u}/s²`) +
+        limitRow("Jerk", r.limits.jerk.value, r.kx * r.limits.jerk.value, r.ky * r.limits.jerk.value, r.limits.jerk.limiter, `${u}/s³`);
+
+      $("peakTable").innerHTML =
+        peakRow("Velocity", r.actual.pathV, r.actual.xV, r.actual.yV, `${u}/s`) +
+        peakRow("Acceleration", r.actual.pathA, r.actual.xA, r.actual.yA, `${u}/s²`) +
+        peakRow("Deceleration", r.actual.pathD, r.actual.xD, r.actual.yD, `${u}/s²`) +
+        peakRow("Jerk", r.actual.pathJ, r.actual.xJ, r.actual.yJ, `${u}/s³`);
+
+      renderTimeline(r.profile);
+      renderCharts(r);
+    }
+
+    function renderTimeline(profile) {
+      const bar = $("timelineBar");
+      const key = $("timelineKey");
+      bar.innerHTML = "";
+      key.innerHTML = "";
+      profile.segments.forEach((seg, index) => {
+        const part = document.createElement("div");
+        part.className = "timeline-segment";
+        part.style.flex = `${seg.duration} 1 0`;
+        part.title = `${seg.label}: ${fmt(seg.duration)} s`;
+        part.textContent = seg.duration / profile.totalTime > 0.105 ? `${index + 1}` : "";
+        bar.appendChild(part);
+
+        const item = document.createElement("div");
+        item.textContent = `${index + 1}. ${seg.label}: ${fmt(seg.duration)} s`;
+        key.appendChild(item);
+      });
+    }
+
+    function cssColor(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function niceRange(min, max) {
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return [-1, 1];
+      if (Math.abs(max - min) < EPS) {
+        const pad = Math.max(1, Math.abs(max) * 0.1);
+        return [min - pad, max + pad];
+      }
+      const span = max - min;
+      const pad = span * 0.08;
+      return [min - pad, max + pad];
+    }
+
+    function ensureChartTooltip(canvas) {
+      const wrap = canvas.closest(".canvas-wrap");
+      let tooltip = wrap.querySelector(".chart-tooltip");
+      if (!tooltip) {
+        tooltip = document.createElement("div");
+        tooltip.className = "chart-tooltip";
+        tooltip.setAttribute("role", "status");
+        tooltip.setAttribute("aria-live", "polite");
+        wrap.appendChild(tooltip);
+      }
+      return tooltip;
+    }
+
+    function hideChartTooltip(canvas, redraw = true) {
+      const state = canvas._chartState;
+      if (!state) return;
+      state.hover = null;
+      const tooltip = ensureChartTooltip(canvas);
+      tooltip.classList.remove("visible");
+      if (redraw) drawChart(canvas);
+    }
+
+    function updateChartTooltip(canvas) {
+      const state = canvas._chartState;
+      if (!state?.hover || !state.geometry) return;
+
+      const tooltip = ensureChartTooltip(canvas);
+      const { index, activeKey } = state.hover;
+      const row = state.samples[index];
+      const active = state.series.find((item) => item.key === activeKey) || state.series[0];
+
+      tooltip.replaceChildren();
+
+      const title = document.createElement("div");
+      title.className = "chart-tooltip-title";
+      title.textContent = `${state.chartTitle} · ${active.label}`;
+      tooltip.appendChild(title);
+
+      const time = document.createElement("div");
+      time.className = "chart-tooltip-time";
+      time.textContent = `Time: ${fmt(row.t, 5)} s`;
+      tooltip.appendChild(time);
+
+      for (const item of state.series) {
+        const valueRow = document.createElement("div");
+        valueRow.className = `chart-tooltip-row${item.key === activeKey ? " active" : ""}`;
+
+        const seriesName = document.createElement("span");
+        seriesName.className = "chart-tooltip-series";
+
+        const dot = document.createElement("span");
+        dot.className = "chart-tooltip-dot";
+        dot.style.background = cssColor(item.color);
+        seriesName.appendChild(dot);
+
+        const label = document.createElement("span");
+        label.textContent = item.label;
+        seriesName.appendChild(label);
+
+        const value = document.createElement("span");
+        value.className = "chart-tooltip-value";
+        value.textContent = `${fmt(row[item.key], 6)} ${state.valueUnit}`;
+
+        valueRow.append(seriesName, value);
+        tooltip.appendChild(valueRow);
+      }
+
+      const geometry = state.geometry;
+      const canvasX = geometry.xToPx(row.t);
+      const activeY = geometry.yToPx(row[active.key]);
+      const wrap = canvas.closest(".canvas-wrap");
+      const baseLeft = canvas.offsetLeft + canvasX;
+      const baseTop = canvas.offsetTop + activeY;
+
+      tooltip.style.left = `${baseLeft + 14}px`;
+      tooltip.style.top = `${baseTop}px`;
+      tooltip.classList.add("visible");
+
+      const tooltipWidth = tooltip.offsetWidth;
+      const tooltipHeight = tooltip.offsetHeight;
+      let left = baseLeft + 14;
+      let top = baseTop;
+
+      if (left + tooltipWidth > wrap.clientWidth - 6) left = baseLeft - tooltipWidth - 14;
+      const halfHeight = tooltipHeight / 2;
+      top = Math.max(halfHeight + 6, Math.min(wrap.clientHeight - halfHeight - 6, top));
+
+      tooltip.style.left = `${Math.max(6, left)}px`;
+      tooltip.style.top = `${top}px`;
+    }
+
+    function installChartInteraction(canvas) {
+      if (canvas._hoverInteractionInstalled) return;
+      canvas._hoverInteractionInstalled = true;
+
+      canvas.addEventListener("pointermove", (event) => {
+        const state = canvas._chartState;
+        const geometry = state?.geometry;
+        if (!state || !geometry) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const inside = x >= geometry.margin.left && x <= geometry.margin.left + geometry.plotW &&
+          y >= geometry.margin.top && y <= geometry.margin.top + geometry.plotH;
+
+        if (!inside) {
+          hideChartTooltip(canvas);
+          return;
+        }
+
+        const normalized = (x - geometry.margin.left) / geometry.plotW;
+        const index = Math.max(0, Math.min(state.samples.length - 1, Math.round(normalized * (state.samples.length - 1))));
+        const row = state.samples[index];
+
+        let active = state.series[0];
+        let nearestDistance = Infinity;
+        for (const item of state.series) {
+          const lineY = geometry.yToPx(row[item.key]);
+          const distance = Math.abs(y - lineY);
+          if (distance < nearestDistance) {
+            nearestDistance = distance;
+            active = item;
+          }
+        }
+
+        state.hover = { index, activeKey: active.key };
+        drawChart(canvas);
+        updateChartTooltip(canvas);
+      });
+
+      canvas.addEventListener("pointerleave", () => hideChartTooltip(canvas));
+      canvas.addEventListener("pointercancel", () => hideChartTooltip(canvas));
+    }
+
+    function drawChart(canvas, samples, series, yUnit, chartTitle) {
+      if (samples && series) {
+        const unitMatch = yUnit.match(/\((.*)\)$/);
+        canvas._chartState = {
+          samples,
+          series,
+          yUnit,
+          valueUnit: unitMatch ? unitMatch[1] : yUnit,
+          chartTitle,
+          hover: null,
+          geometry: null
+        };
+      }
+
+      const state = canvas._chartState;
+      if (!state) return;
+      samples = state.samples;
+      series = state.series;
+      yUnit = state.yUnit;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const width = rect.width;
+      const height = rect.height;
+      const margin = { left: 67, right: 15, top: 12, bottom: 38 };
+      const plotW = Math.max(10, width - margin.left - margin.right);
+      const plotH = Math.max(10, height - margin.top - margin.bottom);
+      const tMax = samples[samples.length - 1]?.t || 1;
+
+      let yMin = Infinity, yMax = -Infinity;
+      for (const row of samples) {
+        for (const s of series) {
+          const value = row[s.key];
+          yMin = Math.min(yMin, value);
+          yMax = Math.max(yMax, value);
+        }
+      }
+      yMin = Math.min(yMin, 0);
+      yMax = Math.max(yMax, 0);
+      [yMin, yMax] = niceRange(yMin, yMax);
+
+      const xToPx = (x) => margin.left + (x / tMax) * plotW;
+      const yToPx = (y) => margin.top + (1 - (y - yMin) / (yMax - yMin)) * plotH;
+      state.geometry = { margin, plotW, plotH, tMax, yMin, yMax, xToPx, yToPx };
+      installChartInteraction(canvas);
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = "11px Inter, system-ui, sans-serif";
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = cssColor("--grid");
+      ctx.fillStyle = cssColor("--muted");
+
+      const gridCount = 5;
+      for (let i = 0; i <= gridCount; i += 1) {
+        const x = margin.left + (i / gridCount) * plotW;
+        ctx.beginPath(); ctx.moveTo(x, margin.top); ctx.lineTo(x, margin.top + plotH); ctx.stroke();
+        const label = fmt((i / gridCount) * tMax, 3);
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.fillText(label, x, margin.top + plotH + 7);
+      }
+
+      for (let i = 0; i <= gridCount; i += 1) {
+        const y = margin.top + (i / gridCount) * plotH;
+        ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(margin.left + plotW, y); ctx.stroke();
+        const value = yMax - (i / gridCount) * (yMax - yMin);
+        ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        ctx.fillText(fmt(value, 3), margin.left - 8, y);
+      }
+
+      if (yMin < 0 && yMax > 0) {
+        const zeroY = yToPx(0);
+        ctx.strokeStyle = cssColor("--axis");
+        ctx.beginPath(); ctx.moveTo(margin.left, zeroY); ctx.lineTo(margin.left + plotW, zeroY); ctx.stroke();
+      }
+
+      ctx.fillStyle = cssColor("--muted");
+      ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.fillText("Time (s)", margin.left + plotW / 2, height - 1);
+
+      ctx.save();
+      ctx.translate(13, margin.top + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText(yUnit, 0, 0);
+      ctx.restore();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(margin.left, margin.top, plotW, plotH);
+      ctx.clip();
+
+      for (const s of series) {
+        ctx.strokeStyle = cssColor(s.color);
+        ctx.lineWidth = s.width || 2;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        samples.forEach((row, i) => {
+          const x = xToPx(row.t);
+          const y = yToPx(row[s.key]);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+
+      if (state.hover) {
+        const row = samples[state.hover.index];
+        const active = series.find((item) => item.key === state.hover.activeKey) || series[0];
+        const hoverX = xToPx(row.t);
+
+        ctx.save();
+        ctx.strokeStyle = cssColor("--axis");
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(hoverX, margin.top);
+        ctx.lineTo(hoverX, margin.top + plotH);
+        ctx.stroke();
+
+        const activeY = yToPx(row[active.key]);
+        ctx.strokeStyle = cssColor(active.color);
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(margin.left, activeY);
+        ctx.lineTo(hoverX, activeY);
+        ctx.stroke();
+        ctx.restore();
+
+        for (const item of series) {
+          const pointY = yToPx(row[item.key]);
+          const isActive = item.key === active.key;
+          ctx.beginPath();
+          ctx.arc(hoverX, pointY, isActive ? 5.5 : 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = cssColor(item.color);
+          ctx.fill();
+          ctx.lineWidth = isActive ? 3 : 1.5;
+          ctx.strokeStyle = cssColor("--panel");
+          ctx.stroke();
+
+          if (isActive) {
+            ctx.beginPath();
+            ctx.arc(hoverX, pointY, 8.5, 0, Math.PI * 2);
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = cssColor(item.color);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function setLegend(canvas, series) {
+      const legend = canvas.closest(".chart-card").querySelector(".legend");
+      legend.innerHTML = series.map((s) => `<span><i style="background:${cssColor(s.color)}"></i>${s.label}</span>`).join("");
+    }
+
+    function renderCharts(r) {
+      const u = r.input.unit;
+      const common = [
+        { key: "pathPos", label: "Path", color: "--path", width: 2.4 },
+        { key: "xPos", label: "X", color: "--xaxis", width: 2 },
+        { key: "yPos", label: "Y", color: "--yaxis", width: 2 }
+      ];
+      const velocity = [
+        { key: "pathVel", label: "Path", color: "--path", width: 2.4 },
+        { key: "xVel", label: "X", color: "--xaxis", width: 2 },
+        { key: "yVel", label: "Y", color: "--yaxis", width: 2 }
+      ];
+      const acceleration = [
+        { key: "pathAcc", label: "Path", color: "--path", width: 2.4 },
+        { key: "xAcc", label: "X", color: "--xaxis", width: 2 },
+        { key: "yAcc", label: "Y", color: "--yaxis", width: 2 }
+      ];
+      const jerk = [
+        { key: "pathJerk", label: "Path", color: "--path", width: 2.4 },
+        { key: "xJerk", label: "X", color: "--xaxis", width: 2 },
+        { key: "yJerk", label: "Y", color: "--yaxis", width: 2 }
+      ];
+
+      const specs = [
+        ["positionChart", common, `Position (${u})`],
+        ["velocityChart", velocity, `Velocity (${u}/s)`],
+        ["accelerationChart", acceleration, `Acceleration (${u}/s²)`],
+        ["jerkChart", jerk, `Jerk (${u}/s³)`]
+      ];
+
+      for (const [id, series, label] of specs) {
+        const canvas = $(id);
+        setLegend(canvas, series);
+        const chartTitle = canvas.closest(".chart-card").querySelector(".chart-title").textContent;
+        drawChart(canvas, r.samples, series, label, chartTitle);
+      }
+
+      $("positionSubtitle").textContent = `Path distance and absolute X/Y coordinates in ${u}`;
+      $("velocitySubtitle").textContent = `Signed velocity in ${u}/s`;
+      $("accelerationSubtitle").textContent = `Signed acceleration in ${u}/s²`;
+      $("jerkSubtitle").textContent = `Signed jerk in ${u}/s³`;
+    }
+
+    function downloadCsv() {
+      if (!currentResult) return;
+      const headers = ["time_s", "path_position", "x_position", "y_position", "path_velocity", "x_velocity", "y_velocity", "path_acceleration", "x_acceleration", "y_acceleration", "path_jerk", "x_jerk", "y_jerk"];
+      const keys = ["t", "pathPos", "xPos", "yPos", "pathVel", "xVel", "yVel", "pathAcc", "xAcc", "yAcc", "pathJerk", "xJerk", "yJerk"];
+      const rows = currentResult.samples.map((row) => keys.map((key) => Number(row[key]).toPrecision(12)).join(","));
+      const csv = [headers.join(","), ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "coordinated-motion-profile.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function loadExample() {
+      const values = {
+        startX: 0, startY: 0, endX: 300, endY: 400, unit: "mm",
+        xVel: 120, xAcc: 300, xDec: 300, xJerk: 2000,
+        yVel: 200, yAcc: 250, yDec: 250, yJerk: 1500
+      };
+      for (const [id, value] of Object.entries(values)) $(id).value = value;
+      calculate();
+    }
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => currentResult && renderCharts(currentResult), 100);
+    });
+
+    for (const id of inputIds) {
+      $(id).addEventListener("keydown", (event) => {
+        if (event.key === "Enter") calculate();
+      });
+    }
+
+    $("calculateBtn").addEventListener("click", calculate);
+    $("exampleBtn").addEventListener("click", loadExample);
+    $("csvBtn").addEventListener("click", downloadCsv);
+    $("printBtn").addEventListener("click", () => window.print());
+
+    calculate();
+  </script>
+</body>
+</html>
