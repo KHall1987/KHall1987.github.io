@@ -4,107 +4,63 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Two-Axis Coordinated Motion Calculator</title>
-  <script>
-    // When this file is hosted beside the MathMeetLife calculator, reuse the
-    // reference page's linked stylesheets. The built-in CSS below remains as
-    // a complete fallback when the page is opened as a local file or offline.
-    (() => {
-      const referencePaths = [
-        "./crochet-parametric-shape-calculator.html",
-        "https://khall1987.github.io/MathMeetLife/crochet-parametric-shape-calculator.html"
-      ];
-
-      const addReferenceStyles = async () => {
-        for (const referencePath of referencePaths) {
-          const controller = new AbortController();
-          const timer = window.setTimeout(() => controller.abort(), 2500);
-          try {
-            const referenceUrl = new URL(referencePath, window.location.href);
-            if (referenceUrl.href === window.location.href) continue;
-            const response = await fetch(referenceUrl.href, {
-              credentials: "same-origin",
-              signal: controller.signal
-            });
-            if (!response.ok) continue;
-
-            const source = await response.text();
-            const referenceDoc = new DOMParser().parseFromString(source, "text/html");
-            const links = [...referenceDoc.querySelectorAll('link[rel~="stylesheet"][href]')];
-
-            for (const sourceLink of links) {
-              const href = new URL(sourceLink.getAttribute("href"), referenceUrl).href;
-              if ([...document.styleSheets].some((sheet) => sheet.href === href)) continue;
-              const link = document.createElement("link");
-              link.rel = "stylesheet";
-              link.href = href;
-              link.dataset.mathMeetLifeTheme = "linked";
-              document.head.appendChild(link);
-            }
-
-            // Some standalone calculators keep their shared theme inline.
-            // Use those rules only when no external stylesheet was present.
-            if (links.length === 0) {
-              for (const sourceStyle of referenceDoc.querySelectorAll("head style")) {
-                const style = document.createElement("style");
-                style.dataset.mathMeetLifeTheme = "inline";
-                style.textContent = sourceStyle.textContent;
-                document.head.appendChild(style);
-              }
-            }
-
-            document.documentElement.dataset.siteTheme = "mathmeetlife";
-            return;
-          } catch (error) {
-            // Try the next source. Cross-origin HTML fetches may be blocked
-            // when the calculator is opened directly from disk.
-          } finally {
-            window.clearTimeout(timer);
-          }
-        }
-      };
-
-      addReferenceStyles();
-    })();
-  </script>
+  <meta name="theme-color" content="#042f2e">
+  <link rel="stylesheet" href="assets/mml-toy.css">
+  <link rel="stylesheet" href="assets/widgets/graph-lab.css">
   <style>
     :root {
-      color-scheme: light;
-      --bg: #f6f2ea;
-      --panel: #fffdf8;
-      --panel-2: #f2ede3;
-      --text: #25221d;
-      --muted: #6d665b;
-      --border: #d8d0c2;
-      --accent: #315f58;
-      --accent-soft: #e5efec;
-      --danger: #9f342b;
-      --danger-soft: #faece8;
-      --ok: #356756;
-      --ok-soft: #e8f1ec;
-      --path: #315f58;
-      --xaxis: #a84c3d;
-      --yaxis: #607d3b;
-      --grid: #ddd6ca;
-      --axis: #8c8375;
-      --shadow: 0 12px 32px rgba(68, 54, 34, 0.08);
-      --radius: 12px;
+      color-scheme: dark;
+      /* Motion-specific aliases. The source values come from assets/mml-toy.css. */
+      --bg: var(--mml-bg, #042f2e);
+      --bg-deep: var(--mml-bg, #042f2e);
+      --bg-soft: var(--mml-paper, #0b3b3a);
+      --panel: var(--mml-paper, #0b3b3a);
+      --panel-2: var(--mml-paper-2, #133b3b);
+      --panel-3: var(--mml-paper-3, #062b2a);
+      --text: var(--mml-ink, #e3eded);
+      --muted: var(--mml-muted, #b8cccc);
+      --border: var(--mml-line, rgba(227, 237, 237, 0.18));
+      --accent: var(--mml-accent, #d5bd81);
+      --accent-strong: var(--mml-accent-dark, #f2dfaa);
+      --accent-soft: var(--mml-accent-soft, rgba(213, 189, 129, 0.13));
+      --danger: #ffb7a8;
+      --danger-soft: rgba(217, 130, 107, 0.14);
+      --ok: var(--mml-green, #9fd1be);
+      --ok-soft: rgba(159, 209, 190, 0.12);
+      --path: var(--mml-accent, #d5bd81);
+      --xaxis: var(--mml-red, #d9826b);
+      --yaxis: var(--mml-blue, #8fcfed);
+      --grid: var(--mml-canvas-grid, rgba(227, 237, 237, 0.075));
+      --axis: var(--mml-canvas-label, rgba(227, 237, 237, 0.76));
+      --header-text: var(--mml-ink, #e3eded);
+      --header-muted: var(--mml-muted, #b8cccc);
+      --shadow: var(--mml-shadow, 0 22px 60px rgba(0, 0, 0, 0.18));
+      --radius: var(--mml-radius, 16px);
     }
 
     * { box-sizing: border-box; }
 
+    html { background: var(--bg-deep); overflow-x: hidden; }
+
     body {
       margin: 0;
-      background: var(--bg);
+      min-width: 0;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(255,255,255,0.07), transparent 31rem),
+        linear-gradient(155deg, var(--bg-soft) 0%, var(--bg) 38%, var(--bg-deep) 100%);
+      background-attachment: fixed;
       color: var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.45;
+      line-height: 1.48;
     }
 
     button, input { font: inherit; }
 
     .page {
-      width: min(1260px, calc(100% - 28px));
-      margin: 28px auto 56px;
+      width: min(1280px, calc(100% - 32px));
+      margin: 30px auto 64px;
+      min-width: 0;
     }
 
     header {
@@ -116,12 +72,15 @@
     }
 
     h1 {
-      font-size: clamp(1.55rem, 3vw, 2.35rem);
-      line-height: 1.12;
-      margin: 0 0 8px;
-      letter-spacing: -0.025em;
+      max-width: 880px;
+      font-size: clamp(1.75rem, 4.3vw, 3.25rem);
+      line-height: 1.02;
+      margin: 0 0 10px;
+      color: var(--header-text);
+      letter-spacing: -0.035em;
+      overflow-wrap: anywhere;
       font-family: Georgia, "Times New Roman", serif;
-      font-weight: 650;
+      font-weight: 680;
     }
 
     h2 {
@@ -135,7 +94,8 @@
     }
 
     p { margin: 0; }
-    .subtitle { color: var(--muted); max-width: 780px; }
+    .subtitle { color: var(--header-muted); max-width: 800px; font-size: 1rem; }
+    .eyebrow { color: #bcd8c8; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; margin-bottom: 8px; }
 
     .header-actions {
       display: flex;
@@ -174,7 +134,7 @@
       box-shadow: var(--shadow);
     }
 
-    .controls {
+    .motion-controls {
       padding: 17px;
       position: sticky;
       top: 14px;
@@ -306,7 +266,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.8rem;
-      min-width: 460px;
+      min-width: 400px;
     }
 
     th, td {
@@ -347,7 +307,7 @@
     .chart-title { font-weight: 760; font-size: 0.9rem; }
     .chart-subtitle { color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
 
-    .legend {
+    .motion-legend {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
@@ -356,10 +316,10 @@
       font-size: 0.7rem;
     }
 
-    .legend span { display: inline-flex; align-items: center; gap: 4px; }
-    .legend i { width: 13px; height: 3px; border-radius: 3px; display: inline-block; }
+    .motion-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .motion-legend i { width: 13px; height: 3px; border-radius: 3px; display: inline-block; }
 
-    .canvas-wrap {
+    .motion-canvas-wrap {
       position: relative;
       height: 300px;
       padding: 0 5px 5px;
@@ -447,7 +407,7 @@
 
     @media (max-width: 1050px) {
       .layout { grid-template-columns: 1fr; }
-      .controls { position: static; }
+      .motion-controls { position: static; }
       .chart-grid { grid-template-columns: 1fr; }
     }
 
@@ -457,28 +417,216 @@
       .header-actions { justify-content: flex-start; }
       .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .tables { grid-template-columns: 1fr; }
-      .canvas-wrap { height: 265px; }
+      .motion-canvas-wrap { height: 265px; }
     }
 
     @media print {
       body { background: white; }
+      h1 { color: var(--text); }
+      .subtitle, .eyebrow { color: var(--muted); }
       .page { width: 100%; margin: 0; }
-      .controls, .header-actions { display: none; }
+      .motion-controls, .header-actions, .play-controls { display: none; }
       .layout { grid-template-columns: 1fr; }
       .panel { box-shadow: none; break-inside: avoid; }
       .chart-grid { grid-template-columns: 1fr 1fr; }
     }
+
+
+    /* V2 additions: deterministic green theme, diagnostics, synchronized cursor, and path view. */
+    header { min-width: 0; }
+    header > div:first-child { min-width: 0; }
+    .header-actions .btn:not(.primary) {
+      background: rgba(227, 237, 237, 0.08);
+      border-color: var(--mml-line, rgba(227, 237, 237, 0.18));
+      color: var(--mml-ink, #e3eded);
+    }
+    .panel { isolation: isolate; }
+
+    .diagnostic {
+      margin-top: 13px;
+      padding: 14px 16px;
+      border-left: 5px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--text);
+      font-size: 0.92rem;
+    }
+    .diagnostic strong { color: var(--accent-strong); }
+
+    .constraint-summary { margin-top: 14px; }
+    .constraint-summary h3 { margin-bottom: 8px; }
+    .util-cell { min-width: 118px; }
+    .util-value { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+    .util-track { height: 6px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: var(--mml-line-2, rgba(227, 237, 237, 0.11)); }
+    .util-fill { height: 100%; min-width: 0; border-radius: inherit; background: var(--accent); }
+    .util-fill.x { background: var(--xaxis); }
+    .util-fill.y { background: var(--yaxis); }
+
+    .path-panel { padding: 16px; }
+    .panel-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .panel-heading p { color: var(--muted); font-size: 0.78rem; max-width: 700px; }
+    .path-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 300px); gap: 14px; }
+    .path-canvas-wrap {
+      position: relative;
+      min-height: 330px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--panel-2);
+    }
+    #pathCanvas { width: 100%; height: 100%; min-height: 330px; display: block; cursor: crosshair; }
+    .path-side {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-2);
+    }
+    .path-coordinate { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .path-coordinate:last-of-type { border-bottom: 0; }
+    .path-coordinate span:first-child { color: var(--muted); font-size: 0.76rem; }
+    .path-coordinate strong { text-align: right; font-variant-numeric: tabular-nums; }
+    .play-controls { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto; gap: 9px; align-items: center; margin-top: 4px; }
+    .play-controls input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .time-chip { min-width: 75px; text-align: right; color: var(--muted); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+
+    .cursor-readout {
+      display: none;
+      margin: 0 0 13px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--panel-2);
+    }
+    .cursor-readout.visible { display: block; }
+    .cursor-readout-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+    .cursor-readout-head strong { color: var(--accent-strong); }
+    .cursor-readout-head span { color: var(--muted); font-size: 0.76rem; }
+    .cursor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .cursor-card { padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); min-width: 0; }
+    .cursor-card .cursor-name { color: var(--muted); font-size: 0.68rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cursor-card .cursor-values { margin-top: 5px; display: grid; gap: 2px; font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+
+    .implementation { padding: 0; overflow: hidden; }
+    .implementation summary { cursor: pointer; padding: 15px 17px; font-weight: 780; }
+    .implementation[open] summary { border-bottom: 1px solid var(--border); }
+    .implementation-body { padding: 16px; }
+    .implementation-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; }
+    pre {
+      margin: 0;
+      overflow: auto;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #18251f;
+      color: #eaf3ed;
+      font: 0.78rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .phase-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    @media (max-width: 900px) {
+      .path-layout { grid-template-columns: 1fr; }
+      .cursor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .page { width: min(100% - 18px, 1280px); }
+      .play-controls { grid-template-columns: auto 1fr; }
+      .time-chip { grid-column: 1 / -1; text-align: left; }
+      .cursor-grid { grid-template-columns: 1fr; }
+      .path-canvas-wrap, #pathCanvas { min-height: 270px; }
+    }
+
+
+    /* Keep the shared graph stylesheet while preserving this calculator's compact plots. */
+    body.mml-widget .motion-canvas-wrap {
+      position: relative;
+      height: 300px;
+      min-height: 0;
+      padding: 0 5px 5px;
+      background: transparent;
+      border-bottom: 0;
+      touch-action: none;
+    }
+    body.mml-widget .motion-canvas-wrap canvas,
+    body.mml-widget #pathCanvas {
+      cursor: crosshair;
+      touch-action: none;
+    }
+    body.mml-widget .motion-legend {
+      position: static;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--mml-muted, #b8cccc);
+      backdrop-filter: none;
+      pointer-events: none;
+      font: 0.7rem/1.2 var(--mml-sans, ui-sans-serif, system-ui, sans-serif);
+    }
+    body.mml-widget .status.ok {
+      color: var(--ok);
+      background: var(--ok-soft);
+      border-color: rgba(159, 209, 190, 0.35);
+    }
+    body.mml-widget .status.error {
+      color: var(--danger);
+      background: var(--danger-soft);
+      border-color: rgba(217, 130, 107, 0.38);
+    }
+    body.mml-widget .motion-controls {
+      padding: 17px;
+      position: sticky;
+      top: 14px;
+    }
+
+    @media (max-width: 1050px) {
+      body.mml-widget .motion-controls { position: static; }
+    }
+
+    @media (max-width: 700px) {
+      body.mml-widget .motion-canvas-wrap { height: 265px; }
+    }
+
+    @media print {
+      body.mml-widget .motion-controls { display: none !important; }
+    }
+
   </style>
 </head>
-<body>
+<body class="mml-widget">
   <main class="page">
-    <header>
+    <header class="hero">
       <div>
+        <div class="eyebrow">Math Meets Life · Interactive model</div>
         <h1>Two-Axis Coordinated Motion Calculator</h1>
         <p class="subtitle">Enter start and end points plus the X/Y motion limits. The page projects those limits onto one straight path and builds a zero-to-zero, jerk-limited S-curve profile.</p>
       </div>
       <div class="header-actions">
         <button class="btn" id="exampleBtn" type="button">Load example</button>
+        <button class="btn" id="shareBtn" type="button">Copy settings link</button>
         <button class="btn" id="csvBtn" type="button">Download CSV</button>
         <button class="btn" id="printBtn" type="button">Print</button>
         <button class="btn primary" id="calculateBtn" type="button">Calculate</button>
@@ -486,7 +634,7 @@
     </header>
 
     <div class="layout">
-      <aside class="panel controls">
+      <aside class="panel motion-controls">
         <div class="section">
           <h2>Move geometry</h2>
           <div class="field-grid">
@@ -534,6 +682,7 @@
       <section class="content">
         <div class="panel summary-panel">
           <div id="status" class="status ok">Ready.</div>
+          <div id="diagnostic" class="diagnostic" aria-live="polite">Calculate a move to see which axis limits it and whether the move reaches full speed.</div>
           <div class="metric-grid">
             <div class="metric"><div class="label">Path length</div><div class="value" id="pathLength">—</div><div class="note" id="moveVector">—</div></div>
             <div class="metric"><div class="label">Move time</div><div class="value" id="moveTime">—</div><div class="note" id="profileType">—</div></div>
@@ -561,6 +710,40 @@
               </div>
             </div>
           </div>
+
+          <div class="constraint-summary">
+            <h3>Axis capability used by the coordinated command</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Quantity</th><th>Limiting axis</th><th>X used</th><th>Y used</th></tr></thead>
+                <tbody id="utilizationTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel path-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>X–Y path view</h2>
+              <p>Play or scrub the move. The marker and time cursor are synchronized with all four motion graphs.</p>
+            </div>
+            <span id="pathPhase" class="phase-chip">Ready</span>
+          </div>
+          <div class="path-layout">
+            <div class="path-canvas-wrap"><canvas id="pathCanvas" aria-label="X-Y coordinated path plot"></canvas></div>
+            <div class="path-side">
+              <div class="path-coordinate"><span>Current time</span><strong id="pathTime">—</strong></div>
+              <div class="path-coordinate"><span>Current X</span><strong id="pathX">—</strong></div>
+              <div class="path-coordinate"><span>Current Y</span><strong id="pathY">—</strong></div>
+              <div class="path-coordinate"><span>Path distance</span><strong id="pathS">—</strong></div>
+              <div class="play-controls">
+                <button class="btn primary" id="playBtn" type="button">Play</button>
+                <input id="timeScrubber" type="range" min="0" max="700" step="1" value="0" aria-label="Motion time scrubber">
+                <span id="scrubberTime" class="time-chip">0.000 s</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="panel timeline">
@@ -570,26 +753,38 @@
         </div>
 
         <div class="panel chart-panel">
-          <p class="hover-help">Hover over any line to snap to the nearest sample. The crosshair marks the time, the highlighted ring identifies the nearest series, and the tooltip names the graph and reports all values at that instant.</p>
+          <div id="cursorReadout" class="cursor-readout" aria-live="polite"></div>
+          <p class="hover-help">Hover over any line to snap to the nearest sample. The crosshair is synchronized across every graph. The highlighted ring identifies the nearest line in the graph under the pointer, while the shared readout reports the same instant across position, velocity, acceleration, jerk, and the X–Y path.</p>
           <div class="chart-grid">
             <article class="chart-card">
-              <div class="chart-head"><div><div class="chart-title">Position</div><div class="chart-subtitle" id="positionSubtitle">Path and axis position</div></div><div class="legend"></div></div>
-              <div class="canvas-wrap"><canvas id="positionChart"></canvas></div>
+              <div class="chart-head"><div><div class="chart-title">Position</div><div class="chart-subtitle" id="positionSubtitle">Path and axis position</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="positionChart"></canvas></div>
             </article>
             <article class="chart-card">
-              <div class="chart-head"><div><div class="chart-title">Velocity</div><div class="chart-subtitle" id="velocitySubtitle">Signed axis velocities</div></div><div class="legend"></div></div>
-              <div class="canvas-wrap"><canvas id="velocityChart"></canvas></div>
+              <div class="chart-head"><div><div class="chart-title">Velocity</div><div class="chart-subtitle" id="velocitySubtitle">Signed axis velocities</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="velocityChart"></canvas></div>
             </article>
             <article class="chart-card">
-              <div class="chart-head"><div><div class="chart-title">Acceleration</div><div class="chart-subtitle" id="accelerationSubtitle">Signed axis accelerations</div></div><div class="legend"></div></div>
-              <div class="canvas-wrap"><canvas id="accelerationChart"></canvas></div>
+              <div class="chart-head"><div><div class="chart-title">Acceleration</div><div class="chart-subtitle" id="accelerationSubtitle">Signed axis accelerations</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="accelerationChart"></canvas></div>
             </article>
             <article class="chart-card">
-              <div class="chart-head"><div><div class="chart-title">Jerk</div><div class="chart-subtitle" id="jerkSubtitle">Piecewise-constant S-curve jerk</div></div><div class="legend"></div></div>
-              <div class="canvas-wrap"><canvas id="jerkChart"></canvas></div>
+              <div class="chart-head"><div><div class="chart-title">Jerk</div><div class="chart-subtitle" id="jerkSubtitle">Piecewise-constant S-curve jerk</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="jerkChart"></canvas></div>
             </article>
           </div>
         </div>
+
+        <details class="panel implementation">
+          <summary>Implementation values</summary>
+          <div class="implementation-body">
+            <div class="implementation-head">
+              <p class="hint">Structured Text-style assignments generated from the coordinated command limits.</p>
+              <button class="btn" id="copyCodeBtn" type="button">Copy values</button>
+            </div>
+            <pre id="implementationCode">Calculate a move to generate values.</pre>
+          </div>
+        </details>
 
         <div class="panel notice">
           <strong>Engineering note:</strong> This is a planning and visualization tool, not a motion controller. A straight commanded path still depends on simultaneous axis start, compatible controller interpolation, servo response, following-error limits, mechanics, and vendor-specific motion behavior. Verify the resulting settings on the actual machine at a safe reduced speed.
@@ -604,6 +799,10 @@
     const $ = (id) => document.getElementById(id);
     const EPS = 1e-10;
     let currentResult = null;
+    let sharedCursor = null;
+    let playbackFrame = null;
+    let playbackStart = null;
+    let playbackStartIndex = 0;
 
     const inputIds = [
       "startX", "startY", "endX", "endY", "unit",
@@ -825,11 +1024,22 @@
 
     function clearResults() {
       for (const id of ["pathLength", "moveVector", "moveTime", "profileType", "peakSpeed", "speedNote", "ratios"]) $(id).textContent = "—";
+      $("diagnostic").textContent = "Correct the input values to generate a coordinated profile.";
       $("limitTable").innerHTML = "";
       $("peakTable").innerHTML = "";
+      $("utilizationTable").innerHTML = "";
       $("timelineBar").innerHTML = "";
       $("timelineKey").innerHTML = "";
-      for (const id of ["positionChart", "velocityChart", "accelerationChart", "jerkChart"]) {
+      $("implementationCode").textContent = "Calculate a move to generate values.";
+      $("cursorReadout").classList.remove("visible");
+      $("cursorReadout").replaceChildren();
+      for (const id of ["pathTime", "pathX", "pathY", "pathS"]) $(id).textContent = "—";
+      $("pathPhase").textContent = "Ready";
+      $("timeScrubber").value = 0;
+      $("scrubberTime").textContent = "0.000 s";
+      stopPlayback();
+      sharedCursor = null;
+      for (const id of ["positionChart", "velocityChart", "accelerationChart", "jerkChart", "pathCanvas"]) {
         const canvas = $(id);
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -844,6 +1054,45 @@
       return `<tr><td>${label}</td><td>${fmt(pathValue)} ${unit}</td><td>${fmt(xValue)} ${unit}</td><td>${fmt(yValue)} ${unit}</td></tr>`;
     }
 
+    function utilizationCell(value, axisClass) {
+      const pct = Math.max(0, Math.min(100, value));
+      return `<div class="util-cell"><div class="util-value"><span>${fmt(value, 1)}%</span></div><div class="util-track"><div class="util-fill ${axisClass}" style="width:${pct}%"></div></div></div>`;
+    }
+
+    function utilizationRow(label, limiter, xUse, yUse) {
+      return `<tr><td>${label}</td><td>${limiter}</td><td>${utilizationCell(xUse, "x")}</td><td>${utilizationCell(yUse, "y")}</td></tr>`;
+    }
+
+    function buildDiagnostic(r) {
+      const u = r.input.unit;
+      const limiter = r.limits.velocity.limiter === "X + Y" ? "Both axes" : `${r.limits.velocity.limiter} axis`;
+      const reached = r.profile.vPeak >= r.limits.velocity.value * (1 - 1e-8);
+      const first = `<strong>${limiter} limits the coordinated velocity.</strong> The path command is ${fmt(r.limits.velocity.value)} ${u}/s, producing X = ${fmt(r.kx * r.limits.velocity.value)} ${u}/s and Y = ${fmt(r.ky * r.limits.velocity.value)} ${u}/s.`;
+      const second = reached
+        ? ` This move reaches that velocity and finishes in ${fmt(r.profile.totalTime)} s.`
+        : ` The move is too short to reach it, so the actual peak is ${fmt(r.profile.vPeak)} ${u}/s and the move finishes in ${fmt(r.profile.totalTime)} s.`;
+      return first + second;
+    }
+
+    function buildImplementationText(r) {
+      const n = (value) => Number(value).toFixed(6).replace(/\.?(?:0+)$/, "");
+      return [
+        `PathVelocity := ${n(r.limits.velocity.value)};`,
+        `PathAcceleration := ${n(r.limits.acceleration.value)};`,
+        `PathDeceleration := ${n(r.limits.deceleration.value)};`,
+        `PathJerk := ${n(r.limits.jerk.value)};`,
+        ``,
+        `XVelocity := ${n(r.kx * r.limits.velocity.value)};`,
+        `YVelocity := ${n(r.ky * r.limits.velocity.value)};`,
+        `XAcceleration := ${n(r.kx * r.limits.acceleration.value)};`,
+        `YAcceleration := ${n(r.ky * r.limits.acceleration.value)};`,
+        `XDeceleration := ${n(r.kx * r.limits.deceleration.value)};`,
+        `YDeceleration := ${n(r.ky * r.limits.deceleration.value)};`,
+        `XJerk := ${n(r.kx * r.limits.jerk.value)};`,
+        `YJerk := ${n(r.ky * r.limits.jerk.value)};`
+      ].join("\n");
+    }
+
     function render(r) {
       const u = r.input.unit;
       $("pathLength").textContent = `${fmt(r.length)} ${u}`;
@@ -853,6 +1102,7 @@
       $("peakSpeed").textContent = `${fmt(r.profile.vPeak)} ${u}/s`;
       $("speedNote").textContent = r.profile.vPeak < r.limits.velocity.value * (1 - 1e-8) ? "Reduced by move length" : "Reached coordinated limit";
       $("ratios").textContent = `kX ${fmt(r.kx)} · kY ${fmt(r.ky)}`;
+      $("diagnostic").innerHTML = buildDiagnostic(r);
 
       $("limitTable").innerHTML =
         limitRow("Velocity", r.limits.velocity.value, r.kx * r.limits.velocity.value, r.ky * r.limits.velocity.value, r.limits.velocity.limiter, `${u}/s`) +
@@ -866,8 +1116,17 @@
         peakRow("Deceleration", r.actual.pathD, r.actual.xD, r.actual.yD, `${u}/s²`) +
         peakRow("Jerk", r.actual.pathJ, r.actual.xJ, r.actual.yJ, `${u}/s³`);
 
+      $("utilizationTable").innerHTML =
+        utilizationRow("Velocity", r.limits.velocity.limiter, 100 * (r.kx * r.limits.velocity.value) / r.input.x.v, 100 * (r.ky * r.limits.velocity.value) / r.input.y.v) +
+        utilizationRow("Acceleration", r.limits.acceleration.limiter, 100 * (r.kx * r.limits.acceleration.value) / r.input.x.a, 100 * (r.ky * r.limits.acceleration.value) / r.input.y.a) +
+        utilizationRow("Deceleration", r.limits.deceleration.limiter, 100 * (r.kx * r.limits.deceleration.value) / r.input.x.d, 100 * (r.ky * r.limits.deceleration.value) / r.input.y.d) +
+        utilizationRow("Jerk", r.limits.jerk.limiter, 100 * (r.kx * r.limits.jerk.value) / r.input.x.j, 100 * (r.ky * r.limits.jerk.value) / r.input.y.j);
+
+      $("implementationCode").textContent = buildImplementationText(r);
       renderTimeline(r.profile);
       renderCharts(r);
+      renderPathView(r);
+      setSharedCursor(0, null, null);
     }
 
     function renderTimeline(profile) {
@@ -904,8 +1163,16 @@
       return [min - pad, max + pad];
     }
 
+    const chartIds = ["positionChart", "velocityChart", "accelerationChart", "jerkChart"];
+
+    function phaseAtTime(time) {
+      if (!currentResult) return "Ready";
+      const segment = currentResult.profile.segments.find((seg) => time <= seg.t0 + seg.duration + EPS);
+      return segment?.label || "Complete";
+    }
+
     function ensureChartTooltip(canvas) {
-      const wrap = canvas.closest(".canvas-wrap");
+      const wrap = canvas.closest(".motion-canvas-wrap");
       let tooltip = wrap.querySelector(".chart-tooltip");
       if (!tooltip) {
         tooltip = document.createElement("div");
@@ -917,287 +1184,222 @@
       return tooltip;
     }
 
-    function hideChartTooltip(canvas, redraw = true) {
-      const state = canvas._chartState;
-      if (!state) return;
-      state.hover = null;
-      const tooltip = ensureChartTooltip(canvas);
-      tooltip.classList.remove("visible");
-      if (redraw) drawChart(canvas);
+    function hideAllChartTooltips() {
+      for (const id of chartIds) ensureChartTooltip($(id)).classList.remove("visible");
     }
 
     function updateChartTooltip(canvas) {
       const state = canvas._chartState;
-      if (!state?.hover || !state.geometry) return;
-
+      if (!state || !sharedCursor || sharedCursor.sourceId !== canvas.id || !state.geometry) return;
       const tooltip = ensureChartTooltip(canvas);
-      const { index, activeKey } = state.hover;
-      const row = state.samples[index];
+      const row = state.samples[sharedCursor.index];
+      const activeKey = sharedCursor.activeKey || state.series[0].key;
       const active = state.series.find((item) => item.key === activeKey) || state.series[0];
+      const geometry = state.geometry;
 
       tooltip.replaceChildren();
-
       const title = document.createElement("div");
       title.className = "chart-tooltip-title";
-      title.textContent = `${state.chartTitle} · ${active.label}`;
+      title.textContent = `${state.chartTitle} graph · ${active.label}`;
       tooltip.appendChild(title);
 
       const time = document.createElement("div");
       time.className = "chart-tooltip-time";
-      time.textContent = `Time: ${fmt(row.t, 5)} s`;
+      time.textContent = `Time ${fmt(row.t, 4)} s · ${phaseAtTime(row.t)}`;
       tooltip.appendChild(time);
 
       for (const item of state.series) {
         const valueRow = document.createElement("div");
         valueRow.className = `chart-tooltip-row${item.key === activeKey ? " active" : ""}`;
-
         const seriesName = document.createElement("span");
         seriesName.className = "chart-tooltip-series";
-
         const dot = document.createElement("span");
         dot.className = "chart-tooltip-dot";
         dot.style.background = cssColor(item.color);
-        seriesName.appendChild(dot);
-
         const label = document.createElement("span");
         label.textContent = item.label;
-        seriesName.appendChild(label);
-
+        seriesName.append(dot, label);
         const value = document.createElement("span");
         value.className = "chart-tooltip-value";
-        value.textContent = `${fmt(row[item.key], 6)} ${state.valueUnit}`;
-
+        value.textContent = `${fmt(row[item.key], 4)} ${state.valueUnit}`;
         valueRow.append(seriesName, value);
         tooltip.appendChild(valueRow);
       }
 
-      const geometry = state.geometry;
-      const canvasX = geometry.xToPx(row.t);
       const activeY = geometry.yToPx(row[active.key]);
-      const wrap = canvas.closest(".canvas-wrap");
-      const baseLeft = canvas.offsetLeft + canvasX;
+      const baseLeft = canvas.offsetLeft + geometry.xToPx(row.t);
       const baseTop = canvas.offsetTop + activeY;
-
       tooltip.style.left = `${baseLeft + 14}px`;
       tooltip.style.top = `${baseTop}px`;
       tooltip.classList.add("visible");
-
+      const wrap = canvas.closest(".motion-canvas-wrap");
       const tooltipWidth = tooltip.offsetWidth;
       const tooltipHeight = tooltip.offsetHeight;
       let left = baseLeft + 14;
-      let top = baseTop;
-
       if (left + tooltipWidth > wrap.clientWidth - 6) left = baseLeft - tooltipWidth - 14;
       const halfHeight = tooltipHeight / 2;
-      top = Math.max(halfHeight + 6, Math.min(wrap.clientHeight - halfHeight - 6, top));
-
+      const top = Math.max(halfHeight + 6, Math.min(wrap.clientHeight - halfHeight - 6, baseTop));
       tooltip.style.left = `${Math.max(6, left)}px`;
       tooltip.style.top = `${top}px`;
+    }
+
+    function updateCursorReadout(index) {
+      if (!currentResult || index == null) return;
+      const row = currentResult.samples[index];
+      const u = currentResult.input.unit;
+      const readout = $("cursorReadout");
+      const card = (name, values, unit) => `<div class="cursor-card"><div class="cursor-name">${name}</div><div class="cursor-values"><span>Path ${fmt(values[0], 4)} ${unit}</span><span>X ${fmt(values[1], 4)} ${unit}</span><span>Y ${fmt(values[2], 4)} ${unit}</span></div></div>`;
+      readout.innerHTML = `<div class="cursor-readout-head"><strong>Time ${fmt(row.t, 4)} s</strong><span>${phaseAtTime(row.t)}</span></div><div class="cursor-grid">${card("Position", [row.pathPos, row.xPos, row.yPos], u)}${card("Velocity", [row.pathVel, row.xVel, row.yVel], `${u}/s`)}${card("Acceleration", [row.pathAcc, row.xAcc, row.yAcc], `${u}/s²`)}${card("Jerk", [row.pathJerk, row.xJerk, row.yJerk], `${u}/s³`)}</div>`;
+      readout.classList.add("visible");
+
+      $("pathTime").textContent = `${fmt(row.t, 4)} s`;
+      $("pathX").textContent = `${fmt(row.xPos, 4)} ${u}`;
+      $("pathY").textContent = `${fmt(row.yPos, 4)} ${u}`;
+      $("pathS").textContent = `${fmt(row.pathPos, 4)} ${u}`;
+      $("pathPhase").textContent = phaseAtTime(row.t);
+      $("timeScrubber").value = index;
+      $("scrubberTime").textContent = `${fmt(row.t, 4)} s`;
+    }
+
+    function setSharedCursor(index, sourceId = null, activeKey = null) {
+      if (!currentResult) return;
+      index = Math.max(0, Math.min(currentResult.samples.length - 1, Math.round(index)));
+      sharedCursor = { index, sourceId, activeKey };
+      hideAllChartTooltips();
+      for (const id of chartIds) drawChart($(id));
+      drawPathCanvas();
+      updateCursorReadout(index);
+      if (sourceId) updateChartTooltip($(sourceId));
     }
 
     function installChartInteraction(canvas) {
       if (canvas._hoverInteractionInstalled) return;
       canvas._hoverInteractionInstalled = true;
-
       canvas.addEventListener("pointermove", (event) => {
         const state = canvas._chartState;
         const geometry = state?.geometry;
         if (!state || !geometry) return;
-
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-        const inside = x >= geometry.margin.left && x <= geometry.margin.left + geometry.plotW &&
-          y >= geometry.margin.top && y <= geometry.margin.top + geometry.plotH;
-
+        const inside = x >= geometry.margin.left && x <= geometry.margin.left + geometry.plotW && y >= geometry.margin.top && y <= geometry.margin.top + geometry.plotH;
         if (!inside) {
-          hideChartTooltip(canvas);
+          ensureChartTooltip(canvas).classList.remove("visible");
           return;
         }
-
         const normalized = (x - geometry.margin.left) / geometry.plotW;
         const index = Math.max(0, Math.min(state.samples.length - 1, Math.round(normalized * (state.samples.length - 1))));
         const row = state.samples[index];
-
         let active = state.series[0];
         let nearestDistance = Infinity;
         for (const item of state.series) {
-          const lineY = geometry.yToPx(row[item.key]);
-          const distance = Math.abs(y - lineY);
-          if (distance < nearestDistance) {
-            nearestDistance = distance;
-            active = item;
-          }
+          const distance = Math.abs(y - geometry.yToPx(row[item.key]));
+          if (distance < nearestDistance) { nearestDistance = distance; active = item; }
         }
-
-        state.hover = { index, activeKey: active.key };
-        drawChart(canvas);
-        updateChartTooltip(canvas);
+        stopPlayback();
+        setSharedCursor(index, canvas.id, active.key);
       });
+      canvas.addEventListener("pointerleave", () => {
+        ensureChartTooltip(canvas).classList.remove("visible");
+        if (sharedCursor?.sourceId === canvas.id) {
+          sharedCursor = { ...sharedCursor, sourceId: null, activeKey: null };
+          for (const id of chartIds) drawChart($(id));
+        }
+      });
+      canvas.addEventListener("pointercancel", () => ensureChartTooltip(canvas).classList.remove("visible"));
+    }
 
-      canvas.addEventListener("pointerleave", () => hideChartTooltip(canvas));
-      canvas.addEventListener("pointercancel", () => hideChartTooltip(canvas));
+    function phaseFill(index) {
+      return index % 2 === 0 ? "rgba(31,106,80,0.055)" : "rgba(100,127,53,0.075)";
     }
 
     function drawChart(canvas, samples, series, yUnit, chartTitle) {
       if (samples && series) {
         const unitMatch = yUnit.match(/\((.*)\)$/);
-        canvas._chartState = {
-          samples,
-          series,
-          yUnit,
-          valueUnit: unitMatch ? unitMatch[1] : yUnit,
-          chartTitle,
-          hover: null,
-          geometry: null
-        };
+        canvas._chartState = { samples, series, yUnit, valueUnit: unitMatch ? unitMatch[1] : yUnit, chartTitle, geometry: null };
       }
-
       const state = canvas._chartState;
       if (!state) return;
-      samples = state.samples;
-      series = state.series;
-      yUnit = state.yUnit;
-
+      samples = state.samples; series = state.series; yUnit = state.yUnit;
       const rect = canvas.getBoundingClientRect();
       const dpr = Math.max(1, window.devicePixelRatio || 1);
       canvas.width = Math.max(1, Math.round(rect.width * dpr));
       canvas.height = Math.max(1, Math.round(rect.height * dpr));
       const ctx = canvas.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const width = rect.width;
-      const height = rect.height;
+      const width = rect.width, height = rect.height;
       const margin = { left: 67, right: 15, top: 12, bottom: 38 };
       const plotW = Math.max(10, width - margin.left - margin.right);
       const plotH = Math.max(10, height - margin.top - margin.bottom);
       const tMax = samples[samples.length - 1]?.t || 1;
-
       let yMin = Infinity, yMax = -Infinity;
-      for (const row of samples) {
-        for (const s of series) {
-          const value = row[s.key];
-          yMin = Math.min(yMin, value);
-          yMax = Math.max(yMax, value);
-        }
-      }
-      yMin = Math.min(yMin, 0);
-      yMax = Math.max(yMax, 0);
-      [yMin, yMax] = niceRange(yMin, yMax);
-
+      for (const row of samples) for (const s of series) { yMin = Math.min(yMin, row[s.key]); yMax = Math.max(yMax, row[s.key]); }
+      yMin = Math.min(yMin, 0); yMax = Math.max(yMax, 0); [yMin, yMax] = niceRange(yMin, yMax);
       const xToPx = (x) => margin.left + (x / tMax) * plotW;
       const yToPx = (y) => margin.top + (1 - (y - yMin) / (yMax - yMin)) * plotH;
       state.geometry = { margin, plotW, plotH, tMax, yMin, yMax, xToPx, yToPx };
       installChartInteraction(canvas);
-
       ctx.clearRect(0, 0, width, height);
-      ctx.font = "11px Inter, system-ui, sans-serif";
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = cssColor("--grid");
-      ctx.fillStyle = cssColor("--muted");
 
+      // Consistent phase bands on every time graph.
+      if (currentResult) {
+        currentResult.profile.segments.forEach((seg, index) => {
+          const x0 = xToPx(seg.t0), x1 = xToPx(seg.t0 + seg.duration);
+          ctx.fillStyle = phaseFill(index);
+          ctx.fillRect(x0, margin.top, Math.max(1, x1 - x0), plotH);
+        });
+      }
+
+      ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+      ctx.lineWidth = 1; ctx.strokeStyle = cssColor("--grid"); ctx.fillStyle = cssColor("--muted");
       const gridCount = 5;
       for (let i = 0; i <= gridCount; i += 1) {
         const x = margin.left + (i / gridCount) * plotW;
         ctx.beginPath(); ctx.moveTo(x, margin.top); ctx.lineTo(x, margin.top + plotH); ctx.stroke();
-        const label = fmt((i / gridCount) * tMax, 3);
-        ctx.textAlign = "center"; ctx.textBaseline = "top";
-        ctx.fillText(label, x, margin.top + plotH + 7);
+        ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(fmt((i / gridCount) * tMax, 3), x, margin.top + plotH + 7);
       }
-
       for (let i = 0; i <= gridCount; i += 1) {
         const y = margin.top + (i / gridCount) * plotH;
         ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(margin.left + plotW, y); ctx.stroke();
-        const value = yMax - (i / gridCount) * (yMax - yMin);
-        ctx.textAlign = "right"; ctx.textBaseline = "middle";
-        ctx.fillText(fmt(value, 3), margin.left - 8, y);
+        ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(fmt(yMax - (i / gridCount) * (yMax - yMin), 3), margin.left - 8, y);
       }
-
       if (yMin < 0 && yMax > 0) {
-        const zeroY = yToPx(0);
-        ctx.strokeStyle = cssColor("--axis");
+        const zeroY = yToPx(0); ctx.strokeStyle = cssColor("--axis");
         ctx.beginPath(); ctx.moveTo(margin.left, zeroY); ctx.lineTo(margin.left + plotW, zeroY); ctx.stroke();
       }
-
-      ctx.fillStyle = cssColor("--muted");
-      ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.fillStyle = cssColor("--muted"); ctx.textAlign = "center"; ctx.textBaseline = "bottom";
       ctx.fillText("Time (s)", margin.left + plotW / 2, height - 1);
+      ctx.save(); ctx.translate(13, margin.top + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(yUnit, 0, 0); ctx.restore();
 
-      ctx.save();
-      ctx.translate(13, margin.top + plotH / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = "center"; ctx.textBaseline = "top";
-      ctx.fillText(yUnit, 0, 0);
-      ctx.restore();
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(margin.left, margin.top, plotW, plotH);
-      ctx.clip();
-
+      ctx.save(); ctx.beginPath(); ctx.rect(margin.left, margin.top, plotW, plotH); ctx.clip();
       for (const s of series) {
-        ctx.strokeStyle = cssColor(s.color);
-        ctx.lineWidth = s.width || 2;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        samples.forEach((row, i) => {
-          const x = xToPx(row.t);
-          const y = yToPx(row[s.key]);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
+        ctx.strokeStyle = cssColor(s.color); ctx.lineWidth = s.width || 2; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.beginPath();
+        samples.forEach((row, i) => { const x = xToPx(row.t), y = yToPx(row[s.key]); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
         ctx.stroke();
       }
-
-      if (state.hover) {
-        const row = samples[state.hover.index];
-        const active = series.find((item) => item.key === state.hover.activeKey) || series[0];
+      if (sharedCursor) {
+        const row = samples[sharedCursor.index];
+        const active = sharedCursor.sourceId === canvas.id ? (series.find((item) => item.key === sharedCursor.activeKey) || series[0]) : null;
         const hoverX = xToPx(row.t);
-
-        ctx.save();
-        ctx.strokeStyle = cssColor("--axis");
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(hoverX, margin.top);
-        ctx.lineTo(hoverX, margin.top + plotH);
-        ctx.stroke();
-
-        const activeY = yToPx(row[active.key]);
-        ctx.strokeStyle = cssColor(active.color);
-        ctx.setLineDash([3, 4]);
-        ctx.beginPath();
-        ctx.moveTo(margin.left, activeY);
-        ctx.lineTo(hoverX, activeY);
-        ctx.stroke();
+        ctx.save(); ctx.strokeStyle = cssColor("--axis"); ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(hoverX, margin.top); ctx.lineTo(hoverX, margin.top + plotH); ctx.stroke();
+        if (active) {
+          const activeY = yToPx(row[active.key]); ctx.strokeStyle = cssColor(active.color); ctx.setLineDash([3, 4]);
+          ctx.beginPath(); ctx.moveTo(margin.left, activeY); ctx.lineTo(hoverX, activeY); ctx.stroke();
+        }
         ctx.restore();
-
         for (const item of series) {
-          const pointY = yToPx(row[item.key]);
-          const isActive = item.key === active.key;
-          ctx.beginPath();
-          ctx.arc(hoverX, pointY, isActive ? 5.5 : 3.5, 0, Math.PI * 2);
-          ctx.fillStyle = cssColor(item.color);
-          ctx.fill();
-          ctx.lineWidth = isActive ? 3 : 1.5;
-          ctx.strokeStyle = cssColor("--panel");
-          ctx.stroke();
-
-          if (isActive) {
-            ctx.beginPath();
-            ctx.arc(hoverX, pointY, 8.5, 0, Math.PI * 2);
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = cssColor(item.color);
-            ctx.stroke();
-          }
+          const pointY = yToPx(row[item.key]); const isActive = active && item.key === active.key;
+          ctx.beginPath(); ctx.arc(hoverX, pointY, isActive ? 5.5 : 3.5, 0, Math.PI * 2); ctx.fillStyle = cssColor(item.color); ctx.fill();
+          ctx.lineWidth = isActive ? 3 : 1.5; ctx.strokeStyle = cssColor("--panel"); ctx.stroke();
+          if (isActive) { ctx.beginPath(); ctx.arc(hoverX, pointY, 8.5, 0, Math.PI * 2); ctx.lineWidth = 1.5; ctx.strokeStyle = cssColor(item.color); ctx.stroke(); }
         }
       }
       ctx.restore();
     }
 
     function setLegend(canvas, series) {
-      const legend = canvas.closest(".chart-card").querySelector(".legend");
+      const legend = canvas.closest(".chart-card").querySelector(".motion-legend");
       legend.innerHTML = series.map((s) => `<span><i style="background:${cssColor(s.color)}"></i>${s.label}</span>`).join("");
     }
 
@@ -1244,6 +1446,94 @@
       $("jerkSubtitle").textContent = `Signed jerk in ${u}/s³`;
     }
 
+    function renderPathView(r) {
+      $("timeScrubber").max = r.samples.length - 1;
+      drawPathCanvas();
+    }
+
+    function drawPathCanvas() {
+      if (!currentResult) return;
+      const canvas = $("pathCanvas");
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const width = rect.width, height = rect.height;
+      const margin = { left: 58, right: 25, top: 25, bottom: 48 };
+      const plotW = Math.max(20, width - margin.left - margin.right);
+      const plotH = Math.max(20, height - margin.top - margin.bottom);
+      const r = currentResult;
+      let minX = Math.min(r.input.x0, r.input.x1), maxX = Math.max(r.input.x0, r.input.x1);
+      let minY = Math.min(r.input.y0, r.input.y1), maxY = Math.max(r.input.y0, r.input.y1);
+      const xSpan0 = Math.max(EPS, maxX - minX), ySpan0 = Math.max(EPS, maxY - minY);
+      minX -= Math.max(xSpan0 * 0.12, 1); maxX += Math.max(xSpan0 * 0.12, 1);
+      minY -= Math.max(ySpan0 * 0.12, 1); maxY += Math.max(ySpan0 * 0.12, 1);
+      const xSpan = maxX - minX, ySpan = maxY - minY;
+      const scale = Math.min(plotW / xSpan, plotH / ySpan);
+      const usedW = xSpan * scale, usedH = ySpan * scale;
+      const ox = margin.left + (plotW - usedW) / 2, oy = margin.top + (plotH - usedH) / 2;
+      const xToPx = (x) => ox + (x - minX) * scale;
+      const yToPx = (y) => oy + usedH - (y - minY) * scale;
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+      ctx.strokeStyle = cssColor("--grid"); ctx.fillStyle = cssColor("--muted"); ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i += 1) {
+        const px = ox + usedW * i / 5, py = oy + usedH * i / 5;
+        ctx.beginPath(); ctx.moveTo(px, oy); ctx.lineTo(px, oy + usedH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ox, py); ctx.lineTo(ox + usedW, py); ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(fmt(minX + xSpan * i / 5, 3), px, oy + usedH + 7);
+        ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(fmt(maxY - ySpan * i / 5, 3), ox - 7, py);
+      }
+      ctx.fillStyle = cssColor("--muted"); ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(`X (${r.input.unit})`, ox + usedW / 2, height - 2);
+      ctx.save(); ctx.translate(13, oy + usedH / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(`Y (${r.input.unit})`, 0, 0); ctx.restore();
+
+      const sx = xToPx(r.input.x0), sy = yToPx(r.input.y0), ex = xToPx(r.input.x1), ey = yToPx(r.input.y1);
+      ctx.strokeStyle = cssColor("--path"); ctx.lineWidth = 3; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      // Direction arrow.
+      const angle = Math.atan2(ey - sy, ex - sx), arrowX = sx + (ex - sx) * 0.72, arrowY = sy + (ey - sy) * 0.72;
+      ctx.fillStyle = cssColor("--path"); ctx.beginPath();
+      ctx.moveTo(arrowX, arrowY); ctx.lineTo(arrowX - 12 * Math.cos(angle - 0.48), arrowY - 12 * Math.sin(angle - 0.48)); ctx.lineTo(arrowX - 12 * Math.cos(angle + 0.48), arrowY - 12 * Math.sin(angle + 0.48)); ctx.closePath(); ctx.fill();
+
+      const point = r.samples[sharedCursor?.index ?? 0];
+      const px = xToPx(point.xPos), py = yToPx(point.yPos);
+      for (const [x, y, label, color] of [[sx, sy, "Start", "--xaxis"], [ex, ey, "End", "--yaxis"]]) {
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = cssColor(color); ctx.fill(); ctx.strokeStyle = cssColor("--panel"); ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = cssColor("--text"); ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(label, x + 8, y - 7);
+      }
+      ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.fillStyle = cssColor("--accent"); ctx.fill(); ctx.strokeStyle = cssColor("--panel"); ctx.lineWidth = 3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2); ctx.strokeStyle = cssColor("--accent"); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+
+    function stopPlayback() {
+      if (playbackFrame != null) cancelAnimationFrame(playbackFrame);
+      playbackFrame = null; playbackStart = null;
+      const btn = $("playBtn");
+      if (btn) btn.textContent = "Play";
+    }
+
+    function togglePlayback() {
+      if (!currentResult) return;
+      if (playbackFrame != null) { stopPlayback(); return; }
+      playbackStartIndex = sharedCursor?.index ?? 0;
+      if (playbackStartIndex >= currentResult.samples.length - 1) playbackStartIndex = 0;
+      playbackStart = null; $("playBtn").textContent = "Pause";
+      const startTime = currentResult.samples[playbackStartIndex].t;
+      const step = (timestamp) => {
+        if (playbackStart == null) playbackStart = timestamp;
+        const elapsed = (timestamp - playbackStart) / 1000;
+        const targetTime = startTime + elapsed;
+        const ratio = targetTime / currentResult.profile.totalTime;
+        const index = Math.min(currentResult.samples.length - 1, Math.round(ratio * (currentResult.samples.length - 1)));
+        setSharedCursor(index, null, null);
+        if (index >= currentResult.samples.length - 1) stopPlayback();
+        else playbackFrame = requestAnimationFrame(step);
+      };
+      playbackFrame = requestAnimationFrame(step);
+    }
+
     function downloadCsv() {
       if (!currentResult) return;
       const headers = ["time_s", "path_position", "x_position", "y_position", "path_velocity", "x_velocity", "y_velocity", "path_acceleration", "x_acceleration", "y_acceleration", "path_jerk", "x_jerk", "y_jerk"];
@@ -1261,6 +1551,40 @@
       URL.revokeObjectURL(url);
     }
 
+    function settingsParams() {
+      const params = new URLSearchParams();
+      for (const id of inputIds) params.set(id, $(id).value);
+      return params;
+    }
+
+    async function copySettingsLink() {
+      const url = new URL(window.location.href);
+      url.search = settingsParams().toString();
+      try {
+        await navigator.clipboard.writeText(url.href);
+        $("shareBtn").textContent = "Link copied";
+      } catch {
+        window.prompt("Copy this settings link:", url.href);
+      }
+      window.setTimeout(() => $("shareBtn").textContent = "Copy settings link", 1500);
+    }
+
+    function loadSettingsFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      for (const id of inputIds) if (params.has(id)) $(id).value = params.get(id);
+    }
+
+    async function copyImplementation() {
+      const value = $("implementationCode").textContent;
+      try {
+        await navigator.clipboard.writeText(value);
+        $("copyCodeBtn").textContent = "Copied";
+      } catch {
+        window.prompt("Copy these values:", value);
+      }
+      window.setTimeout(() => $("copyCodeBtn").textContent = "Copy values", 1300);
+    }
+
     function loadExample() {
       const values = {
         startX: 0, startY: 0, endX: 300, endY: 400, unit: "mm",
@@ -1274,7 +1598,11 @@
     let resizeTimer;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => currentResult && renderCharts(currentResult), 100);
+      resizeTimer = setTimeout(() => {
+        if (!currentResult) return;
+        renderCharts(currentResult);
+        drawPathCanvas();
+      }, 100);
     });
 
     for (const id of inputIds) {
@@ -1285,9 +1613,17 @@
 
     $("calculateBtn").addEventListener("click", calculate);
     $("exampleBtn").addEventListener("click", loadExample);
+    $("shareBtn").addEventListener("click", copySettingsLink);
     $("csvBtn").addEventListener("click", downloadCsv);
     $("printBtn").addEventListener("click", () => window.print());
+    $("copyCodeBtn").addEventListener("click", copyImplementation);
+    $("playBtn").addEventListener("click", togglePlayback);
+    $("timeScrubber").addEventListener("input", (event) => {
+      stopPlayback();
+      setSharedCursor(Number(event.target.value), null, null);
+    });
 
+    loadSettingsFromUrl();
     calculate();
   </script>
 </body>
