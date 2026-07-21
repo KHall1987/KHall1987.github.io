@@ -1,0 +1,1491 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Compare fixed-column and cosine-adjusted latitude grids on a textured Earth.">
+  <title>Sphere Grid Explorer</title>
+  <link rel="stylesheet" href="https://khall1987.github.io/MathMeetLife/assets/mml-toy.css">
+  <link rel="stylesheet" href="https://khall1987.github.io/MathMeetLife/assets/widgets/rotated-land-grid.css">
+  <style>
+
+:root {
+  color-scheme: dark;
+  --sge-bg: #103838;
+  --sge-bg-deep: #092f31;
+  --sge-surface: #143f3f;
+  --sge-surface-2: #183f40;
+  --sge-surface-3: #0f3435;
+  --sge-ink: #f4f2dc;
+  --sge-muted: #b8d4cf;
+  --sge-line: rgba(156, 205, 194, 0.25);
+  --sge-line-strong: rgba(177, 218, 207, 0.38);
+  --sge-gold: #e0b65a;
+  --sge-blue: #4f95bd;
+  --sge-green: #82a94f;
+  --sge-radius: 15px;
+  --sge-display: var(--mml-display-font, var(--font-display, "Arial Black", "Trebuchet MS", system-ui, sans-serif));
+  --sge-body: var(--mml-body-font, var(--font-body, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif));
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body.sphere-grid-explorer-page {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 76% 0%, rgba(65, 130, 126, 0.16), transparent 34rem),
+    var(--sge-bg-deep);
+  color: var(--sge-ink);
+  font-family: var(--sge-body);
+  line-height: 1.5;
+}
+button, input, select { font: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible {
+  outline: 3px solid rgba(224, 182, 90, 0.72);
+  outline-offset: 2px;
+}
+
+.sphere-grid-explorer {
+  width: min(1540px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+}
+.sphere-grid-explorer h1,
+.sphere-grid-explorer h2,
+.sphere-grid-explorer h3,
+.sphere-grid-explorer p { margin-top: 0; }
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 362px minmax(0, 1fr);
+  min-height: 100vh;
+}
+.sidebar {
+  min-width: 0;
+  padding: 28px 19px 42px 0;
+  border-right: 1px solid var(--sge-line);
+}
+.sidebar-inner {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  padding: 0 19px 28px 0;
+  overflow-y: auto;
+  scrollbar-color: rgba(190, 221, 214, 0.34) transparent;
+}
+.hero { padding-bottom: 22px; }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  margin: 0 0 16px;
+  padding: 3px 11px;
+  border: 1px solid rgba(201, 224, 216, 0.34);
+  border-radius: 999px;
+  color: #f4d174;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+h1 {
+  max-width: 330px;
+  margin-bottom: 11px;
+  color: var(--sge-ink);
+  font-family: var(--sge-display);
+  font-size: clamp(2.15rem, 3.8vw, 3.25rem);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  line-height: 1.03;
+}
+h1 .accent { color: var(--sge-gold); }
+.intro {
+  margin-bottom: 16px;
+  color: #d5ebe5;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.formula-card {
+  padding: 12px 14px;
+  border: 1px solid var(--sge-line);
+  border-radius: 12px;
+  background: rgba(20, 69, 68, 0.72);
+}
+.formula-card span {
+  display: block;
+  color: var(--sge-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.formula-card strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--sge-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.controls {
+  padding-top: 16px;
+  border-top: 1px solid var(--sge-line);
+}
+.section-title {
+  margin-bottom: 4px;
+  color: var(--sge-ink);
+  font-family: var(--sge-display);
+  font-size: 1.04rem;
+  letter-spacing: -0.02em;
+}
+.section-note {
+  margin-bottom: 19px;
+  color: var(--sge-muted);
+  font-size: 0.79rem;
+}
+.control { margin-bottom: 17px; }
+.control-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+label {
+  color: #eaf3e9;
+  font-size: 0.81rem;
+  font-weight: 760;
+}
+output {
+  min-width: 48px;
+  color: #f5d57d;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  text-align: right;
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--sge-gold);
+}
+select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--sge-line-strong);
+  border-radius: 10px;
+  background: #123a3b;
+  color: var(--sge-ink);
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 32px;
+}
+.toggle-row input { accent-color: var(--sge-gold); }
+.texture-status {
+  min-height: 1.2em;
+  margin: 6px 0 0;
+  color: var(--sge-muted);
+  font-size: 0.7rem;
+}
+.texture-status[data-state="ready"] { color: #bad68c; }
+.texture-status[data-state="warning"] { color: #f1cb83; }
+.button-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+button {
+  min-height: 39px;
+  padding: 8px 11px;
+  border: 1px solid var(--sge-line-strong);
+  border-radius: 999px;
+  background: #174547;
+  color: var(--sge-ink);
+  cursor: pointer;
+  font-weight: 780;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+button:hover {
+  border-color: rgba(229, 199, 119, 0.8);
+  background: #205456;
+}
+button:active { transform: translateY(1px); }
+.primary {
+  border-color: #efcf7c;
+  background: var(--sge-ink);
+  color: #123839;
+}
+.primary:hover { background: #fff8d9; color: #123839; }
+.legend {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid var(--sge-line);
+}
+.legend-title { margin-bottom: 7px; font-size: 0.77rem; font-weight: 780; }
+.gradient {
+  height: 11px;
+  border: 1px solid rgba(247, 242, 211, 0.26);
+  border-radius: 999px;
+  background: linear-gradient(90deg, #496cae, #dce9f2 43%, #f3f1db 50%, #e6a25e 72%, #a74135);
+}
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: var(--sge-muted);
+  font-size: 0.68rem;
+}
+
+.workspace {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+  padding: 11px 0 44px 18px;
+}
+.panel {
+  border: 1px solid var(--sge-line);
+  border-radius: var(--sge-radius);
+  background: rgba(20, 63, 63, 0.91);
+}
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  border: 0;
+  background: transparent;
+}
+.metric {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--sge-line);
+  border-radius: 13px;
+  background: rgba(24, 67, 67, 0.82);
+}
+.metric span {
+  display: block;
+  color: #b9d8d3;
+  font-size: 0.64rem;
+  font-weight: 820;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+.metric strong {
+  display: block;
+  margin-top: 2px;
+  color: #fff7d8;
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.view-panel { overflow: hidden; }
+.view-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--sge-line);
+}
+.view-head h2, .detail-card h2 {
+  margin-bottom: 1px;
+  color: var(--sge-ink);
+  font-family: var(--sge-display);
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+.view-head p, .detail-card > p {
+  margin-bottom: 0;
+  color: var(--sge-muted);
+  font-size: 0.73rem;
+}
+.segmented {
+  display: flex;
+  gap: 6px;
+  padding: 0;
+}
+.segmented button {
+  min-height: 36px;
+  padding: 7px 15px;
+  background: #19494a;
+  font-size: 0.78rem;
+}
+.segmented button[aria-pressed="true"] {
+  border-color: #e8eee2;
+  background: #e9f2eb;
+  color: #123839;
+}
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 470px;
+}
+.comparison-card { min-width: 0; padding: 13px; }
+.comparison-card + .comparison-card { border-left: 1px solid var(--sge-line); }
+.comparison-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.comparison-label h3 {
+  margin-bottom: 0;
+  color: var(--sge-ink);
+  font-family: var(--sge-display);
+  font-size: 0.88rem;
+}
+.comparison-label span { color: var(--sge-muted); font-size: 0.7rem; }
+.canvas-wrap {
+  position: relative;
+  min-height: 400px;
+  border: 1px solid var(--sge-line);
+  border-radius: 13px;
+  background:
+    linear-gradient(rgba(181, 221, 211, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(181, 221, 211, 0.035) 1px, transparent 1px),
+    #0d3335;
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+canvas { display: block; width: 100%; height: 400px; touch-action: none; }
+.canvas-hint {
+  position: absolute;
+  left: 10px;
+  bottom: 9px;
+  padding: 4px 7px;
+  border: 1px solid rgba(215, 237, 229, 0.2);
+  border-radius: 999px;
+  background: rgba(8, 42, 43, 0.78);
+  color: #c5ddd8;
+  font-size: 0.65rem;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+}
+.details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 16px;
+}
+.detail-card { min-width: 0; padding: 15px; }
+.row-data {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 13px;
+}
+.datum {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--sge-line);
+  border-radius: 10px;
+  background: rgba(12, 52, 53, 0.68);
+}
+.datum span {
+  display: block;
+  color: var(--sge-muted);
+  font-size: 0.62rem;
+  font-weight: 780;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+.datum strong {
+  display: block;
+  margin-top: 2px;
+  color: #fff7d8;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+#chartCanvas { height: 300px; }
+.footer-note {
+  margin: 0;
+  padding: 0 14px 4px;
+  color: var(--sge-muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1120px) {
+  .app-grid { grid-template-columns: 310px minmax(0, 1fr); }
+  .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 880px) {
+  .app-grid { grid-template-columns: 1fr; }
+  .sidebar {
+    padding: 22px 16px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--sge-line);
+  }
+  .sidebar-inner {
+    position: static;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+  }
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, 0.45fr); gap: 14px 22px; }
+  .hero .eyebrow, .hero h1, .hero .intro { grid-column: 1; }
+  .formula-card { grid-column: 2; grid-row: 1 / span 3; align-self: end; }
+  .controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+  .legend { grid-column: 1 / -1; }
+  .workspace { padding: 16px; }
+}
+@media (max-width: 690px) {
+  .hero, .controls-grid, .comparison-grid, .details-grid, .summary-strip { grid-template-columns: 1fr; }
+  .hero .eyebrow, .hero h1, .hero .intro, .formula-card { grid-column: 1; grid-row: auto; }
+  .comparison-card + .comparison-card { border-left: 0; border-top: 1px solid var(--sge-line); }
+  .view-head { align-items: flex-start; flex-direction: column; }
+  .segmented { width: 100%; }
+  .segmented button { flex: 1; }
+  .row-data { grid-template-columns: 1fr; }
+  canvas { height: 340px; }
+  .canvas-wrap { min-height: 340px; }
+  .workspace { padding: 12px 9px 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; }
+}
+
+  </style>
+</head>
+
+<body class="sphere-grid-explorer-page">
+  <main class="sphere-grid-explorer">
+    <div class="app-grid">
+      <aside class="sidebar">
+        <div class="sidebar-inner">
+          <header class="hero">
+            <p class="eyebrow">Spherical grid geometry</p>
+            <h1>Sphere <span class="accent">Grid</span> Explorer</h1>
+            <p class="intro">Compare a standard latitude–longitude grid with one whose column counts decrease towards the poles. The Earth texture keeps the calculation grounded in the surface being divided.</p>
+            <div class="formula-card" aria-label="Cosine adjustment formula">
+              <span>Adjusted columns</span>
+              <strong>n(φ) ≈ N cos(φ)</strong>
+            </div>
+          </header>
+
+          <section class="controls" aria-labelledby="controls-title">
+            <h2 class="section-title" id="controls-title">Grid settings</h2>
+            <p class="section-note">Both grids use the same latitude bands. Only the number of cells in each row changes.</p>
+
+            <div class="controls-grid">
+              <div class="control">
+                <div class="control-head">
+                  <label for="rows">Latitude rows</label>
+                  <output id="rowsOut" for="rows">19</output>
+                </div>
+                <input id="rows" type="range" min="5" max="45" step="1" value="19">
+              </div>
+
+              <div class="control">
+                <div class="control-head">
+                  <label for="columns">Equator columns</label>
+                  <output id="columnsOut" for="columns">20</output>
+                </div>
+                <input id="columns" type="range" min="4" max="80" step="1" value="20">
+              </div>
+
+              <div class="control">
+                <div class="control-head">
+                  <label for="minimum">Minimum columns</label>
+                  <output id="minimumOut" for="minimum">1</output>
+                </div>
+                <input id="minimum" type="range" min="1" max="12" step="1" value="1">
+              </div>
+
+              <div class="control">
+                <div class="control-head"><label for="rounding">Rounding method</label></div>
+                <select id="rounding">
+                  <option value="round">Nearest integer</option>
+                  <option value="floor">Round down</option>
+                  <option value="ceil">Round up</option>
+                </select>
+              </div>
+
+              <div class="control">
+                <label class="toggle-row" for="earthTexture">
+                  <input id="earthTexture" type="checkbox" checked>
+                  <span>Show Earth texture</span>
+                </label>
+                <p class="texture-status" id="textureStatus" role="status">Loading Earth texture…</p>
+              </div>
+
+              <div class="control">
+                <div class="control-head">
+                  <label for="overlayOpacity">Area overlay opacity</label>
+                  <output id="overlayOpacityOut" for="overlayOpacity">46%</output>
+                </div>
+                <input id="overlayOpacity" type="range" min="0" max="85" step="1" value="46">
+              </div>
+
+              <div class="control">
+                <div class="control-head"><label>Worked examples</label></div>
+                <div class="button-row">
+                  <button type="button" data-latitude="45" data-example-rows="18" title="Uses 18 rows so one band is centred exactly at 45 degrees">45° example</button>
+                  <button type="button" data-latitude="60" data-example-rows="15" title="Uses 15 rows so one band is centred exactly at 60 degrees">60° example</button>
+                  <button type="button" id="articlePreset" class="primary">Article preset</button>
+                  <button type="button" id="resetView">Reset view</button>
+                </div>
+              </div>
+
+              <div class="legend" aria-label="Relative cell area legend">
+                <div class="legend-title">Relative cell area</div>
+                <div class="gradient"></div>
+                <div class="legend-labels"><span>smaller</span><span>1.0×</span><span>larger</span></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <section class="summary-strip" aria-label="Grid summary">
+          <div class="metric"><span>Fixed-grid cells</span><strong id="fixedTotal">—</strong></div>
+          <div class="metric"><span>Adjusted cells</span><strong id="adjustedTotal">—</strong></div>
+          <div class="metric"><span>Fixed area spread</span><strong id="fixedSpread">—</strong></div>
+          <div class="metric"><span>Adjusted area spread</span><strong id="adjustedSpread">—</strong></div>
+        </section>
+
+        <section class="panel view-panel">
+          <div class="view-head">
+            <div>
+              <h2>Direct comparison</h2>
+              <p>Click a row to inspect it. Drag either globe to rotate both views.</p>
+            </div>
+            <div class="segmented" role="group" aria-label="View type">
+              <button type="button" data-view="globe" aria-pressed="true">Globe</button>
+              <button type="button" data-view="flat" aria-pressed="false">Flat map</button>
+            </div>
+          </div>
+
+          <div class="comparison-grid">
+            <article class="comparison-card">
+              <div class="comparison-label"><h3>Fixed columns</h3><span>n(φ) = N</span></div>
+              <div class="canvas-wrap">
+                <canvas id="fixedCanvas" tabindex="0" aria-label="Fixed-column Earth grid"></canvas>
+                <div class="canvas-hint" id="fixedHint">Drag to rotate · click a row</div>
+              </div>
+            </article>
+
+            <article class="comparison-card">
+              <div class="comparison-label"><h3>Cosine-adjusted</h3><span>n(φ) ≈ N cos(φ)</span></div>
+              <div class="canvas-wrap">
+                <canvas id="adjustedCanvas" tabindex="0" aria-label="Cosine-adjusted Earth grid"></canvas>
+                <div class="canvas-hint" id="adjustedHint">Drag to rotate · click a row</div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="details-grid">
+          <article class="panel detail-card">
+            <h2>Selected latitude band</h2>
+            <p id="selectionNote">The nearest row to the equator is selected.</p>
+            <div class="row-data">
+              <div class="datum"><span>Centre latitude</span><strong id="selectedLatitude">—</strong></div>
+              <div class="datum"><span>Ideal adjusted count</span><strong id="idealCount">—</strong></div>
+              <div class="datum"><span>Rounded count</span><strong id="roundedCount">—</strong></div>
+              <div class="datum"><span>Fixed relative area</span><strong id="fixedRelative">—</strong></div>
+              <div class="datum"><span>Adjusted relative area</span><strong id="adjustedRelative">—</strong></div>
+              <div class="datum"><span>Band latitude range</span><strong id="latitudeRange">—</strong></div>
+            </div>
+          </article>
+
+          <article class="panel detail-card">
+            <h2>Cell area by latitude</h2>
+            <p>A value of 1 means the cell has the same area as the equatorial reference cell.</p>
+            <canvas id="chartCanvas" aria-label="Chart of relative cell area by latitude"></canvas>
+          </article>
+        </section>
+
+        <p class="footer-note">Earth texture: MathMeetLife land mask. Geometry is calculated on a spherical model.</p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+(() => {
+    'use strict';
+
+    const TAU = Math.PI * 2;
+    const DEG = Math.PI / 180;
+    const LAND_MASK_URL = 'https://khall1987.github.io/MathMeetLife/assets/images/land-mask-2160x1080.png';
+
+    const texture = {
+      image: null,
+      ready: false,
+      failed: false,
+      maskCanvas: document.createElement('canvas'),
+      worldCanvas: document.createElement('canvas'),
+      worldData: null,
+      globeCanvas: document.createElement('canvas'),
+      globeCacheKey: ''
+    };
+
+    const els = {
+      rows: document.getElementById('rows'),
+      columns: document.getElementById('columns'),
+      minimum: document.getElementById('minimum'),
+      rounding: document.getElementById('rounding'),
+      earthTexture: document.getElementById('earthTexture'),
+      overlayOpacity: document.getElementById('overlayOpacity'),
+      overlayOpacityOut: document.getElementById('overlayOpacityOut'),
+      textureStatus: document.getElementById('textureStatus'),
+      rowsOut: document.getElementById('rowsOut'),
+      columnsOut: document.getElementById('columnsOut'),
+      minimumOut: document.getElementById('minimumOut'),
+      fixedCanvas: document.getElementById('fixedCanvas'),
+      adjustedCanvas: document.getElementById('adjustedCanvas'),
+      chartCanvas: document.getElementById('chartCanvas'),
+      fixedTotal: document.getElementById('fixedTotal'),
+      adjustedTotal: document.getElementById('adjustedTotal'),
+      fixedSpread: document.getElementById('fixedSpread'),
+      adjustedSpread: document.getElementById('adjustedSpread'),
+      selectedLatitude: document.getElementById('selectedLatitude'),
+      idealCount: document.getElementById('idealCount'),
+      roundedCount: document.getElementById('roundedCount'),
+      fixedRelative: document.getElementById('fixedRelative'),
+      adjustedRelative: document.getElementById('adjustedRelative'),
+      latitudeRange: document.getElementById('latitudeRange'),
+      selectionNote: document.getElementById('selectionNote'),
+      articlePreset: document.getElementById('articlePreset'),
+      resetView: document.getElementById('resetView'),
+      viewButtons: [...document.querySelectorAll('[data-view]')],
+      latitudeButtons: [...document.querySelectorAll('[data-latitude]')]
+    };
+
+    const state = {
+      rows: 19,
+      columns: 20,
+      minimum: 1,
+      rounding: 'round',
+      showTexture: true,
+      overlayOpacity: 0.46,
+      view: 'globe',
+      selectedRow: 9,
+      yaw: -24 * DEG,
+      pitch: -12 * DEG,
+      dragging: false,
+      moved: false,
+      dragStart: null,
+      grid: null
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function roundCount(value) {
+      if (state.rounding === 'floor') return Math.floor(value);
+      if (state.rounding === 'ceil') return Math.ceil(value);
+      return Math.round(value);
+    }
+
+    function formatLatitude(value, decimals = 1) {
+      if (Math.abs(value) < 0.0001) return '0°';
+      return `${Math.abs(value).toFixed(decimals)}°${value > 0 ? 'N' : 'S'}`;
+    }
+
+    function buildGrid() {
+      const rows = [];
+      const delta = 180 / state.rows;
+      const referenceArea = TAU * (Math.sin((delta / 2) * DEG) - Math.sin((-delta / 2) * DEG)) / state.columns;
+
+      for (let i = 0; i < state.rows; i += 1) {
+        const latTop = 90 - i * delta;
+        const latBottom = 90 - (i + 1) * delta;
+        const latMid = (latTop + latBottom) / 2;
+        const ideal = state.columns * Math.cos(latMid * DEG);
+        const adjustedCount = Math.max(state.minimum, roundCount(ideal));
+        const bandArea = TAU * (Math.sin(latTop * DEG) - Math.sin(latBottom * DEG));
+        const fixedArea = bandArea / state.columns;
+        const adjustedArea = bandArea / adjustedCount;
+
+        rows.push({
+          index: i,
+          latTop,
+          latBottom,
+          latMid,
+          ideal,
+          fixedCount: state.columns,
+          adjustedCount,
+          bandArea,
+          fixedRelative: fixedArea / referenceArea,
+          adjustedRelative: adjustedArea / referenceArea
+        });
+      }
+
+      return {
+        rows,
+        fixedTotal: rows.reduce((sum, row) => sum + row.fixedCount, 0),
+        adjustedTotal: rows.reduce((sum, row) => sum + row.adjustedCount, 0)
+      };
+    }
+
+    function areaSpread(key) {
+      const values = state.grid.rows.map(row => row[key]);
+      return Math.max(...values) - Math.min(...values);
+    }
+
+    function areaRms(key) {
+      const values = state.grid.rows.map(row => row[key]);
+      return Math.sqrt(values.reduce((sum, value) => sum + (value - 1) ** 2, 0) / values.length);
+    }
+
+    function relativeAreaColor(value, alpha = 1) {
+      const v = clamp(value, 0.25, 1.75);
+      let a;
+      let b;
+      let t;
+      if (v <= 1) {
+        a = [73, 108, 174];
+        b = [243, 241, 219];
+        t = (v - 0.25) / 0.75;
+      } else {
+        a = [243, 241, 219];
+        b = [167, 65, 53];
+        t = (v - 1) / 0.75;
+      }
+      const mix = a.map((channel, index) => Math.round(channel + (b[index] - channel) * clamp(t, 0, 1)));
+      return `rgba(${mix[0]}, ${mix[1]}, ${mix[2]}, ${alpha})`;
+    }
+
+    function setTextureStatus(message, stateName = '') {
+      els.textureStatus.textContent = message;
+      els.textureStatus.dataset.state = stateName;
+    }
+
+    function smoothstep(edge0, edge1, value) {
+      const t = clamp((value - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    function otsuThreshold(histogram, total) {
+      let weightedTotal = 0;
+      for (let i = 0; i < histogram.length; i += 1) weightedTotal += i * histogram[i];
+      let backgroundWeight = 0;
+      let backgroundSum = 0;
+      let bestVariance = -1;
+      let bestThreshold = 36;
+
+      for (let i = 0; i < histogram.length; i += 1) {
+        backgroundWeight += histogram[i];
+        if (!backgroundWeight) continue;
+        const foregroundWeight = total - backgroundWeight;
+        if (!foregroundWeight) break;
+        backgroundSum += i * histogram[i];
+        const backgroundMean = backgroundSum / backgroundWeight;
+        const foregroundMean = (weightedTotal - backgroundSum) / foregroundWeight;
+        const variance = backgroundWeight * foregroundWeight * (backgroundMean - foregroundMean) ** 2;
+        if (variance > bestVariance) {
+          bestVariance = variance;
+          bestThreshold = i;
+        }
+      }
+      return bestThreshold;
+    }
+
+    function preprocessLandMask(image) {
+      const width = 1080;
+      const height = 540;
+      const maskCanvas = texture.maskCanvas;
+      maskCanvas.width = width;
+      maskCanvas.height = height;
+      const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+      maskCtx.clearRect(0, 0, width, height);
+      maskCtx.drawImage(image, 0, 0, width, height);
+
+      let source;
+      try {
+        source = maskCtx.getImageData(0, 0, width, height);
+      } catch (error) {
+        texture.failed = true;
+        setTextureStatus('Texture loaded, but canvas access was blocked. It will work when hosted on MathMeetLife.', 'warning');
+        return;
+      }
+
+      const data = source.data;
+      const bins = new Map();
+      for (let i = 0; i < data.length; i += 16) {
+        const key = `${data[i] >> 4},${data[i + 1] >> 4},${data[i + 2] >> 4},${data[i + 3] >> 4}`;
+        bins.set(key, (bins.get(key) || 0) + 1);
+      }
+      let seaKey = '0,0,0,0';
+      let seaCount = -1;
+      bins.forEach((count, key) => {
+        if (count > seaCount) {
+          seaCount = count;
+          seaKey = key;
+        }
+      });
+      const seaParts = seaKey.split(',').map(Number);
+      const sea = seaParts.map(value => value * 16 + 7.5);
+
+      const distances = new Uint8Array(width * height);
+      const histogram = new Uint32Array(256);
+      for (let p = 0, i = 0; i < data.length; p += 1, i += 4) {
+        const dr = data[i] - sea[0];
+        const dg = data[i + 1] - sea[1];
+        const db = data[i + 2] - sea[2];
+        const da = (data[i + 3] - sea[3]) * 1.3;
+        const distance = Math.min(255, Math.round(Math.sqrt(dr * dr + dg * dg + db * db + da * da) / 2));
+        distances[p] = distance;
+        histogram[distance] += 1;
+      }
+
+      const threshold = Math.max(10, otsuThreshold(histogram, distances.length));
+      const worldCanvas = texture.worldCanvas;
+      worldCanvas.width = width;
+      worldCanvas.height = height;
+      const worldCtx = worldCanvas.getContext('2d', { willReadFrequently: true });
+      const world = worldCtx.createImageData(width, height);
+      const ocean = [40, 103, 124];
+      const land = [130, 157, 91];
+      const coast = [202, 190, 125];
+
+      for (let p = 0, i = 0; p < distances.length; p += 1, i += 4) {
+        const strength = smoothstep(threshold * 0.72, threshold * 1.34, distances[p]);
+        const coastStrength = 1 - Math.min(1, Math.abs(strength - 0.5) * 5);
+        world.data[i] = Math.round(ocean[0] + (land[0] - ocean[0]) * strength + coastStrength * 10);
+        world.data[i + 1] = Math.round(ocean[1] + (land[1] - ocean[1]) * strength + coastStrength * 8);
+        world.data[i + 2] = Math.round(ocean[2] + (land[2] - ocean[2]) * strength + coastStrength * 2);
+        world.data[i + 3] = 255;
+      }
+      worldCtx.putImageData(world, 0, 0);
+      texture.worldData = world;
+      texture.ready = true;
+      texture.failed = false;
+      texture.globeCacheKey = '';
+      setTextureStatus('Earth texture ready', 'ready');
+      renderCanvases();
+    }
+
+    function initLandMask() {
+      setTextureStatus('Loading Earth texture…', 'loading');
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.decoding = 'async';
+      image.onload = () => preprocessLandMask(image);
+      image.onerror = () => {
+        texture.failed = true;
+        setTextureStatus('Earth texture could not be loaded; the mathematical grid still works.', 'warning');
+        renderCanvases();
+      };
+      image.src = LAND_MASK_URL;
+      texture.image = image;
+    }
+
+    function renderGlobeTexture(diameter) {
+      if (!texture.ready || !texture.worldData) return null;
+      const d = Math.max(80, Math.round(diameter));
+      const cacheKey = `${d}|${state.yaw.toFixed(4)}|${state.pitch.toFixed(4)}`;
+      if (texture.globeCacheKey === cacheKey) return texture.globeCanvas;
+
+      const canvas = texture.globeCanvas;
+      canvas.width = d;
+      canvas.height = d;
+      const ctx = canvas.getContext('2d');
+      const output = ctx.createImageData(d, d);
+      const source = texture.worldData.data;
+      const sourceW = texture.worldCanvas.width;
+      const sourceH = texture.worldCanvas.height;
+      const cosp = Math.cos(state.pitch);
+      const sinp = Math.sin(state.pitch);
+      const cosy = Math.cos(state.yaw);
+      const siny = Math.sin(state.yaw);
+      const light = { x: -0.32, y: 0.42, z: 0.85 };
+
+      for (let py = 0; py < d; py += 1) {
+        const sy = -((py + 0.5) / d * 2 - 1);
+        for (let px = 0; px < d; px += 1) {
+          const sx = (px + 0.5) / d * 2 - 1;
+          const rr = sx * sx + sy * sy;
+          if (rr > 1) continue;
+          const sz = Math.sqrt(Math.max(0, 1 - rr));
+
+          const worldY = sy * cosp + sz * sinp;
+          const z1 = -sy * sinp + sz * cosp;
+          const worldX = sx * cosy - z1 * siny;
+          const worldZ = sx * siny + z1 * cosy;
+          const lat = Math.asin(clamp(worldY, -1, 1));
+          const lon = Math.atan2(worldX, worldZ);
+          const u = (lon / TAU + 0.5 + 1) % 1;
+          const v = clamp(0.5 - lat / Math.PI, 0, 0.999999);
+          const sourceX = Math.min(sourceW - 1, Math.floor(u * sourceW));
+          const sourceY = Math.min(sourceH - 1, Math.floor(v * sourceH));
+          const sourceIndex = (sourceY * sourceW + sourceX) * 4;
+          const outputIndex = (py * d + px) * 4;
+          const illumination = clamp(0.68 + 0.34 * (sx * light.x + sy * light.y + sz * light.z), 0.48, 1.06);
+          output.data[outputIndex] = Math.round(source[sourceIndex] * illumination);
+          output.data[outputIndex + 1] = Math.round(source[sourceIndex + 1] * illumination);
+          output.data[outputIndex + 2] = Math.round(source[sourceIndex + 2] * illumination);
+          output.data[outputIndex + 3] = 255;
+        }
+      }
+      ctx.putImageData(output, 0, 0);
+      texture.globeCacheKey = cacheKey;
+      return canvas;
+    }
+
+    function resizeCanvas(canvas, cssHeight = null) {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.round(rect.width * ratio));
+      const heightCss = cssHeight || rect.height;
+      const height = Math.max(1, Math.round(heightCss * ratio));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      return { width, height, ratio };
+    }
+
+    function rotatePoint(lat, lon) {
+      const phi = lat * DEG;
+      const lambda = lon * DEG;
+      const x = Math.cos(phi) * Math.sin(lambda);
+      const y = Math.sin(phi);
+      const z = Math.cos(phi) * Math.cos(lambda);
+
+      const cosy = Math.cos(state.yaw);
+      const siny = Math.sin(state.yaw);
+      const x1 = x * cosy + z * siny;
+      const z1 = -x * siny + z * cosy;
+
+      const cosp = Math.cos(state.pitch);
+      const sinp = Math.sin(state.pitch);
+      const y2 = y * cosp - z1 * sinp;
+      const z2 = y * sinp + z1 * cosp;
+      return { x: x1, y: y2, z: z2 };
+    }
+
+    function projectPoint(lat, lon, cx, cy, radius) {
+      const p = rotatePoint(lat, lon);
+      return { x: cx + p.x * radius, y: cy - p.y * radius, z: p.z };
+    }
+
+    function cellPolygon(row, cellIndex, count, cx, cy, radius) {
+      const lonLeft = -180 + (360 * cellIndex) / count;
+      const lonRight = -180 + (360 * (cellIndex + 1)) / count;
+      const points = [];
+      const edgeSteps = 4;
+
+      for (let s = 0; s <= edgeSteps; s += 1) {
+        const lon = lonLeft + (lonRight - lonLeft) * (s / edgeSteps);
+        points.push(projectPoint(row.latTop, lon, cx, cy, radius));
+      }
+      for (let s = 1; s <= edgeSteps; s += 1) {
+        const lat = row.latTop + (row.latBottom - row.latTop) * (s / edgeSteps);
+        points.push(projectPoint(lat, lonRight, cx, cy, radius));
+      }
+      for (let s = 1; s <= edgeSteps; s += 1) {
+        const lon = lonRight + (lonLeft - lonRight) * (s / edgeSteps);
+        points.push(projectPoint(row.latBottom, lon, cx, cy, radius));
+      }
+      for (let s = 1; s < edgeSteps; s += 1) {
+        const lat = row.latBottom + (row.latTop - row.latBottom) * (s / edgeSteps);
+        points.push(projectPoint(lat, lonLeft, cx, cy, radius));
+      }
+      return points;
+    }
+
+    function drawGlobe(canvas, mode) {
+      const { width, height, ratio } = resizeCanvas(canvas);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2;
+      const radius = Math.min(width, height) * 0.405;
+
+      const backdrop = ctx.createRadialGradient(cx - radius * 0.35, cy - radius * 0.4, radius * 0.05, cx, cy, radius * 1.1);
+      backdrop.addColorStop(0, '#285f63');
+      backdrop.addColorStop(1, '#0b3032');
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, TAU);
+      ctx.fillStyle = backdrop;
+      ctx.fill();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, TAU);
+      ctx.clip();
+
+      if (state.showTexture && texture.ready) {
+        const globeTexture = renderGlobeTexture(radius * 2);
+        if (globeTexture) ctx.drawImage(globeTexture, cx - radius, cy - radius, radius * 2, radius * 2);
+      }
+
+      const countKey = mode === 'fixed' ? 'fixedCount' : 'adjustedCount';
+      const relativeKey = mode === 'fixed' ? 'fixedRelative' : 'adjustedRelative';
+      const cells = [];
+
+      for (const row of state.grid.rows) {
+        const count = row[countKey];
+        for (let cell = 0; cell < count; cell += 1) {
+          const lonMid = -180 + 360 * (cell + 0.5) / count;
+          const center = rotatePoint(row.latMid, lonMid);
+          if (center.z < -0.04) continue;
+          cells.push({ row, cell, count, depth: center.z });
+        }
+      }
+
+      cells.sort((a, b) => a.depth - b.depth);
+      const baseAlpha = state.showTexture && texture.ready ? state.overlayOpacity : 0.88;
+
+      for (const item of cells) {
+        const points = cellPolygon(item.row, item.cell, item.count, cx, cy, radius);
+        ctx.beginPath();
+        points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        });
+        ctx.closePath();
+        const selected = item.row.index === state.selectedRow;
+        ctx.fillStyle = relativeAreaColor(item.row[relativeKey], selected ? Math.min(0.82, baseAlpha + 0.24) : baseAlpha);
+        ctx.fill();
+        ctx.lineWidth = selected ? 2.1 * ratio : 0.7 * ratio;
+        ctx.strokeStyle = selected ? 'rgba(246, 238, 194, 0.98)' : 'rgba(231, 245, 239, 0.58)';
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
+      const rim = ctx.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
+      rim.addColorStop(0, 'rgba(249, 241, 196, 0.82)');
+      rim.addColorStop(0.52, 'rgba(112, 181, 177, 0.62)');
+      rim.addColorStop(1, 'rgba(4, 32, 34, 0.95)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, TAU);
+      ctx.lineWidth = 1.7 * ratio;
+      ctx.strokeStyle = rim;
+      ctx.stroke();
+
+      if (state.showTexture && !texture.ready && !texture.failed) {
+        ctx.fillStyle = 'rgba(246, 244, 220, 0.78)';
+        ctx.font = `${12 * ratio}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('Loading Earth texture…', cx, cy);
+      }
+    }
+
+    function drawFlat(canvas, mode) {
+      const { width, height, ratio } = resizeCanvas(canvas);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+
+      const pad = { left: 20 * ratio, right: 20 * ratio, top: 18 * ratio, bottom: 18 * ratio };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      const rowH = plotH / state.rows;
+      const countKey = mode === 'fixed' ? 'fixedCount' : 'adjustedCount';
+      const relativeKey = mode === 'fixed' ? 'fixedRelative' : 'adjustedRelative';
+
+      ctx.fillStyle = '#28677c';
+      ctx.fillRect(pad.left, pad.top, plotW, plotH);
+      if (state.showTexture && texture.ready) {
+        ctx.drawImage(texture.worldCanvas, pad.left, pad.top, plotW, plotH);
+      }
+
+      const baseAlpha = state.showTexture && texture.ready ? state.overlayOpacity : 0.90;
+      state.grid.rows.forEach((row, index) => {
+        const count = row[countKey];
+        const y = pad.top + index * rowH;
+        const cellW = plotW / count;
+        for (let c = 0; c < count; c += 1) {
+          const selected = index === state.selectedRow;
+          ctx.fillStyle = relativeAreaColor(row[relativeKey], selected ? Math.min(0.84, baseAlpha + 0.24) : baseAlpha);
+          ctx.fillRect(pad.left + c * cellW, y, cellW, rowH);
+          ctx.strokeStyle = selected ? 'rgba(246, 238, 194, 0.98)' : 'rgba(231, 245, 239, 0.60)';
+          ctx.lineWidth = selected ? 1.8 * ratio : 0.6 * ratio;
+          ctx.strokeRect(pad.left + c * cellW, y, cellW, rowH);
+        }
+      });
+
+      ctx.strokeStyle = 'rgba(246, 238, 194, 0.72)';
+      ctx.lineWidth = 1.2 * ratio;
+      ctx.strokeRect(pad.left, pad.top, plotW, plotH);
+
+      if (state.showTexture && !texture.ready && !texture.failed) {
+        ctx.fillStyle = 'rgba(246, 244, 220, 0.82)';
+        ctx.font = `${12 * ratio}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('Loading Earth texture…', width / 2, height / 2);
+      }
+    }
+
+    function drawChart() {
+      const canvas = els.chartCanvas;
+      const { width, height, ratio } = resizeCanvas(canvas, 300);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+
+      const pad = { left: 50 * ratio, right: 18 * ratio, top: 18 * ratio, bottom: 40 * ratio };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      const allValues = state.grid.rows.flatMap(row => [row.fixedRelative, row.adjustedRelative]);
+      const yMin = Math.max(0, Math.floor((Math.min(...allValues) - 0.1) * 4) / 4);
+      const yMax = Math.max(1.25, Math.ceil((Math.max(...allValues) + 0.1) * 4) / 4);
+
+      const xForLat = lat => pad.left + ((lat + 90) / 180) * plotW;
+      const yForValue = value => pad.top + (1 - (value - yMin) / (yMax - yMin)) * plotH;
+
+      ctx.font = `${11 * ratio}px system-ui, sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const tickStep = yMax - yMin > 2 ? 0.5 : 0.25;
+      for (let tick = Math.ceil(yMin / tickStep) * tickStep; tick <= yMax + 0.0001; tick += tickStep) {
+        const y = yForValue(tick);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
+        ctx.strokeStyle = Math.abs(tick - 1) < 0.001 ? 'rgba(214, 174, 83, 0.68)' : 'rgba(205, 231, 224, 0.13)';
+        ctx.lineWidth = Math.abs(tick - 1) < 0.001 ? 1.5 * ratio : 1 * ratio;
+        ctx.stroke();
+        ctx.fillStyle = '#b7d1cc';
+        ctx.fillText(`${tick.toFixed(2)}×`, pad.left - 8 * ratio, y);
+      }
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      [-90, -60, -30, 0, 30, 60, 90].forEach(lat => {
+        const x = xForLat(lat);
+        ctx.fillStyle = '#b7d1cc';
+        ctx.fillText(formatLatitude(lat, 0), x, height - pad.bottom + 10 * ratio);
+      });
+
+      const selected = state.grid.rows[state.selectedRow];
+      const selectedX = xForLat(selected.latMid);
+      ctx.fillStyle = 'rgba(214, 174, 83, 0.12)';
+      ctx.fillRect(selectedX - Math.max(3 * ratio, plotW / state.rows / 2), pad.top, Math.max(6 * ratio, plotW / state.rows), plotH);
+
+      drawSeries('fixedRelative', '#9db8b5', [7 * ratio, 5 * ratio]);
+      drawSeries('adjustedRelative', '#e1b85e', []);
+
+      function drawSeries(key, stroke, dash) {
+        ctx.beginPath();
+        const ordered = [...state.grid.rows].sort((a, b) => a.latMid - b.latMid);
+        ordered.forEach((row, index) => {
+          const x = xForLat(row.latMid);
+          const y = yForValue(row[key]);
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.setLineDash(dash);
+        ctx.lineWidth = 2.2 * ratio;
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ordered.forEach(row => {
+          const x = xForLat(row.latMid);
+          const y = yForValue(row[key]);
+          ctx.beginPath();
+          ctx.arc(x, y, row.index === state.selectedRow ? 4.5 * ratio : 2.5 * ratio, 0, TAU);
+          ctx.fillStyle = stroke;
+          ctx.fill();
+        });
+      }
+
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const legendY = 12 * ratio;
+      ctx.setLineDash([7 * ratio, 5 * ratio]);
+      ctx.strokeStyle = '#9db8b5';
+      ctx.lineWidth = 2.2 * ratio;
+      ctx.beginPath(); ctx.moveTo(pad.left, legendY); ctx.lineTo(pad.left + 28 * ratio, legendY); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#c7dcda';
+      ctx.fillText('Fixed', pad.left + 35 * ratio, legendY);
+
+      const secondX = pad.left + 94 * ratio;
+      ctx.strokeStyle = '#e1b85e';
+      ctx.beginPath(); ctx.moveTo(secondX, legendY); ctx.lineTo(secondX + 28 * ratio, legendY); ctx.stroke();
+      ctx.fillStyle = '#e1b85e';
+      ctx.fillText('Adjusted', secondX + 35 * ratio, legendY);
+    }
+
+    function renderCanvases() {
+      if (state.view === 'globe') {
+        drawGlobe(els.fixedCanvas, 'fixed');
+        drawGlobe(els.adjustedCanvas, 'adjusted');
+      } else {
+        drawFlat(els.fixedCanvas, 'fixed');
+        drawFlat(els.adjustedCanvas, 'adjusted');
+      }
+      drawChart();
+    }
+
+    function updateDetails() {
+      const row = state.grid.rows[state.selectedRow];
+      els.selectedLatitude.textContent = formatLatitude(row.latMid);
+      els.idealCount.textContent = row.ideal.toFixed(2);
+      els.roundedCount.textContent = row.adjustedCount.toLocaleString();
+      els.fixedRelative.textContent = `${row.fixedRelative.toFixed(3)}×`;
+      els.adjustedRelative.textContent = `${row.adjustedRelative.toFixed(3)}×`;
+      els.latitudeRange.textContent = `${formatLatitude(row.latBottom)} to ${formatLatitude(row.latTop)}`;
+      els.selectionNote.textContent = `Row ${row.index + 1} of ${state.rows}; click either view to choose another band.`;
+    }
+
+    function updateSummary() {
+      els.fixedTotal.textContent = state.grid.fixedTotal.toLocaleString();
+      els.adjustedTotal.textContent = state.grid.adjustedTotal.toLocaleString();
+      els.fixedSpread.textContent = `${areaSpread('fixedRelative').toFixed(2)}×`;
+      els.adjustedSpread.textContent = `${areaSpread('adjustedRelative').toFixed(2)}×`;
+      els.fixedSpread.title = `RMS deviation from equal area: ${areaRms('fixedRelative').toFixed(3)}`;
+      els.adjustedSpread.title = `RMS deviation from equal area: ${areaRms('adjustedRelative').toFixed(3)}`;
+    }
+
+    function updateOutputs() {
+      els.rowsOut.value = state.rows;
+      els.columnsOut.value = state.columns;
+      els.minimumOut.value = state.minimum;
+      els.overlayOpacityOut.value = `${Math.round(state.overlayOpacity * 100)}%`;
+    }
+
+    function rebuild({ keepLatitude = true } = {}) {
+      const previousLatitude = state.grid ? state.grid.rows[state.selectedRow]?.latMid : 0;
+      const minimumLimit = Math.min(12, state.columns);
+      els.minimum.max = String(minimumLimit);
+      if (state.minimum > minimumLimit) {
+        state.minimum = minimumLimit;
+        els.minimum.value = String(minimumLimit);
+      }
+      state.grid = buildGrid();
+      if (keepLatitude) selectNearestLatitude(previousLatitude, false);
+      else state.selectedRow = Math.floor(state.rows / 2);
+      updateOutputs();
+      updateSummary();
+      updateDetails();
+      renderCanvases();
+    }
+
+    function selectNearestLatitude(latitude, redraw = true) {
+      let best = 0;
+      let distance = Infinity;
+      state.grid.rows.forEach((row, index) => {
+        const d = Math.abs(row.latMid - latitude);
+        if (d < distance) {
+          distance = d;
+          best = index;
+        }
+      });
+      state.selectedRow = clamp(best, 0, state.rows - 1);
+      if (redraw) {
+        updateDetails();
+        renderCanvases();
+      }
+    }
+
+    function rowFromPointer(canvas, event) {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      if (state.view === 'flat') {
+        const pad = 18;
+        const innerY = clamp(y - pad, 0, rect.height - pad * 2 - 0.001);
+        return clamp(Math.floor(innerY / ((rect.height - pad * 2) / state.rows)), 0, state.rows - 1);
+      }
+
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const radius = Math.min(rect.width, rect.height) * 0.405;
+      const nx = (x - cx) / radius;
+      const ny = -(y - cy) / radius;
+      if (nx * nx + ny * ny > 1) return null;
+      const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+
+      const cosp = Math.cos(-state.pitch);
+      const sinp = Math.sin(-state.pitch);
+      const y1 = ny * cosp - nz * sinp;
+      const z1 = ny * sinp + nz * cosp;
+
+      const cosy = Math.cos(-state.yaw);
+      const siny = Math.sin(-state.yaw);
+      const x2 = nx * cosy + z1 * siny;
+      const z2 = -nx * siny + z1 * cosy;
+      void x2; void z2;
+
+      const lat = Math.asin(clamp(y1, -1, 1)) / DEG;
+      let best = 0;
+      let distance = Infinity;
+      state.grid.rows.forEach((row, index) => {
+        const d = Math.abs(row.latMid - lat);
+        if (d < distance) { distance = d; best = index; }
+      });
+      return best;
+    }
+
+    function pointerDown(event) {
+      if (state.view !== 'globe') return;
+      state.dragging = true;
+      state.moved = false;
+      state.dragStart = { x: event.clientX, y: event.clientY, yaw: state.yaw, pitch: state.pitch };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+
+    function pointerMove(event) {
+      if (!state.dragging || !state.dragStart) return;
+      const dx = event.clientX - state.dragStart.x;
+      const dy = event.clientY - state.dragStart.y;
+      if (Math.hypot(dx, dy) > 3) state.moved = true;
+      state.yaw = state.dragStart.yaw + dx * 0.009;
+      state.pitch = clamp(state.dragStart.pitch + dy * 0.009, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
+      renderCanvases();
+    }
+
+    function pointerUp(event) {
+      if (!state.dragging) return;
+      const canvas = event.currentTarget;
+      if (!state.moved) {
+        const row = rowFromPointer(canvas, event);
+        if (row !== null) {
+          state.selectedRow = row;
+          updateDetails();
+          renderCanvases();
+        }
+      }
+      state.dragging = false;
+      state.dragStart = null;
+    }
+
+    function canvasClickFlat(event) {
+      if (state.view !== 'flat') return;
+      const row = rowFromPointer(event.currentTarget, event);
+      if (row !== null) {
+        state.selectedRow = row;
+        updateDetails();
+        renderCanvases();
+      }
+    }
+
+    function bindEvents() {
+      els.rows.addEventListener('input', () => {
+        state.rows = Number(els.rows.value);
+        rebuild();
+      });
+      els.columns.addEventListener('input', () => {
+        state.columns = Number(els.columns.value);
+        rebuild();
+      });
+      els.minimum.addEventListener('input', () => {
+        state.minimum = Number(els.minimum.value);
+        rebuild();
+      });
+      els.rounding.addEventListener('change', () => {
+        state.rounding = els.rounding.value;
+        rebuild();
+      });
+      els.earthTexture.addEventListener('change', () => {
+        state.showTexture = els.earthTexture.checked;
+        els.overlayOpacity.disabled = !state.showTexture;
+        renderCanvases();
+      });
+      els.overlayOpacity.addEventListener('input', () => {
+        state.overlayOpacity = Number(els.overlayOpacity.value) / 100;
+        els.overlayOpacityOut.value = `${els.overlayOpacity.value}%`;
+        renderCanvases();
+      });
+
+      els.viewButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          state.view = button.dataset.view;
+          els.viewButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+          document.getElementById('fixedHint').textContent = state.view === 'globe' ? 'Drag to rotate · click a row' : 'Click a row to inspect it';
+          document.getElementById('adjustedHint').textContent = state.view === 'globe' ? 'Drag to rotate · click a row' : 'Click a row to inspect it';
+          renderCanvases();
+        });
+      });
+
+      els.latitudeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          state.rows = Number(button.dataset.exampleRows || state.rows);
+          state.columns = 20;
+          state.minimum = 1;
+          state.rounding = 'round';
+          els.rows.value = String(state.rows);
+          els.columns.value = String(state.columns);
+          els.minimum.value = String(state.minimum);
+          els.rounding.value = state.rounding;
+          rebuild({ keepLatitude: false });
+          selectNearestLatitude(Number(button.dataset.latitude));
+        });
+      });
+
+      els.articlePreset.addEventListener('click', () => {
+        state.rows = 19;
+        state.columns = 20;
+        state.minimum = 1;
+        state.rounding = 'round';
+        els.rows.value = state.rows;
+        els.columns.value = state.columns;
+        els.minimum.value = state.minimum;
+        els.rounding.value = state.rounding;
+        rebuild({ keepLatitude: false });
+      });
+
+      els.resetView.addEventListener('click', () => {
+        state.yaw = -24 * DEG;
+        state.pitch = -12 * DEG;
+        renderCanvases();
+      });
+
+      [els.fixedCanvas, els.adjustedCanvas].forEach(canvas => {
+        canvas.addEventListener('pointerdown', pointerDown);
+        canvas.addEventListener('pointermove', pointerMove);
+        canvas.addEventListener('pointerup', pointerUp);
+        canvas.addEventListener('pointercancel', pointerUp);
+        canvas.addEventListener('click', canvasClickFlat);
+        canvas.addEventListener('keydown', event => {
+          if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'Home' || event.key === 'End') {
+            event.preventDefault();
+            if (event.key === 'ArrowUp') state.selectedRow = clamp(state.selectedRow - 1, 0, state.rows - 1);
+            if (event.key === 'ArrowDown') state.selectedRow = clamp(state.selectedRow + 1, 0, state.rows - 1);
+            if (event.key === 'Home') state.selectedRow = 0;
+            if (event.key === 'End') state.selectedRow = state.rows - 1;
+            updateDetails();
+            renderCanvases();
+          }
+          if (state.view === 'globe' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+            event.preventDefault();
+            state.yaw += event.key === 'ArrowLeft' ? -5 * DEG : 5 * DEG;
+            renderCanvases();
+          }
+        });
+      });
+
+      if ('ResizeObserver' in window) {
+        const resizeObserver = new ResizeObserver(() => renderCanvases());
+        resizeObserver.observe(els.fixedCanvas.parentElement);
+        resizeObserver.observe(els.adjustedCanvas.parentElement);
+        resizeObserver.observe(els.chartCanvas.parentElement);
+      } else {
+        window.addEventListener('resize', renderCanvases);
+      }
+    }
+
+    bindEvents();
+    rebuild({ keepLatitude: false });
+    initLandMask();
+  })();
+  </script>
+</body>
+</html>
