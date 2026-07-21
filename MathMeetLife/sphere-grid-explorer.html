@@ -5,464 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Compare fixed-column and cosine-adjusted latitude grids on a textured Earth.">
   <title>Sphere Grid Explorer</title>
-  <link rel="stylesheet" href="https://khall1987.github.io/MathMeetLife/assets/mml-toy.css">
-  <link rel="stylesheet" href="https://khall1987.github.io/MathMeetLife/assets/widgets/rotated-land-grid.css">
-  <style>
-
-:root {
-  color-scheme: dark;
-  --sge-bg: #103838;
-  --sge-bg-deep: #092f31;
-  --sge-surface: #143f3f;
-  --sge-surface-2: #183f40;
-  --sge-surface-3: #0f3435;
-  --sge-ink: #f4f2dc;
-  --sge-muted: #b8d4cf;
-  --sge-line: rgba(156, 205, 194, 0.25);
-  --sge-line-strong: rgba(177, 218, 207, 0.38);
-  --sge-gold: #e0b65a;
-  --sge-blue: #4f95bd;
-  --sge-green: #82a94f;
-  --sge-radius: 15px;
-  --sge-display: var(--mml-display-font, var(--font-display, "Arial Black", "Trebuchet MS", system-ui, sans-serif));
-  --sge-body: var(--mml-body-font, var(--font-body, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif));
-}
-
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body.sphere-grid-explorer-page {
-  margin: 0;
-  min-width: 320px;
-  background:
-    radial-gradient(circle at 76% 0%, rgba(65, 130, 126, 0.16), transparent 34rem),
-    var(--sge-bg-deep);
-  color: var(--sge-ink);
-  font-family: var(--sge-body);
-  line-height: 1.5;
-}
-button, input, select { font: inherit; }
-button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible {
-  outline: 3px solid rgba(224, 182, 90, 0.72);
-  outline-offset: 2px;
-}
-
-.sphere-grid-explorer {
-  width: min(1540px, 100%);
-  min-height: 100vh;
-  margin: 0 auto;
-}
-.sphere-grid-explorer h1,
-.sphere-grid-explorer h2,
-.sphere-grid-explorer h3,
-.sphere-grid-explorer p { margin-top: 0; }
-
-.app-grid {
-  display: grid;
-  grid-template-columns: 362px minmax(0, 1fr);
-  min-height: 100vh;
-}
-.sidebar {
-  min-width: 0;
-  padding: 28px 19px 42px 0;
-  border-right: 1px solid var(--sge-line);
-}
-.sidebar-inner {
-  position: sticky;
-  top: 0;
-  max-height: 100vh;
-  padding: 0 19px 28px 0;
-  overflow-y: auto;
-  scrollbar-color: rgba(190, 221, 214, 0.34) transparent;
-}
-.hero { padding-bottom: 22px; }
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  min-height: 25px;
-  margin: 0 0 16px;
-  padding: 3px 11px;
-  border: 1px solid rgba(201, 224, 216, 0.34);
-  border-radius: 999px;
-  color: #f4d174;
-  font-size: 0.72rem;
-  font-weight: 850;
-  letter-spacing: 0.055em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-h1 {
-  max-width: 330px;
-  margin-bottom: 11px;
-  color: var(--sge-ink);
-  font-family: var(--sge-display);
-  font-size: clamp(2.15rem, 3.8vw, 3.25rem);
-  font-weight: 900;
-  letter-spacing: -0.045em;
-  line-height: 1.03;
-}
-h1 .accent { color: var(--sge-gold); }
-.intro {
-  margin-bottom: 16px;
-  color: #d5ebe5;
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-.formula-card {
-  padding: 12px 14px;
-  border: 1px solid var(--sge-line);
-  border-radius: 12px;
-  background: rgba(20, 69, 68, 0.72);
-}
-.formula-card span {
-  display: block;
-  color: var(--sge-muted);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.formula-card strong {
-  display: block;
-  margin-top: 2px;
-  color: var(--sge-ink);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.4rem;
-  font-weight: 600;
-}
-
-.controls {
-  padding-top: 16px;
-  border-top: 1px solid var(--sge-line);
-}
-.section-title {
-  margin-bottom: 4px;
-  color: var(--sge-ink);
-  font-family: var(--sge-display);
-  font-size: 1.04rem;
-  letter-spacing: -0.02em;
-}
-.section-note {
-  margin-bottom: 19px;
-  color: var(--sge-muted);
-  font-size: 0.79rem;
-}
-.control { margin-bottom: 17px; }
-.control-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 7px;
-}
-label {
-  color: #eaf3e9;
-  font-size: 0.81rem;
-  font-weight: 760;
-}
-output {
-  min-width: 48px;
-  color: #f5d57d;
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 850;
-  text-align: right;
-}
-input[type="range"] {
-  width: 100%;
-  accent-color: var(--sge-gold);
-}
-select {
-  width: 100%;
-  padding: 9px 11px;
-  border: 1px solid var(--sge-line-strong);
-  border-radius: 10px;
-  background: #123a3b;
-  color: var(--sge-ink);
-}
-.toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 32px;
-}
-.toggle-row input { accent-color: var(--sge-gold); }
-.texture-status {
-  min-height: 1.2em;
-  margin: 6px 0 0;
-  color: var(--sge-muted);
-  font-size: 0.7rem;
-}
-.texture-status[data-state="ready"] { color: #bad68c; }
-.texture-status[data-state="warning"] { color: #f1cb83; }
-.button-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-}
-button {
-  min-height: 39px;
-  padding: 8px 11px;
-  border: 1px solid var(--sge-line-strong);
-  border-radius: 999px;
-  background: #174547;
-  color: var(--sge-ink);
-  cursor: pointer;
-  font-weight: 780;
-  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
-}
-button:hover {
-  border-color: rgba(229, 199, 119, 0.8);
-  background: #205456;
-}
-button:active { transform: translateY(1px); }
-.primary {
-  border-color: #efcf7c;
-  background: var(--sge-ink);
-  color: #123839;
-}
-.primary:hover { background: #fff8d9; color: #123839; }
-.legend {
-  margin-top: 20px;
-  padding-top: 17px;
-  border-top: 1px solid var(--sge-line);
-}
-.legend-title { margin-bottom: 7px; font-size: 0.77rem; font-weight: 780; }
-.gradient {
-  height: 11px;
-  border: 1px solid rgba(247, 242, 211, 0.26);
-  border-radius: 999px;
-  background: linear-gradient(90deg, #496cae, #dce9f2 43%, #f3f1db 50%, #e6a25e 72%, #a74135);
-}
-.legend-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 5px;
-  color: var(--sge-muted);
-  font-size: 0.68rem;
-}
-
-.workspace {
-  display: grid;
-  align-content: start;
-  gap: 16px;
-  min-width: 0;
-  padding: 11px 0 44px 18px;
-}
-.panel {
-  border: 1px solid var(--sge-line);
-  border-radius: var(--sge-radius);
-  background: rgba(20, 63, 63, 0.91);
-}
-.summary-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
-  border: 0;
-  background: transparent;
-}
-.metric {
-  min-width: 0;
-  padding: 13px;
-  border: 1px solid var(--sge-line);
-  border-radius: 13px;
-  background: rgba(24, 67, 67, 0.82);
-}
-.metric span {
-  display: block;
-  color: #b9d8d3;
-  font-size: 0.64rem;
-  font-weight: 820;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-}
-.metric strong {
-  display: block;
-  margin-top: 2px;
-  color: #fff7d8;
-  font-size: 1.02rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-.view-panel { overflow: hidden; }
-.view-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 11px 13px;
-  border-bottom: 1px solid var(--sge-line);
-}
-.view-head h2, .detail-card h2 {
-  margin-bottom: 1px;
-  color: var(--sge-ink);
-  font-family: var(--sge-display);
-  font-size: 1rem;
-  letter-spacing: -0.02em;
-}
-.view-head p, .detail-card > p {
-  margin-bottom: 0;
-  color: var(--sge-muted);
-  font-size: 0.73rem;
-}
-.segmented {
-  display: flex;
-  gap: 6px;
-  padding: 0;
-}
-.segmented button {
-  min-height: 36px;
-  padding: 7px 15px;
-  background: #19494a;
-  font-size: 0.78rem;
-}
-.segmented button[aria-pressed="true"] {
-  border-color: #e8eee2;
-  background: #e9f2eb;
-  color: #123839;
-}
-.comparison-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  min-height: 470px;
-}
-.comparison-card { min-width: 0; padding: 13px; }
-.comparison-card + .comparison-card { border-left: 1px solid var(--sge-line); }
-.comparison-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.comparison-label h3 {
-  margin-bottom: 0;
-  color: var(--sge-ink);
-  font-family: var(--sge-display);
-  font-size: 0.88rem;
-}
-.comparison-label span { color: var(--sge-muted); font-size: 0.7rem; }
-.canvas-wrap {
-  position: relative;
-  min-height: 400px;
-  border: 1px solid var(--sge-line);
-  border-radius: 13px;
-  background:
-    linear-gradient(rgba(181, 221, 211, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(181, 221, 211, 0.035) 1px, transparent 1px),
-    #0d3335;
-  background-size: 24px 24px;
-  overflow: hidden;
-}
-canvas { display: block; width: 100%; height: 400px; touch-action: none; }
-.canvas-hint {
-  position: absolute;
-  left: 10px;
-  bottom: 9px;
-  padding: 4px 7px;
-  border: 1px solid rgba(215, 237, 229, 0.2);
-  border-radius: 999px;
-  background: rgba(8, 42, 43, 0.78);
-  color: #c5ddd8;
-  font-size: 0.65rem;
-  pointer-events: none;
-  backdrop-filter: blur(5px);
-}
-.details-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: 16px;
-}
-.detail-card { min-width: 0; padding: 15px; }
-.row-data {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 13px;
-}
-.datum {
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--sge-line);
-  border-radius: 10px;
-  background: rgba(12, 52, 53, 0.68);
-}
-.datum span {
-  display: block;
-  color: var(--sge-muted);
-  font-size: 0.62rem;
-  font-weight: 780;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-}
-.datum strong {
-  display: block;
-  margin-top: 2px;
-  color: #fff7d8;
-  font-size: 0.9rem;
-  font-variant-numeric: tabular-nums;
-}
-#chartCanvas { height: 300px; }
-.footer-note {
-  margin: 0;
-  padding: 0 14px 4px;
-  color: var(--sge-muted);
-  font-size: 0.7rem;
-  text-align: center;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@media (max-width: 1120px) {
-  .app-grid { grid-template-columns: 310px minmax(0, 1fr); }
-  .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 880px) {
-  .app-grid { grid-template-columns: 1fr; }
-  .sidebar {
-    padding: 22px 16px 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--sge-line);
-  }
-  .sidebar-inner {
-    position: static;
-    max-height: none;
-    padding: 0;
-    overflow: visible;
-  }
-  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, 0.45fr); gap: 14px 22px; }
-  .hero .eyebrow, .hero h1, .hero .intro { grid-column: 1; }
-  .formula-card { grid-column: 2; grid-row: 1 / span 3; align-self: end; }
-  .controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
-  .legend { grid-column: 1 / -1; }
-  .workspace { padding: 16px; }
-}
-@media (max-width: 690px) {
-  .hero, .controls-grid, .comparison-grid, .details-grid, .summary-strip { grid-template-columns: 1fr; }
-  .hero .eyebrow, .hero h1, .hero .intro, .formula-card { grid-column: 1; grid-row: auto; }
-  .comparison-card + .comparison-card { border-left: 0; border-top: 1px solid var(--sge-line); }
-  .view-head { align-items: flex-start; flex-direction: column; }
-  .segmented { width: 100%; }
-  .segmented button { flex: 1; }
-  .row-data { grid-template-columns: 1fr; }
-  canvas { height: 340px; }
-  .canvas-wrap { min-height: 340px; }
-  .workspace { padding: 12px 9px 32px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  * { scroll-behavior: auto !important; transition: none !important; }
-}
-
-  </style>
+  <link rel="stylesheet" href="assets/mml-toy.css">
+  <link rel="stylesheet" href="assets/widgets/sphere-grid-explorer.css">
 </head>
 
 <body class="sphere-grid-explorer-page">
@@ -558,8 +102,8 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
         <section class="summary-strip" aria-label="Grid summary">
           <div class="metric"><span>Fixed-grid cells</span><strong id="fixedTotal">—</strong></div>
           <div class="metric"><span>Adjusted cells</span><strong id="adjustedTotal">—</strong></div>
-          <div class="metric"><span>Fixed area spread</span><strong id="fixedSpread">—</strong></div>
-          <div class="metric"><span>Adjusted area spread</span><strong id="adjustedSpread">—</strong></div>
+          <div class="metric"><span>Fixed cell-area range</span><strong id="fixedRange">—</strong></div>
+          <div class="metric"><span>Adjusted cell-area range</span><strong id="adjustedRange">—</strong></div>
         </section>
 
         <section class="panel view-panel">
@@ -599,7 +143,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
             <p id="selectionNote">The nearest row to the equator is selected.</p>
             <div class="row-data">
               <div class="datum"><span>Centre latitude</span><strong id="selectedLatitude">—</strong></div>
-              <div class="datum"><span>Ideal adjusted count</span><strong id="idealCount">—</strong></div>
+              <div class="datum"><span>Cosine estimate</span><strong id="idealCount">—</strong></div>
               <div class="datum"><span>Rounded count</span><strong id="roundedCount">—</strong></div>
               <div class="datum"><span>Fixed relative area</span><strong id="fixedRelative">—</strong></div>
               <div class="datum"><span>Adjusted relative area</span><strong id="adjustedRelative">—</strong></div>
@@ -614,7 +158,13 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
           </article>
         </section>
 
-        <p class="footer-note">Earth texture: MathMeetLife land mask. Geometry is calculated on a spherical model.</p>
+        <div class="footer-note">
+          <p>Earth texture: MathMeetLife land mask. Geometry is calculated on a spherical model.</p>
+          <div class="footer-actions">
+            <!-- ARTICLE LINK PLACEHOLDER: replace the href and remove hidden after publication. -->
+            <a class="article-link" href="REPLACE_WITH_ARTICLE_URL" hidden>← Read the article</a>
+          </div>
+        </div>
       </section>
     </div>
   </main>
@@ -625,7 +175,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
 
     const TAU = Math.PI * 2;
     const DEG = Math.PI / 180;
-    const LAND_MASK_URL = 'https://khall1987.github.io/MathMeetLife/assets/images/land-mask-2160x1080.png';
+    const LAND_MASK_URL = 'assets/images/land-mask-2160x1080.png';
 
     const texture = {
       image: null,
@@ -655,8 +205,8 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       chartCanvas: document.getElementById('chartCanvas'),
       fixedTotal: document.getElementById('fixedTotal'),
       adjustedTotal: document.getElementById('adjustedTotal'),
-      fixedSpread: document.getElementById('fixedSpread'),
-      adjustedSpread: document.getElementById('adjustedSpread'),
+      fixedRange: document.getElementById('fixedRange'),
+      adjustedRange: document.getElementById('adjustedRange'),
       selectedLatitude: document.getElementById('selectedLatitude'),
       idealCount: document.getElementById('idealCount'),
       roundedCount: document.getElementById('roundedCount'),
@@ -686,6 +236,9 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       dragStart: null,
       grid: null
     };
+
+    let renderFrame = 0;
+    let chartDirty = true;
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
@@ -738,14 +291,14 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       };
     }
 
-    function areaSpread(key) {
+    function areaRange(key) {
       const values = state.grid.rows.map(row => row[key]);
-      return Math.max(...values) - Math.min(...values);
+      return { min: Math.min(...values), max: Math.max(...values) };
     }
 
-    function areaRms(key) {
-      const values = state.grid.rows.map(row => row[key]);
-      return Math.sqrt(values.reduce((sum, value) => sum + (value - 1) ** 2, 0) / values.length);
+    function formatAreaRange(key) {
+      const range = areaRange(key);
+      return `${range.min.toFixed(2)}×–${range.max.toFixed(2)}×`;
     }
 
     function relativeAreaColor(value, alpha = 1) {
@@ -873,7 +426,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       texture.failed = false;
       texture.globeCacheKey = '';
       setTextureStatus('Earth texture ready', 'ready');
-      renderCanvases();
+      scheduleRender();
     }
 
     function initLandMask() {
@@ -885,7 +438,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       image.onerror = () => {
         texture.failed = true;
         setTextureStatus('Earth texture could not be loaded; the mathematical grid still works.', 'warning');
-        renderCanvases();
+        scheduleRender();
       };
       image.src = LAND_MASK_URL;
       texture.image = image;
@@ -975,34 +528,86 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       return { x: x1, y: y2, z: z2 };
     }
 
-    function projectPoint(lat, lon, cx, cy, radius) {
-      const p = rotatePoint(lat, lon);
-      return { x: cx + p.x * radius, y: cy - p.y * radius, z: p.z };
+    function projectRotatedPoint(point, cx, cy, radius) {
+      return { x: cx + point.x * radius, y: cy - point.y * radius, z: point.z };
+    }
+
+    function horizonIntersection(a, b) {
+      const denominator = a.z - b.z;
+      const t = Math.abs(denominator) < 1e-9 ? 0.5 : clamp(a.z / denominator, 0, 1);
+      let x = a.x + (b.x - a.x) * t;
+      let y = a.y + (b.y - a.y) * t;
+      const length = Math.hypot(x, y) || 1;
+      x /= length;
+      y /= length;
+      return { x, y, z: 0 };
+    }
+
+    function clipPolygonToFront(points) {
+      if (!points.length) return [];
+      const clipped = [];
+      let previous = points[points.length - 1];
+      let previousInside = previous.z >= 0;
+
+      for (const current of points) {
+        const currentInside = current.z >= 0;
+        if (currentInside !== previousInside) clipped.push(horizonIntersection(previous, current));
+        if (currentInside) clipped.push(current);
+        previous = current;
+        previousInside = currentInside;
+      }
+      return clipped;
+    }
+
+    function addHorizonArcs(points) {
+      if (points.length < 2) return points;
+      const expanded = [];
+      const horizonEpsilon = 1e-7;
+
+      for (let i = 0; i < points.length; i += 1) {
+        const current = points[i];
+        const next = points[(i + 1) % points.length];
+        expanded.push(current);
+
+        if (Math.abs(current.z) < horizonEpsilon && Math.abs(next.z) < horizonEpsilon) {
+          const startAngle = Math.atan2(current.y, current.x);
+          let delta = Math.atan2(next.y, next.x) - startAngle;
+          while (delta > Math.PI) delta -= TAU;
+          while (delta < -Math.PI) delta += TAU;
+          const steps = Math.max(1, Math.ceil(Math.abs(delta) / (5 * DEG)));
+          for (let step = 1; step < steps; step += 1) {
+            const angle = startAngle + delta * (step / steps);
+            expanded.push({ x: Math.cos(angle), y: Math.sin(angle), z: 0 });
+          }
+        }
+      }
+      return expanded;
     }
 
     function cellPolygon(row, cellIndex, count, cx, cy, radius) {
       const lonLeft = -180 + (360 * cellIndex) / count;
       const lonRight = -180 + (360 * (cellIndex + 1)) / count;
       const points = [];
-      const edgeSteps = 4;
+      const edgeSteps = 6;
 
       for (let s = 0; s <= edgeSteps; s += 1) {
         const lon = lonLeft + (lonRight - lonLeft) * (s / edgeSteps);
-        points.push(projectPoint(row.latTop, lon, cx, cy, radius));
+        points.push(rotatePoint(row.latTop, lon));
       }
       for (let s = 1; s <= edgeSteps; s += 1) {
         const lat = row.latTop + (row.latBottom - row.latTop) * (s / edgeSteps);
-        points.push(projectPoint(lat, lonRight, cx, cy, radius));
+        points.push(rotatePoint(lat, lonRight));
       }
       for (let s = 1; s <= edgeSteps; s += 1) {
         const lon = lonRight + (lonLeft - lonRight) * (s / edgeSteps);
-        points.push(projectPoint(row.latBottom, lon, cx, cy, radius));
+        points.push(rotatePoint(row.latBottom, lon));
       }
       for (let s = 1; s < edgeSteps; s += 1) {
         const lat = row.latBottom + (row.latTop - row.latBottom) * (s / edgeSteps);
-        points.push(projectPoint(lat, lonLeft, cx, cy, radius));
+        points.push(rotatePoint(lat, lonLeft));
       }
-      return points;
+
+      return addHorizonArcs(clipPolygonToFront(points)).map(point => projectRotatedPoint(point, cx, cy, radius));
     }
 
     function drawGlobe(canvas, mode) {
@@ -1028,7 +633,8 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       ctx.clip();
 
       if (state.showTexture && texture.ready) {
-        const globeTexture = renderGlobeTexture(radius * 2);
+        const textureScale = state.dragging ? 0.55 : 1;
+        const globeTexture = renderGlobeTexture(radius * 2 * textureScale);
         if (globeTexture) ctx.drawImage(globeTexture, cx - radius, cy - radius, radius * 2, radius * 2);
       }
 
@@ -1039,10 +645,10 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       for (const row of state.grid.rows) {
         const count = row[countKey];
         for (let cell = 0; cell < count; cell += 1) {
-          const lonMid = -180 + 360 * (cell + 0.5) / count;
-          const center = rotatePoint(row.latMid, lonMid);
-          if (center.z < -0.04) continue;
-          cells.push({ row, cell, count, depth: center.z });
+          const points = cellPolygon(row, cell, count, cx, cy, radius);
+          if (points.length < 3) continue;
+          const depth = points.reduce((sum, point) => sum + point.z, 0) / points.length;
+          cells.push({ row, cell, count, depth, points });
         }
       }
 
@@ -1050,7 +656,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       const baseAlpha = state.showTexture && texture.ready ? state.overlayOpacity : 0.88;
 
       for (const item of cells) {
-        const points = cellPolygon(item.row, item.cell, item.count, cx, cy, radius);
+        const points = item.points;
         ctx.beginPath();
         points.forEach((point, index) => {
           if (index === 0) ctx.moveTo(point.x, point.y);
@@ -1222,7 +828,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       ctx.fillText('Adjusted', secondX + 35 * ratio, legendY);
     }
 
-    function renderCanvases() {
+    function drawComparisonViews() {
       if (state.view === 'globe') {
         drawGlobe(els.fixedCanvas, 'fixed');
         drawGlobe(els.adjustedCanvas, 'adjusted');
@@ -1230,7 +836,19 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
         drawFlat(els.fixedCanvas, 'fixed');
         drawFlat(els.adjustedCanvas, 'adjusted');
       }
-      drawChart();
+    }
+
+    function scheduleRender({ chart = false } = {}) {
+      chartDirty = chartDirty || chart;
+      if (renderFrame) return;
+      renderFrame = window.requestAnimationFrame(() => {
+        renderFrame = 0;
+        drawComparisonViews();
+        if (chartDirty) {
+          drawChart();
+          chartDirty = false;
+        }
+      });
     }
 
     function updateDetails() {
@@ -1247,10 +865,8 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
     function updateSummary() {
       els.fixedTotal.textContent = state.grid.fixedTotal.toLocaleString();
       els.adjustedTotal.textContent = state.grid.adjustedTotal.toLocaleString();
-      els.fixedSpread.textContent = `${areaSpread('fixedRelative').toFixed(2)}×`;
-      els.adjustedSpread.textContent = `${areaSpread('adjustedRelative').toFixed(2)}×`;
-      els.fixedSpread.title = `RMS deviation from equal area: ${areaRms('fixedRelative').toFixed(3)}`;
-      els.adjustedSpread.title = `RMS deviation from equal area: ${areaRms('adjustedRelative').toFixed(3)}`;
+      els.fixedRange.textContent = formatAreaRange('fixedRelative');
+      els.adjustedRange.textContent = formatAreaRange('adjustedRelative');
     }
 
     function updateOutputs() {
@@ -1274,7 +890,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       updateOutputs();
       updateSummary();
       updateDetails();
-      renderCanvases();
+      scheduleRender({ chart: true });
     }
 
     function selectNearestLatitude(latitude, redraw = true) {
@@ -1290,7 +906,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       state.selectedRow = clamp(best, 0, state.rows - 1);
       if (redraw) {
         updateDetails();
-        renderCanvases();
+        scheduleRender({ chart: true });
       }
     }
 
@@ -1349,22 +965,26 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       if (Math.hypot(dx, dy) > 3) state.moved = true;
       state.yaw = state.dragStart.yaw + dx * 0.009;
       state.pitch = clamp(state.dragStart.pitch + dy * 0.009, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
-      renderCanvases();
+      scheduleRender();
     }
 
     function pointerUp(event) {
       if (!state.dragging) return;
       const canvas = event.currentTarget;
-      if (!state.moved) {
+      const wasMoved = state.moved;
+      state.dragging = false;
+      state.dragStart = null;
+
+      if (!wasMoved && event.type !== 'pointercancel') {
         const row = rowFromPointer(canvas, event);
         if (row !== null) {
           state.selectedRow = row;
           updateDetails();
-          renderCanvases();
+          scheduleRender({ chart: true });
+          return;
         }
       }
-      state.dragging = false;
-      state.dragStart = null;
+      scheduleRender();
     }
 
     function canvasClickFlat(event) {
@@ -1373,7 +993,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       if (row !== null) {
         state.selectedRow = row;
         updateDetails();
-        renderCanvases();
+        scheduleRender({ chart: true });
       }
     }
 
@@ -1397,12 +1017,12 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       els.earthTexture.addEventListener('change', () => {
         state.showTexture = els.earthTexture.checked;
         els.overlayOpacity.disabled = !state.showTexture;
-        renderCanvases();
+        scheduleRender();
       });
       els.overlayOpacity.addEventListener('input', () => {
         state.overlayOpacity = Number(els.overlayOpacity.value) / 100;
         els.overlayOpacityOut.value = `${els.overlayOpacity.value}%`;
-        renderCanvases();
+        scheduleRender();
       });
 
       els.viewButtons.forEach(button => {
@@ -1411,7 +1031,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
           els.viewButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
           document.getElementById('fixedHint').textContent = state.view === 'globe' ? 'Drag to rotate · click a row' : 'Click a row to inspect it';
           document.getElementById('adjustedHint').textContent = state.view === 'globe' ? 'Drag to rotate · click a row' : 'Click a row to inspect it';
-          renderCanvases();
+          scheduleRender();
         });
       });
 
@@ -1445,7 +1065,7 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
       els.resetView.addEventListener('click', () => {
         state.yaw = -24 * DEG;
         state.pitch = -12 * DEG;
-        renderCanvases();
+        scheduleRender();
       });
 
       [els.fixedCanvas, els.adjustedCanvas].forEach(canvas => {
@@ -1462,23 +1082,23 @@ canvas { display: block; width: 100%; height: 400px; touch-action: none; }
             if (event.key === 'Home') state.selectedRow = 0;
             if (event.key === 'End') state.selectedRow = state.rows - 1;
             updateDetails();
-            renderCanvases();
+            scheduleRender({ chart: true });
           }
           if (state.view === 'globe' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
             event.preventDefault();
             state.yaw += event.key === 'ArrowLeft' ? -5 * DEG : 5 * DEG;
-            renderCanvases();
+            scheduleRender();
           }
         });
       });
 
       if ('ResizeObserver' in window) {
-        const resizeObserver = new ResizeObserver(() => renderCanvases());
+        const resizeObserver = new ResizeObserver(() => scheduleRender({ chart: true }));
         resizeObserver.observe(els.fixedCanvas.parentElement);
         resizeObserver.observe(els.adjustedCanvas.parentElement);
         resizeObserver.observe(els.chartCanvas.parentElement);
       } else {
-        window.addEventListener('resize', renderCanvases);
+        window.addEventListener('resize', () => scheduleRender({ chart: true }));
       }
     }
 
