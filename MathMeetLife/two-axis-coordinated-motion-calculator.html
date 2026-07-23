@@ -1,0 +1,1203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Two-Axis Coordinated Motion Calculator</title>
+  <meta name="theme-color" content="#042f2e">
+  <link rel="stylesheet" href="assets/mml-toy.css">
+  <link rel="stylesheet" href="assets/widgets/two-axis-coordinated-motion-calculator.css">
+</head>
+<body class="mml-widget">
+  <main class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Math Meets Life · Interactive model</div>
+        <h1>Two-Axis Coordinated Motion Calculator</h1>
+        <p class="subtitle">Enter start and end points plus the X/Y motion limits. The page projects those limits onto one straight path and builds a zero-to-zero, jerk-limited S-curve profile.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn" id="exampleBtn" type="button">Load example</button>
+        <button class="btn" id="shareBtn" type="button">Copy settings link</button>
+        <button class="btn" id="csvBtn" type="button">Download CSV</button>
+        <button class="btn" id="printBtn" type="button">Print</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel motion-controls">
+        <div class="section">
+          <h2>Move geometry</h2>
+          <div class="field-grid">
+            <label>Start X<input id="startX" type="number" step="any" value="0"></label>
+            <label>Start Y<input id="startY" type="number" step="any" value="0"></label>
+            <label>End X<input id="endX" type="number" step="any" value="300"></label>
+            <label>End Y<input id="endY" type="number" step="any" value="400"></label>
+            <label>Distance unit<input id="unit" type="text" value="mm" maxlength="12"></label>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="axis-heading"><span class="dot x"></span> X-axis limits</div>
+          <div class="field-grid four">
+            <label>Max velocity<input id="xVel" type="number" min="0" step="any" value="120"></label>
+            <label>Max acceleration<input id="xAcc" type="number" min="0" step="any" value="300"></label>
+            <label>Max deceleration<input id="xDec" type="number" min="0" step="any" value="300"></label>
+            <label>Max jerk<input id="xJerk" type="number" min="0" step="any" value="2000"></label>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="axis-heading"><span class="dot y"></span> Y-axis limits</div>
+          <div class="field-grid four">
+            <label>Max velocity<input id="yVel" type="number" min="0" step="any" value="200"></label>
+            <label>Max acceleration<input id="yAcc" type="number" min="0" step="any" value="250"></label>
+            <label>Max deceleration<input id="yDec" type="number" min="0" step="any" value="250"></label>
+            <label>Max jerk<input id="yJerk" type="number" min="0" step="any" value="1500"></label>
+          </div>
+          <p class="hint">Velocity: unit/s · acceleration: unit/s² · jerk: unit/s³</p>
+        </div>
+
+        <div class="section">
+          <h3>Calculation model</h3>
+          <div class="formula-box">
+            <code>[L = √(dX² + dY²)]</code>
+            <code>[kX = |dX| ÷ L] &nbsp; [kY = |dY| ÷ L]</code>
+            <code>[Path limit = smaller(axis limit ÷ axis ratio)]</code>
+            <code>[Axis limit = path limit × axis ratio]</code>
+          </div>
+          <p class="hint">The generated graph uses a seven-segment S-curve where possible. Short moves automatically reduce peak speed and may omit constant-acceleration or cruise segments.</p>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="panel path-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>X–Y path and axis components</h2>
+              <p>The diagonal is the shared path. The horizontal X component and vertical Y component show how that path is divided between the two axes.</p>
+            </div>
+            <span id="pathPhase" class="phase-chip">Ready</span>
+          </div>
+          <div class="path-layout">
+            <div class="path-canvas-wrap"><canvas id="pathCanvas" aria-label="X-Y coordinated path with separate X and Y movement components"></canvas></div>
+            <div class="path-side">
+              <div class="path-coordinate"><span>Current time</span><strong id="pathTime">—</strong></div>
+              <div class="path-coordinate"><span>Current X</span><strong id="pathX">—</strong></div>
+              <div class="path-coordinate"><span>Current Y</span><strong id="pathY">—</strong></div>
+              <div class="path-coordinate"><span>Path distance</span><strong id="pathS">—</strong></div>
+              <div class="component-summary" aria-label="Axis movement components">
+                <div class="component-card x">
+                  <span class="component-name"><i></i>X component</span>
+                  <strong class="component-value" id="pathDX">—</strong>
+                  <span class="component-share" id="pathKX">—</span>
+                </div>
+                <div class="component-card y">
+                  <span class="component-name"><i></i>Y component</span>
+                  <strong class="component-value" id="pathDY">—</strong>
+                  <span class="component-share" id="pathKY">—</span>
+                </div>
+              </div>
+              <div class="path-legend" aria-label="Path plot legend">
+                <span class="path"><i></i>Shared path</span>
+                <span class="x"><i></i>X movement</span>
+                <span class="y"><i></i>Y movement</span>
+              </div>
+              <div class="play-controls">
+                <button class="btn primary" id="playBtn" type="button">Play</button>
+                <input id="timeScrubber" type="range" min="0" max="700" step="1" value="0" aria-label="Motion time scrubber">
+                <span id="scrubberTime" class="time-chip">0.000 s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel summary-panel">
+          <div id="status" class="status ok">Ready.</div>
+          <div class="metric-grid">
+            <div class="metric"><div class="label">Path length</div><div class="value" id="pathLength">—</div><div class="note" id="moveVector">—</div></div>
+            <div class="metric"><div class="label">Move time</div><div class="value" id="moveTime">—</div><div class="note" id="profileType">—</div></div>
+            <div class="metric"><div class="label">Peak path speed</div><div class="value" id="peakSpeed">—</div><div class="note" id="speedNote">—</div></div>
+            <div class="metric"><div class="label">Axis ratios</div><div class="value" id="ratios">—</div><div class="note">Projection onto the shared path</div></div>
+          </div>
+
+          <div class="tables">
+            <div>
+              <h3>Calculated command limits</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Quantity</th><th>Path</th><th>X</th><th>Y</th><th>Limiter</th></tr></thead>
+                  <tbody id="limitTable"></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3>Actual profile peaks</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Quantity</th><th>Path</th><th>X</th><th>Y</th></tr></thead>
+                  <tbody id="peakTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="constraint-summary">
+            <h3>Axis capability used by the coordinated command</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Quantity</th><th>Limiting axis</th><th>X used</th><th>Y used</th></tr></thead>
+                <tbody id="utilizationTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel timeline">
+          <h2>Motion phases</h2>
+          <div id="timelineBar" class="timeline-bar"></div>
+          <div id="timelineKey" class="timeline-key"></div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div id="cursorReadout" class="cursor-readout" aria-live="polite"></div>
+          <p class="hover-help">Hover over any line to snap to the nearest sample. The crosshair is synchronized across every graph. The highlighted ring identifies the nearest line in the graph under the pointer, while the shared readout reports the same instant across position, velocity, acceleration, jerk, and the X–Y path.</p>
+          <div class="chart-grid">
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Position</div><div class="chart-subtitle" id="positionSubtitle">Path and axis position</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="positionChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Velocity</div><div class="chart-subtitle" id="velocitySubtitle">Signed axis velocities</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="velocityChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Acceleration</div><div class="chart-subtitle" id="accelerationSubtitle">Signed axis accelerations</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="accelerationChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-head"><div><div class="chart-title">Jerk</div><div class="chart-subtitle" id="jerkSubtitle">Piecewise-constant S-curve jerk</div></div><div class="motion-legend"></div></div>
+              <div class="motion-canvas-wrap"><canvas id="jerkChart"></canvas></div>
+            </article>
+          </div>
+        </div>
+
+        <details class="panel implementation">
+          <summary>Implementation values</summary>
+          <div class="implementation-body">
+            <div class="implementation-head">
+              <p class="hint">Structured Text-style assignments generated from the coordinated command limits.</p>
+              <button class="btn" id="copyCodeBtn" type="button">Copy values</button>
+            </div>
+            <pre id="implementationCode">Calculate a move to generate values.</pre>
+          </div>
+        </details>
+
+        <div class="panel notice">
+          <strong>Engineering note:</strong> This is a planning and visualization tool, not a motion controller. A straight commanded path still depends on simultaneous axis start, compatible controller interpolation, servo response, following-error limits, mechanics, and vendor-specific motion behavior. Verify the resulting settings on the actual machine at a safe reduced speed.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    "use strict";
+
+    const $ = (id) => document.getElementById(id);
+    const EPS = 1e-10;
+    let currentResult = null;
+    let sharedCursor = null;
+    let playbackFrame = null;
+    let playbackStart = null;
+    let playbackStartIndex = 0;
+
+    const inputIds = [
+      "startX", "startY", "endX", "endY", "unit",
+      "xVel", "xAcc", "xDec", "xJerk",
+      "yVel", "yAcc", "yDec", "yJerk"
+    ];
+
+    class ValidationError extends Error {
+      constructor(message, fieldIds = []) {
+        super(message);
+        this.name = "ValidationError";
+        this.fieldIds = fieldIds;
+      }
+    }
+
+    function clearFieldErrors() {
+      for (const id of inputIds) {
+        const input = $(id);
+        input.classList.remove("invalid");
+        input.removeAttribute("aria-invalid");
+        input.removeAttribute("aria-errormessage");
+        const label = input.closest("label");
+        label?.classList.remove("has-error", "show-error");
+        label?.querySelector(".field-error-tooltip")?.remove();
+      }
+    }
+
+    function showFieldError(fieldIds, message) {
+      const validIds = fieldIds.filter((id) => $(id));
+      validIds.forEach((id, index) => {
+        const input = $(id);
+        const label = input.closest("label");
+        if (!label) return;
+        const tooltip = document.createElement("span");
+        tooltip.className = "field-error-tooltip";
+        tooltip.id = `${id}Error`;
+        tooltip.setAttribute("role", "tooltip");
+        tooltip.textContent = message;
+        label.appendChild(tooltip);
+        label.classList.add("has-error");
+        if (index === 0) label.classList.add("show-error");
+        input.classList.add("invalid");
+        input.setAttribute("aria-invalid", "true");
+        input.setAttribute("aria-errormessage", tooltip.id);
+      });
+    }
+
+    function readNumber(id) {
+      const input = $(id);
+      const raw = input.value.trim();
+      const label = input.closest("label")?.firstChild?.textContent?.trim() || id;
+      if (raw === "") throw new ValidationError(`${label} is required.`, [id]);
+      const value = Number(raw);
+      if (!Number.isFinite(value)) throw new ValidationError(`Enter a valid number for ${label}.`, [id]);
+      return value;
+    }
+
+    function getInputs() {
+      return {
+        x0: readNumber("startX"), y0: readNumber("startY"),
+        x1: readNumber("endX"), y1: readNumber("endY"),
+        unit: $("unit").value.trim() || "unit",
+        x: { v: readNumber("xVel"), a: readNumber("xAcc"), d: readNumber("xDec"), j: readNumber("xJerk") },
+        y: { v: readNumber("yVel"), a: readNumber("yAcc"), d: readNumber("yDec"), j: readNumber("yJerk") }
+      };
+    }
+
+    function phaseForVelocity(v, accelLimit, jerkLimit) {
+      const threshold = (accelLimit * accelLimit) / jerkLimit;
+      if (v <= threshold + EPS) {
+        const tj = Math.sqrt(Math.max(0, v / jerkLimit));
+        return { tj, tc: 0, aPeak: jerkLimit * tj, total: 2 * tj };
+      }
+      const tj = accelLimit / jerkLimit;
+      const tc = Math.max(0, v / accelLimit - tj);
+      return { tj, tc, aPeak: accelLimit, total: 2 * tj + tc };
+    }
+
+    function buildProfile(length, vMax, aMax, dMax, jMax) {
+      const distanceNeeded = (v) => {
+        const pa = phaseForVelocity(v, aMax, jMax);
+        const pd = phaseForVelocity(v, dMax, jMax);
+        return 0.5 * v * (pa.total + pd.total);
+      };
+
+      let vPeak;
+      let cruiseTime;
+      const distanceAtVmax = distanceNeeded(vMax);
+
+      if (distanceAtVmax <= length + EPS) {
+        vPeak = vMax;
+        cruiseTime = Math.max(0, (length - distanceAtVmax) / vPeak);
+      } else {
+        let lo = 0;
+        let hi = vMax;
+        for (let i = 0; i < 100; i += 1) {
+          const mid = (lo + hi) / 2;
+          if (distanceNeeded(mid) > length) hi = mid;
+          else lo = mid;
+        }
+        vPeak = (lo + hi) / 2;
+        cruiseTime = 0;
+      }
+
+      const pa = phaseForVelocity(vPeak, aMax, jMax);
+      const pd = phaseForVelocity(vPeak, dMax, jMax);
+
+      const definitions = [
+        ["Acceleration jerk up", pa.tj, +jMax],
+        ["Constant acceleration", pa.tc, 0],
+        ["Acceleration jerk down", pa.tj, -jMax],
+        ["Constant velocity", cruiseTime, 0],
+        ["Deceleration jerk down", pd.tj, -jMax],
+        ["Constant deceleration", pd.tc, 0],
+        ["Deceleration jerk up", pd.tj, +jMax]
+      ];
+
+      const segments = [];
+      let t = 0, s = 0, v = 0, a = 0;
+
+      for (const [label, duration, jerk] of definitions) {
+        if (duration <= EPS) continue;
+        const segment = { label, duration, jerk, t0: t, s0: s, v0: v, a0: a };
+        segments.push(segment);
+        s += v * duration + 0.5 * a * duration * duration + (jerk * duration ** 3) / 6;
+        v += a * duration + 0.5 * jerk * duration * duration;
+        a += jerk * duration;
+        t += duration;
+      }
+
+      return {
+        vPeak, cruiseTime, pa, pd, segments, totalTime: t,
+        pathJerk: jMax,
+        type: cruiseTime > 1e-8 ? "S-curve with cruise" : "Short-move S-curve"
+      };
+    }
+
+    function stateAt(profile, time) {
+      if (time <= 0) return { s: 0, v: 0, a: 0, j: profile.segments[0]?.jerk || 0 };
+      if (time >= profile.totalTime) return { s: null, v: 0, a: 0, j: 0 };
+      let seg = profile.segments[profile.segments.length - 1];
+      for (const candidate of profile.segments) {
+        if (time <= candidate.t0 + candidate.duration + EPS) {
+          seg = candidate;
+          break;
+        }
+      }
+      const u = Math.max(0, Math.min(seg.duration, time - seg.t0));
+      return {
+        s: seg.s0 + seg.v0 * u + 0.5 * seg.a0 * u * u + (seg.jerk * u ** 3) / 6,
+        v: seg.v0 + seg.a0 * u + 0.5 * seg.jerk * u * u,
+        a: seg.a0 + seg.jerk * u,
+        j: seg.jerk
+      };
+    }
+
+    function projectedPathLimit(xLimit, yLimit, kx, ky) {
+      const xProjected = kx > EPS ? xLimit / kx : Infinity;
+      const yProjected = ky > EPS ? yLimit / ky : Infinity;
+      const value = Math.min(xProjected, yProjected);
+      let limiter;
+      if (!Number.isFinite(xProjected)) limiter = "Y";
+      else if (!Number.isFinite(yProjected)) limiter = "X";
+      else if (Math.abs(xProjected - yProjected) <= Math.max(1, value) * 1e-9) limiter = "X + Y";
+      else limiter = xProjected < yProjected ? "X" : "Y";
+      return { value, limiter, xProjected, yProjected };
+    }
+
+    function calculate() {
+      clearFieldErrors();
+      try {
+        const input = getInputs();
+        const limitFields = {
+          X: { v: "xVel", a: "xAcc", d: "xDec", j: "xJerk" },
+          Y: { v: "yVel", a: "yAcc", d: "yDec", j: "yJerk" }
+        };
+        const limitNames = { v: "velocity", a: "acceleration", d: "deceleration", j: "jerk" };
+        for (const [axisName, axis] of [["X", input.x], ["Y", input.y]]) {
+          for (const [key, value] of Object.entries(axis)) {
+            if (!(value > 0)) {
+              throw new ValidationError(`${axisName}-axis maximum ${limitNames[key]} must be greater than zero.`, [limitFields[axisName][key]]);
+            }
+          }
+        }
+
+        const dx = input.x1 - input.x0;
+        const dy = input.y1 - input.y0;
+        const length = Math.hypot(dx, dy);
+        if (!(length > EPS)) {
+          throw new ValidationError("The end point must differ from the start point.", ["endX", "endY"]);
+        }
+
+        const kx = Math.abs(dx) / length;
+        const ky = Math.abs(dy) / length;
+        const qx = dx / length;
+        const qy = dy / length;
+
+        const limits = {
+          velocity: projectedPathLimit(input.x.v, input.y.v, kx, ky),
+          acceleration: projectedPathLimit(input.x.a, input.y.a, kx, ky),
+          deceleration: projectedPathLimit(input.x.d, input.y.d, kx, ky),
+          jerk: projectedPathLimit(input.x.j, input.y.j, kx, ky)
+        };
+
+        const profile = buildProfile(
+          length,
+          limits.velocity.value,
+          limits.acceleration.value,
+          limits.deceleration.value,
+          limits.jerk.value
+        );
+
+        const sampleCount = 700;
+        const samples = [];
+        for (let i = 0; i <= sampleCount; i += 1) {
+          const t = profile.totalTime * (i / sampleCount);
+          const state = stateAt(profile, t);
+          const s = state.s === null ? length : Math.max(0, Math.min(length, state.s));
+          samples.push({
+            t,
+            pathPos: s,
+            xPos: input.x0 + qx * s,
+            yPos: input.y0 + qy * s,
+            pathVel: state.v,
+            xVel: qx * state.v,
+            yVel: qy * state.v,
+            pathAcc: state.a,
+            xAcc: qx * state.a,
+            yAcc: qy * state.a,
+            pathJerk: state.j,
+            xJerk: qx * state.j,
+            yJerk: qy * state.j
+          });
+        }
+
+        const actual = {
+          pathV: profile.vPeak,
+          pathA: profile.pa.aPeak,
+          pathD: profile.pd.aPeak,
+          pathJ: limits.jerk.value,
+          xV: kx * profile.vPeak,
+          yV: ky * profile.vPeak,
+          xA: kx * profile.pa.aPeak,
+          yA: ky * profile.pa.aPeak,
+          xD: kx * profile.pd.aPeak,
+          yD: ky * profile.pd.aPeak,
+          xJ: kx * limits.jerk.value,
+          yJ: ky * limits.jerk.value
+        };
+
+        currentResult = { input, dx, dy, length, kx, ky, qx, qy, limits, profile, samples, actual };
+        render(currentResult);
+        setStatus("Results are up to date.", false);
+      } catch (error) {
+        currentResult = null;
+        if (error instanceof ValidationError) {
+          showFieldError(error.fieldIds, error.message);
+          setStatus("Correct the highlighted value to resume calculation.", true);
+        } else {
+          setStatus(error.message || String(error), true);
+        }
+        clearResults();
+      }
+    }
+
+    function fmt(value, digits = 4) {
+      if (!Number.isFinite(value)) return "—";
+      const abs = Math.abs(value);
+      if (abs !== 0 && (abs >= 1e6 || abs < 1e-4)) return value.toExponential(3);
+      return new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }).format(value);
+    }
+
+    function setStatus(message, isError) {
+      const el = $("status");
+      el.textContent = message;
+      el.className = `status ${isError ? "error" : "ok"}`;
+    }
+
+    function clearResults() {
+      for (const id of ["pathLength", "moveVector", "moveTime", "profileType", "peakSpeed", "speedNote", "ratios"]) $(id).textContent = "—";
+      $("limitTable").innerHTML = "";
+      $("peakTable").innerHTML = "";
+      $("utilizationTable").innerHTML = "";
+      $("timelineBar").innerHTML = "";
+      $("timelineKey").innerHTML = "";
+      $("implementationCode").textContent = "Calculate a move to generate values.";
+      $("cursorReadout").classList.remove("visible");
+      $("cursorReadout").replaceChildren();
+      for (const id of ["pathTime", "pathX", "pathY", "pathS", "pathDX", "pathDY", "pathKX", "pathKY"]) $(id).textContent = "—";
+      $("pathPhase").textContent = "Ready";
+      $("timeScrubber").value = 0;
+      $("scrubberTime").textContent = "0.000 s";
+      stopPlayback();
+      sharedCursor = null;
+      for (const id of ["positionChart", "velocityChart", "accelerationChart", "jerkChart", "pathCanvas"]) {
+        const canvas = $(id);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function limitRow(label, pathValue, xValue, yValue, limiter, unit) {
+      return `<tr><td>${label}</td><td>${fmt(pathValue)} ${unit}</td><td>${fmt(xValue)} ${unit}</td><td>${fmt(yValue)} ${unit}</td><td>${limiter}</td></tr>`;
+    }
+
+    function peakRow(label, pathValue, xValue, yValue, unit) {
+      return `<tr><td>${label}</td><td>${fmt(pathValue)} ${unit}</td><td>${fmt(xValue)} ${unit}</td><td>${fmt(yValue)} ${unit}</td></tr>`;
+    }
+
+    function utilizationCell(value, axisClass) {
+      const pct = Math.max(0, Math.min(100, value));
+      return `<div class="util-cell"><div class="util-value"><span>${fmt(value, 1)}%</span></div><progress class="util-progress ${axisClass}" max="100" value="${pct}" aria-label="${fmt(value, 1)} percent"></progress></div>`;
+    }
+
+    function utilizationRow(label, limiter, xUse, yUse) {
+      return `<tr><td>${label}</td><td>${limiter}</td><td>${utilizationCell(xUse, "x")}</td><td>${utilizationCell(yUse, "y")}</td></tr>`;
+    }
+
+    function buildImplementationText(r) {
+      const n = (value) => Number(value).toFixed(6).replace(/\.?(?:0+)$/, "");
+      return [
+        `PathVelocity := ${n(r.limits.velocity.value)};`,
+        `PathAcceleration := ${n(r.limits.acceleration.value)};`,
+        `PathDeceleration := ${n(r.limits.deceleration.value)};`,
+        `PathJerk := ${n(r.limits.jerk.value)};`,
+        ``,
+        `XVelocity := ${n(r.kx * r.limits.velocity.value)};`,
+        `YVelocity := ${n(r.ky * r.limits.velocity.value)};`,
+        `XAcceleration := ${n(r.kx * r.limits.acceleration.value)};`,
+        `YAcceleration := ${n(r.ky * r.limits.acceleration.value)};`,
+        `XDeceleration := ${n(r.kx * r.limits.deceleration.value)};`,
+        `YDeceleration := ${n(r.ky * r.limits.deceleration.value)};`,
+        `XJerk := ${n(r.kx * r.limits.jerk.value)};`,
+        `YJerk := ${n(r.ky * r.limits.jerk.value)};`
+      ].join("\n");
+    }
+
+    function render(r) {
+      const u = r.input.unit;
+      $("pathLength").textContent = `${fmt(r.length)} ${u}`;
+      $("moveVector").textContent = `dX ${fmt(r.dx)} ${u} · dY ${fmt(r.dy)} ${u}`;
+      $("moveTime").textContent = `${fmt(r.profile.totalTime)} s`;
+      $("profileType").textContent = r.profile.type;
+      $("peakSpeed").textContent = `${fmt(r.profile.vPeak)} ${u}/s`;
+      $("speedNote").textContent = r.profile.vPeak < r.limits.velocity.value * (1 - 1e-8) ? "Reduced by move length" : "Reached coordinated limit";
+      $("ratios").textContent = `kX ${fmt(r.kx)} · kY ${fmt(r.ky)}`;
+
+      $("limitTable").innerHTML =
+        limitRow("Velocity", r.limits.velocity.value, r.kx * r.limits.velocity.value, r.ky * r.limits.velocity.value, r.limits.velocity.limiter, `${u}/s`) +
+        limitRow("Acceleration", r.limits.acceleration.value, r.kx * r.limits.acceleration.value, r.ky * r.limits.acceleration.value, r.limits.acceleration.limiter, `${u}/s²`) +
+        limitRow("Deceleration", r.limits.deceleration.value, r.kx * r.limits.deceleration.value, r.ky * r.limits.deceleration.value, r.limits.deceleration.limiter, `${u}/s²`) +
+        limitRow("Jerk", r.limits.jerk.value, r.kx * r.limits.jerk.value, r.ky * r.limits.jerk.value, r.limits.jerk.limiter, `${u}/s³`);
+
+      $("peakTable").innerHTML =
+        peakRow("Velocity", r.actual.pathV, r.actual.xV, r.actual.yV, `${u}/s`) +
+        peakRow("Acceleration", r.actual.pathA, r.actual.xA, r.actual.yA, `${u}/s²`) +
+        peakRow("Deceleration", r.actual.pathD, r.actual.xD, r.actual.yD, `${u}/s²`) +
+        peakRow("Jerk", r.actual.pathJ, r.actual.xJ, r.actual.yJ, `${u}/s³`);
+
+      $("utilizationTable").innerHTML =
+        utilizationRow("Velocity", r.limits.velocity.limiter, 100 * (r.kx * r.limits.velocity.value) / r.input.x.v, 100 * (r.ky * r.limits.velocity.value) / r.input.y.v) +
+        utilizationRow("Acceleration", r.limits.acceleration.limiter, 100 * (r.kx * r.limits.acceleration.value) / r.input.x.a, 100 * (r.ky * r.limits.acceleration.value) / r.input.y.a) +
+        utilizationRow("Deceleration", r.limits.deceleration.limiter, 100 * (r.kx * r.limits.deceleration.value) / r.input.x.d, 100 * (r.ky * r.limits.deceleration.value) / r.input.y.d) +
+        utilizationRow("Jerk", r.limits.jerk.limiter, 100 * (r.kx * r.limits.jerk.value) / r.input.x.j, 100 * (r.ky * r.limits.jerk.value) / r.input.y.j);
+
+      $("implementationCode").textContent = buildImplementationText(r);
+      renderTimeline(r.profile);
+      renderCharts(r);
+      renderPathView(r);
+      setSharedCursor(0, null, null);
+    }
+
+    function renderTimeline(profile) {
+      const bar = $("timelineBar");
+      const key = $("timelineKey");
+      bar.innerHTML = "";
+      key.innerHTML = "";
+      profile.segments.forEach((seg, index) => {
+        const part = document.createElement("div");
+        part.className = "timeline-segment";
+        part.style.flex = `${seg.duration} 1 0`;
+        part.title = `${seg.label}: ${fmt(seg.duration)} s`;
+        part.textContent = seg.duration / profile.totalTime > 0.105 ? `${index + 1}` : "";
+        bar.appendChild(part);
+
+        const item = document.createElement("div");
+        item.textContent = `${index + 1}. ${seg.label}: ${fmt(seg.duration)} s`;
+        key.appendChild(item);
+      });
+    }
+
+    function cssColor(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function niceRange(min, max) {
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return [-1, 1];
+      if (Math.abs(max - min) < EPS) {
+        const pad = Math.max(1, Math.abs(max) * 0.1);
+        return [min - pad, max + pad];
+      }
+      const span = max - min;
+      const pad = span * 0.08;
+      return [min - pad, max + pad];
+    }
+
+    const chartIds = ["positionChart", "velocityChart", "accelerationChart", "jerkChart"];
+
+    function phaseAtTime(time) {
+      if (!currentResult) return "Ready";
+      const segment = currentResult.profile.segments.find((seg) => time <= seg.t0 + seg.duration + EPS);
+      return segment?.label || "Complete";
+    }
+
+    function ensureChartTooltip(canvas) {
+      const wrap = canvas.closest(".motion-canvas-wrap");
+      let tooltip = wrap.querySelector(".chart-tooltip");
+      if (!tooltip) {
+        tooltip = document.createElement("div");
+        tooltip.className = "chart-tooltip";
+        tooltip.setAttribute("role", "status");
+        tooltip.setAttribute("aria-live", "polite");
+        wrap.appendChild(tooltip);
+      }
+      return tooltip;
+    }
+
+    function hideAllChartTooltips() {
+      for (const id of chartIds) ensureChartTooltip($(id)).classList.remove("visible");
+    }
+
+    function updateChartTooltip(canvas) {
+      const state = canvas._chartState;
+      if (!state || !sharedCursor || sharedCursor.sourceId !== canvas.id || !state.geometry) return;
+      const tooltip = ensureChartTooltip(canvas);
+      const row = state.samples[sharedCursor.index];
+      const activeKey = sharedCursor.activeKey || state.series[0].key;
+      const active = state.series.find((item) => item.key === activeKey) || state.series[0];
+      const geometry = state.geometry;
+
+      tooltip.replaceChildren();
+      const title = document.createElement("div");
+      title.className = "chart-tooltip-title";
+      title.textContent = `${state.chartTitle} graph · ${active.label}`;
+      tooltip.appendChild(title);
+
+      const time = document.createElement("div");
+      time.className = "chart-tooltip-time";
+      time.textContent = `Time ${fmt(row.t, 4)} s · ${phaseAtTime(row.t)}`;
+      tooltip.appendChild(time);
+
+      for (const item of state.series) {
+        const valueRow = document.createElement("div");
+        valueRow.className = `chart-tooltip-row${item.key === activeKey ? " active" : ""}`;
+        const seriesName = document.createElement("span");
+        seriesName.className = "chart-tooltip-series";
+        const dot = document.createElement("span");
+        dot.className = "chart-tooltip-dot";
+        dot.style.background = cssColor(item.color);
+        const label = document.createElement("span");
+        label.textContent = item.label;
+        seriesName.append(dot, label);
+        const value = document.createElement("span");
+        value.className = "chart-tooltip-value";
+        value.textContent = `${fmt(row[item.key], 4)} ${state.valueUnit}`;
+        valueRow.append(seriesName, value);
+        tooltip.appendChild(valueRow);
+      }
+
+      const activeY = geometry.yToPx(row[active.key]);
+      const baseLeft = canvas.offsetLeft + geometry.xToPx(row.t);
+      const baseTop = canvas.offsetTop + activeY;
+      tooltip.style.left = `${baseLeft + 14}px`;
+      tooltip.style.top = `${baseTop}px`;
+      tooltip.classList.add("visible");
+      const wrap = canvas.closest(".motion-canvas-wrap");
+      const tooltipWidth = tooltip.offsetWidth;
+      const tooltipHeight = tooltip.offsetHeight;
+      let left = baseLeft + 14;
+      if (left + tooltipWidth > wrap.clientWidth - 6) left = baseLeft - tooltipWidth - 14;
+      const halfHeight = tooltipHeight / 2;
+      const top = Math.max(halfHeight + 6, Math.min(wrap.clientHeight - halfHeight - 6, baseTop));
+      tooltip.style.left = `${Math.max(6, left)}px`;
+      tooltip.style.top = `${top}px`;
+    }
+
+    function updateCursorReadout(index) {
+      if (!currentResult || index == null) return;
+      const row = currentResult.samples[index];
+      const u = currentResult.input.unit;
+      const readout = $("cursorReadout");
+      const card = (name, values, unit) => `<div class="cursor-card"><div class="cursor-name">${name}</div><div class="cursor-values"><span>Path ${fmt(values[0], 4)} ${unit}</span><span>X ${fmt(values[1], 4)} ${unit}</span><span>Y ${fmt(values[2], 4)} ${unit}</span></div></div>`;
+      readout.innerHTML = `<div class="cursor-readout-head"><strong>Time ${fmt(row.t, 4)} s</strong><span>${phaseAtTime(row.t)}</span></div><div class="cursor-grid">${card("Position", [row.pathPos, row.xPos, row.yPos], u)}${card("Velocity", [row.pathVel, row.xVel, row.yVel], `${u}/s`)}${card("Acceleration", [row.pathAcc, row.xAcc, row.yAcc], `${u}/s²`)}${card("Jerk", [row.pathJerk, row.xJerk, row.yJerk], `${u}/s³`)}</div>`;
+      readout.classList.add("visible");
+
+      $("pathTime").textContent = `${fmt(row.t, 4)} s`;
+      $("pathX").textContent = `${fmt(row.xPos, 4)} ${u}`;
+      $("pathY").textContent = `${fmt(row.yPos, 4)} ${u}`;
+      $("pathS").textContent = `${fmt(row.pathPos, 4)} ${u}`;
+      $("pathPhase").textContent = phaseAtTime(row.t);
+      $("timeScrubber").value = index;
+      $("scrubberTime").textContent = `${fmt(row.t, 4)} s`;
+    }
+
+    function setSharedCursor(index, sourceId = null, activeKey = null) {
+      if (!currentResult) return;
+      index = Math.max(0, Math.min(currentResult.samples.length - 1, Math.round(index)));
+      sharedCursor = { index, sourceId, activeKey };
+      hideAllChartTooltips();
+      for (const id of chartIds) drawChart($(id));
+      drawPathCanvas();
+      updateCursorReadout(index);
+      if (sourceId) updateChartTooltip($(sourceId));
+    }
+
+    function installChartInteraction(canvas) {
+      if (canvas._hoverInteractionInstalled) return;
+      canvas._hoverInteractionInstalled = true;
+      canvas.addEventListener("pointermove", (event) => {
+        const state = canvas._chartState;
+        const geometry = state?.geometry;
+        if (!state || !geometry) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const inside = x >= geometry.margin.left && x <= geometry.margin.left + geometry.plotW && y >= geometry.margin.top && y <= geometry.margin.top + geometry.plotH;
+        if (!inside) {
+          ensureChartTooltip(canvas).classList.remove("visible");
+          return;
+        }
+        const normalized = (x - geometry.margin.left) / geometry.plotW;
+        const index = Math.max(0, Math.min(state.samples.length - 1, Math.round(normalized * (state.samples.length - 1))));
+        const row = state.samples[index];
+        let active = state.series[0];
+        let nearestDistance = Infinity;
+        for (const item of state.series) {
+          const distance = Math.abs(y - geometry.yToPx(row[item.key]));
+          if (distance < nearestDistance) { nearestDistance = distance; active = item; }
+        }
+        stopPlayback();
+        setSharedCursor(index, canvas.id, active.key);
+      });
+      canvas.addEventListener("pointerleave", () => {
+        ensureChartTooltip(canvas).classList.remove("visible");
+        if (sharedCursor?.sourceId === canvas.id) {
+          sharedCursor = { ...sharedCursor, sourceId: null, activeKey: null };
+          for (const id of chartIds) drawChart($(id));
+        }
+      });
+      canvas.addEventListener("pointercancel", () => ensureChartTooltip(canvas).classList.remove("visible"));
+    }
+
+    function phaseFill(index) {
+      return index % 2 === 0 ? "rgba(31,106,80,0.055)" : "rgba(100,127,53,0.075)";
+    }
+
+    function drawChart(canvas, samples, series, yUnit, chartTitle) {
+      if (samples && series) {
+        const unitMatch = yUnit.match(/\((.*)\)$/);
+        canvas._chartState = { samples, series, yUnit, valueUnit: unitMatch ? unitMatch[1] : yUnit, chartTitle, geometry: null };
+      }
+      const state = canvas._chartState;
+      if (!state) return;
+      samples = state.samples; series = state.series; yUnit = state.yUnit;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const width = rect.width, height = rect.height;
+      const margin = { left: 67, right: 15, top: 12, bottom: 38 };
+      const plotW = Math.max(10, width - margin.left - margin.right);
+      const plotH = Math.max(10, height - margin.top - margin.bottom);
+      const tMax = samples[samples.length - 1]?.t || 1;
+      let yMin = Infinity, yMax = -Infinity;
+      for (const row of samples) for (const s of series) { yMin = Math.min(yMin, row[s.key]); yMax = Math.max(yMax, row[s.key]); }
+      yMin = Math.min(yMin, 0); yMax = Math.max(yMax, 0); [yMin, yMax] = niceRange(yMin, yMax);
+      const xToPx = (x) => margin.left + (x / tMax) * plotW;
+      const yToPx = (y) => margin.top + (1 - (y - yMin) / (yMax - yMin)) * plotH;
+      state.geometry = { margin, plotW, plotH, tMax, yMin, yMax, xToPx, yToPx };
+      installChartInteraction(canvas);
+      ctx.clearRect(0, 0, width, height);
+
+      // Consistent phase bands on every time graph.
+      if (currentResult) {
+        currentResult.profile.segments.forEach((seg, index) => {
+          const x0 = xToPx(seg.t0), x1 = xToPx(seg.t0 + seg.duration);
+          ctx.fillStyle = phaseFill(index);
+          ctx.fillRect(x0, margin.top, Math.max(1, x1 - x0), plotH);
+        });
+      }
+
+      ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+      ctx.lineWidth = 1; ctx.strokeStyle = cssColor("--grid"); ctx.fillStyle = cssColor("--muted");
+      const gridCount = 5;
+      for (let i = 0; i <= gridCount; i += 1) {
+        const x = margin.left + (i / gridCount) * plotW;
+        ctx.beginPath(); ctx.moveTo(x, margin.top); ctx.lineTo(x, margin.top + plotH); ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(fmt((i / gridCount) * tMax, 3), x, margin.top + plotH + 7);
+      }
+      for (let i = 0; i <= gridCount; i += 1) {
+        const y = margin.top + (i / gridCount) * plotH;
+        ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(margin.left + plotW, y); ctx.stroke();
+        ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(fmt(yMax - (i / gridCount) * (yMax - yMin), 3), margin.left - 8, y);
+      }
+      if (yMin < 0 && yMax > 0) {
+        const zeroY = yToPx(0); ctx.strokeStyle = cssColor("--axis");
+        ctx.beginPath(); ctx.moveTo(margin.left, zeroY); ctx.lineTo(margin.left + plotW, zeroY); ctx.stroke();
+      }
+      ctx.fillStyle = cssColor("--muted"); ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.fillText("Time (s)", margin.left + plotW / 2, height - 1);
+      ctx.save(); ctx.translate(13, margin.top + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(yUnit, 0, 0); ctx.restore();
+
+      ctx.save(); ctx.beginPath(); ctx.rect(margin.left, margin.top, plotW, plotH); ctx.clip();
+      for (const s of series) {
+        ctx.strokeStyle = cssColor(s.color); ctx.lineWidth = s.width || 2; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.beginPath();
+        samples.forEach((row, i) => { const x = xToPx(row.t), y = yToPx(row[s.key]); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+        ctx.stroke();
+      }
+      if (sharedCursor) {
+        const row = samples[sharedCursor.index];
+        const active = sharedCursor.sourceId === canvas.id ? (series.find((item) => item.key === sharedCursor.activeKey) || series[0]) : null;
+        const hoverX = xToPx(row.t);
+        ctx.save(); ctx.strokeStyle = cssColor("--axis"); ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(hoverX, margin.top); ctx.lineTo(hoverX, margin.top + plotH); ctx.stroke();
+        if (active) {
+          const activeY = yToPx(row[active.key]); ctx.strokeStyle = cssColor(active.color); ctx.setLineDash([3, 4]);
+          ctx.beginPath(); ctx.moveTo(margin.left, activeY); ctx.lineTo(hoverX, activeY); ctx.stroke();
+        }
+        ctx.restore();
+        for (const item of series) {
+          const pointY = yToPx(row[item.key]); const isActive = active && item.key === active.key;
+          ctx.beginPath(); ctx.arc(hoverX, pointY, isActive ? 5.5 : 3.5, 0, Math.PI * 2); ctx.fillStyle = cssColor(item.color); ctx.fill();
+          ctx.lineWidth = isActive ? 3 : 1.5; ctx.strokeStyle = cssColor("--panel"); ctx.stroke();
+          if (isActive) { ctx.beginPath(); ctx.arc(hoverX, pointY, 8.5, 0, Math.PI * 2); ctx.lineWidth = 1.5; ctx.strokeStyle = cssColor(item.color); ctx.stroke(); }
+        }
+      }
+      ctx.restore();
+    }
+
+    function setLegend(canvas, series) {
+      const legend = canvas.closest(".chart-card").querySelector(".motion-legend");
+      legend.innerHTML = series.map((s) => {
+        const swatchClass = s.color.replace(/^--/, "");
+        return `<span><i class="${swatchClass}"></i>${s.label}</span>`;
+      }).join("");
+    }
+
+    function renderCharts(r) {
+      const u = r.input.unit;
+      const common = [
+        { key: "pathPos", label: "Path", color: "--path", width: 2.4 },
+        { key: "xPos", label: "X", color: "--xaxis", width: 2 },
+        { key: "yPos", label: "Y", color: "--yaxis", width: 2 }
+      ];
+      const velocity = [
+        { key: "pathVel", label: "Path", color: "--path", width: 2.4 },
+        { key: "xVel", label: "X", color: "--xaxis", width: 2 },
+        { key: "yVel", label: "Y", color: "--yaxis", width: 2 }
+      ];
+      const acceleration = [
+        { key: "pathAcc", label: "Path", color: "--path", width: 2.4 },
+        { key: "xAcc", label: "X", color: "--xaxis", width: 2 },
+        { key: "yAcc", label: "Y", color: "--yaxis", width: 2 }
+      ];
+      const jerk = [
+        { key: "pathJerk", label: "Path", color: "--path", width: 2.4 },
+        { key: "xJerk", label: "X", color: "--xaxis", width: 2 },
+        { key: "yJerk", label: "Y", color: "--yaxis", width: 2 }
+      ];
+
+      const specs = [
+        ["positionChart", common, `Position (${u})`],
+        ["velocityChart", velocity, `Velocity (${u}/s)`],
+        ["accelerationChart", acceleration, `Acceleration (${u}/s²)`],
+        ["jerkChart", jerk, `Jerk (${u}/s³)`]
+      ];
+
+      for (const [id, series, label] of specs) {
+        const canvas = $(id);
+        setLegend(canvas, series);
+        const chartTitle = canvas.closest(".chart-card").querySelector(".chart-title").textContent;
+        drawChart(canvas, r.samples, series, label, chartTitle);
+      }
+
+      $("positionSubtitle").textContent = `Path distance and absolute X/Y coordinates in ${u}`;
+      $("velocitySubtitle").textContent = `Signed velocity in ${u}/s`;
+      $("accelerationSubtitle").textContent = `Signed acceleration in ${u}/s²`;
+      $("jerkSubtitle").textContent = `Signed jerk in ${u}/s³`;
+    }
+
+    function renderPathView(r) {
+      $("timeScrubber").max = r.samples.length - 1;
+      $("pathDX").textContent = `${fmt(r.dx)} ${r.input.unit}`;
+      $("pathDY").textContent = `${fmt(r.dy)} ${r.input.unit}`;
+      $("pathKX").textContent = `Share kX = ${fmt(r.kx, 4)}`;
+      $("pathKY").textContent = `Share kY = ${fmt(r.ky, 4)}`;
+      drawPathCanvas();
+    }
+
+    function drawPathCanvas() {
+      if (!currentResult) return;
+      const canvas = $("pathCanvas");
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const width = rect.width, height = rect.height;
+      const margin = { left: 58, right: 25, top: 25, bottom: 48 };
+      const plotW = Math.max(20, width - margin.left - margin.right);
+      const plotH = Math.max(20, height - margin.top - margin.bottom);
+      const r = currentResult;
+      let minX = Math.min(r.input.x0, r.input.x1), maxX = Math.max(r.input.x0, r.input.x1);
+      let minY = Math.min(r.input.y0, r.input.y1), maxY = Math.max(r.input.y0, r.input.y1);
+      const xSpan0 = Math.max(EPS, maxX - minX), ySpan0 = Math.max(EPS, maxY - minY);
+      minX -= Math.max(xSpan0 * 0.12, 1); maxX += Math.max(xSpan0 * 0.12, 1);
+      minY -= Math.max(ySpan0 * 0.12, 1); maxY += Math.max(ySpan0 * 0.12, 1);
+      const xSpan = maxX - minX, ySpan = maxY - minY;
+      const scale = Math.min(plotW / xSpan, plotH / ySpan);
+      const usedW = xSpan * scale, usedH = ySpan * scale;
+      const ox = margin.left + (plotW - usedW) / 2, oy = margin.top + (plotH - usedH) / 2;
+      const xToPx = (x) => ox + (x - minX) * scale;
+      const yToPx = (y) => oy + usedH - (y - minY) * scale;
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+      ctx.strokeStyle = cssColor("--grid"); ctx.fillStyle = cssColor("--muted"); ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i += 1) {
+        const px = ox + usedW * i / 5, py = oy + usedH * i / 5;
+        ctx.beginPath(); ctx.moveTo(px, oy); ctx.lineTo(px, oy + usedH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ox, py); ctx.lineTo(ox + usedW, py); ctx.stroke();
+        ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(fmt(minX + xSpan * i / 5, 3), px, oy + usedH + 7);
+        ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(fmt(maxY - ySpan * i / 5, 3), ox - 7, py);
+      }
+      ctx.fillStyle = cssColor("--muted"); ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(`X (${r.input.unit})`, ox + usedW / 2, height - 2);
+      ctx.save(); ctx.translate(13, oy + usedH / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(`Y (${r.input.unit})`, 0, 0); ctx.restore();
+
+      const sx = xToPx(r.input.x0), sy = yToPx(r.input.y0), ex = xToPx(r.input.x1), ey = yToPx(r.input.y1);
+      const cornerX = ex;
+      const cornerY = sy;
+
+      const drawArrowHead = (x0, y0, x1, y1, color, size = 10, position = 0.72) => {
+        const dx = x1 - x0, dy = y1 - y0;
+        if (Math.hypot(dx, dy) < 10) return;
+        const angle = Math.atan2(dy, dx);
+        const ax = x0 + dx * position, ay = y0 + dy * position;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - size * Math.cos(angle - 0.48), ay - size * Math.sin(angle - 0.48));
+        ctx.lineTo(ax - size * Math.cos(angle + 0.48), ay - size * Math.sin(angle + 0.48));
+        ctx.closePath();
+        ctx.fill();
+      };
+
+      const drawSegment = (x0, y0, x1, y1, color, width, dash = [], alpha = 1) => {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineCap = "round";
+        ctx.setLineDash(dash);
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      const drawLabel = (text, x, y, color) => {
+        ctx.save();
+        ctx.font = "700 11px ui-sans-serif, system-ui, sans-serif";
+        const padX = 7, height = 22;
+        const width = ctx.measureText(text).width + padX * 2;
+        const left = Math.max(ox + 3, Math.min(ox + usedW - width - 3, x - width / 2));
+        const top = Math.max(oy + 3, Math.min(oy + usedH - height - 3, y - height / 2));
+        ctx.fillStyle = cssColor("--panel");
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(left, top, width, height, 6);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, left + width / 2, top + height / 2 + 0.5);
+        ctx.restore();
+      };
+
+      // Full axis components are shown as muted guide vectors. Together they form
+      // the two legs of the right triangle whose hypotenuse is the shared path.
+      if (r.kx > EPS) {
+        drawSegment(sx, sy, cornerX, cornerY, cssColor("--xaxis"), 3, [7, 5], 0.58);
+        drawArrowHead(sx, sy, cornerX, cornerY, cssColor("--xaxis"), 9, 0.76);
+      }
+      if (r.ky > EPS) {
+        drawSegment(cornerX, cornerY, ex, ey, cssColor("--yaxis"), 3, [7, 5], 0.58);
+        drawArrowHead(cornerX, cornerY, ex, ey, cssColor("--yaxis"), 9, 0.76);
+      }
+
+      // Right-angle marker at the junction between the two components.
+      if (r.kx > EPS && r.ky > EPS) {
+        const xDirection = Math.sign(ex - sx) || 1;
+        const yDirection = Math.sign(ey - sy) || 1;
+        const marker = Math.min(14, Math.max(8, Math.min(Math.abs(ex - sx), Math.abs(ey - sy)) * 0.08));
+        ctx.save();
+        ctx.strokeStyle = cssColor("--axis");
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cornerX - xDirection * marker, cornerY);
+        ctx.lineTo(cornerX - xDirection * marker, cornerY + yDirection * marker);
+        ctx.lineTo(cornerX, cornerY + yDirection * marker);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Shared diagonal path.
+      drawSegment(sx, sy, ex, ey, cssColor("--path"), 3.5);
+      drawArrowHead(sx, sy, ex, ey, cssColor("--path"), 12, 0.69);
+
+      // Labels identify the signed distance and dimensionless share for each leg.
+      if (r.kx > EPS) {
+        const labelY = sy + (ey >= sy ? -18 : 18);
+        drawLabel(`dX ${fmt(r.dx)} ${r.input.unit} · kX ${fmt(r.kx, 3)}`, (sx + cornerX) / 2, labelY, cssColor("--xaxis"));
+      }
+      if (r.ky > EPS) {
+        const labelX = ex + (ex >= sx ? -64 : 64);
+        drawLabel(`dY ${fmt(r.dy)} ${r.input.unit} · kY ${fmt(r.ky, 3)}`, labelX, (cornerY + ey) / 2, cssColor("--yaxis"));
+      }
+
+      const point = r.samples[sharedCursor?.index ?? 0];
+      const px = xToPx(point.xPos), py = yToPx(point.yPos);
+      const progressCornerX = px;
+      const progressCornerY = sy;
+
+      // Solid component segments show how far each physical axis has moved at
+      // the selected time, while the dashed guides retain the full target move.
+      if (Math.abs(point.xPos - r.input.x0) > EPS) {
+        drawSegment(sx, sy, progressCornerX, progressCornerY, cssColor("--xaxis"), 4);
+      }
+      if (Math.abs(point.yPos - r.input.y0) > EPS) {
+        drawSegment(progressCornerX, progressCornerY, px, py, cssColor("--yaxis"), 4);
+      }
+      for (const [x, y, label, color] of [[sx, sy, "Start", "--xaxis"], [ex, ey, "End", "--yaxis"]]) {
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = cssColor(color); ctx.fill(); ctx.strokeStyle = cssColor("--panel"); ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = cssColor("--text"); ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(label, x + 8, y - 7);
+      }
+      ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.fillStyle = cssColor("--accent"); ctx.fill(); ctx.strokeStyle = cssColor("--panel"); ctx.lineWidth = 3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2); ctx.strokeStyle = cssColor("--accent"); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+
+    function stopPlayback() {
+      if (playbackFrame != null) cancelAnimationFrame(playbackFrame);
+      playbackFrame = null; playbackStart = null;
+      const btn = $("playBtn");
+      if (btn) btn.textContent = "Play";
+    }
+
+    function togglePlayback() {
+      if (!currentResult) return;
+      if (playbackFrame != null) { stopPlayback(); return; }
+      playbackStartIndex = sharedCursor?.index ?? 0;
+      if (playbackStartIndex >= currentResult.samples.length - 1) playbackStartIndex = 0;
+      playbackStart = null; $("playBtn").textContent = "Pause";
+      const startTime = currentResult.samples[playbackStartIndex].t;
+      const step = (timestamp) => {
+        if (playbackStart == null) playbackStart = timestamp;
+        const elapsed = (timestamp - playbackStart) / 1000;
+        const targetTime = startTime + elapsed;
+        const ratio = targetTime / currentResult.profile.totalTime;
+        const index = Math.min(currentResult.samples.length - 1, Math.round(ratio * (currentResult.samples.length - 1)));
+        setSharedCursor(index, null, null);
+        if (index >= currentResult.samples.length - 1) stopPlayback();
+        else playbackFrame = requestAnimationFrame(step);
+      };
+      playbackFrame = requestAnimationFrame(step);
+    }
+
+    function downloadCsv() {
+      if (!currentResult) return;
+      const headers = ["time_s", "path_position", "x_position", "y_position", "path_velocity", "x_velocity", "y_velocity", "path_acceleration", "x_acceleration", "y_acceleration", "path_jerk", "x_jerk", "y_jerk"];
+      const keys = ["t", "pathPos", "xPos", "yPos", "pathVel", "xVel", "yVel", "pathAcc", "xAcc", "yAcc", "pathJerk", "xJerk", "yJerk"];
+      const rows = currentResult.samples.map((row) => keys.map((key) => Number(row[key]).toPrecision(12)).join(","));
+      const csv = [headers.join(","), ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "coordinated-motion-profile.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function settingsParams() {
+      const params = new URLSearchParams();
+      for (const id of inputIds) params.set(id, $(id).value);
+      return params;
+    }
+
+    async function copySettingsLink() {
+      const url = new URL(window.location.href);
+      url.search = settingsParams().toString();
+      try {
+        await navigator.clipboard.writeText(url.href);
+        $("shareBtn").textContent = "Link copied";
+      } catch {
+        window.prompt("Copy this settings link:", url.href);
+      }
+      window.setTimeout(() => $("shareBtn").textContent = "Copy settings link", 1500);
+    }
+
+    function loadSettingsFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      for (const id of inputIds) if (params.has(id)) $(id).value = params.get(id);
+    }
+
+    async function copyImplementation() {
+      const value = $("implementationCode").textContent;
+      try {
+        await navigator.clipboard.writeText(value);
+        $("copyCodeBtn").textContent = "Copied";
+      } catch {
+        window.prompt("Copy these values:", value);
+      }
+      window.setTimeout(() => $("copyCodeBtn").textContent = "Copy values", 1300);
+    }
+
+    function loadExample() {
+      const values = {
+        startX: 0, startY: 0, endX: 300, endY: 400, unit: "mm",
+        xVel: 120, xAcc: 300, xDec: 300, xJerk: 2000,
+        yVel: 200, yAcc: 250, yDec: 250, yJerk: 1500
+      };
+      for (const [id, value] of Object.entries(values)) $(id).value = value;
+      calculate();
+    }
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!currentResult) return;
+        renderCharts(currentResult);
+        drawPathCanvas();
+      }, 100);
+    });
+
+    let inputCalculationTimer;
+
+    function scheduleCalculation() {
+      stopPlayback();
+      clearTimeout(inputCalculationTimer);
+      inputCalculationTimer = setTimeout(calculate, 90);
+    }
+
+    for (const id of inputIds) {
+      const input = $(id);
+      input.addEventListener("input", scheduleCalculation);
+      input.addEventListener("change", () => {
+        clearTimeout(inputCalculationTimer);
+        calculate();
+      });
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          clearTimeout(inputCalculationTimer);
+          calculate();
+        }
+      });
+    }
+
+    $("exampleBtn").addEventListener("click", loadExample);
+    $("shareBtn").addEventListener("click", copySettingsLink);
+    $("csvBtn").addEventListener("click", downloadCsv);
+    $("printBtn").addEventListener("click", () => window.print());
+    $("copyCodeBtn").addEventListener("click", copyImplementation);
+    $("playBtn").addEventListener("click", togglePlayback);
+    $("timeScrubber").addEventListener("input", (event) => {
+      stopPlayback();
+      setSharedCursor(Number(event.target.value), null, null);
+    });
+
+    loadSettingsFromUrl();
+    calculate();
+  </script>
+</body>
+</html>
