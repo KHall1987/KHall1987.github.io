@@ -113,7 +113,7 @@
         </div>
 
         <div class="panel summary-panel">
-          <div id="status" class="status ok">Ready.</div>
+          <div id="status" class="status error" role="alert" aria-live="assertive" hidden></div>
           <div class="metric-grid">
             <div class="metric"><div class="label">Path length</div><div class="value" id="pathLength">—</div><div class="note" id="moveVector">—</div></div>
             <div class="metric"><div class="label">Move time</div><div class="value" id="moveTime">—</div><div class="note" id="profileType">—</div></div>
@@ -462,7 +462,7 @@
 
         currentResult = { input, dx, dy, length, kx, ky, qx, qy, limits, profile, samples, actual };
         render(currentResult);
-        setStatus("Results are up to date.", false);
+        setStatus("", false);
       } catch (error) {
         currentResult = null;
         if (error instanceof ValidationError) {
@@ -484,8 +484,14 @@
 
     function setStatus(message, isError) {
       const el = $("status");
+      if (!isError || !message) {
+        el.hidden = true;
+        el.textContent = "";
+        return;
+      }
+      el.hidden = false;
       el.textContent = message;
-      el.className = `status ${isError ? "error" : "ok"}`;
+      el.className = "status error";
     }
 
     function clearResults() {
