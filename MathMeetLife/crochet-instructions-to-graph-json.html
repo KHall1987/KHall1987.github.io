@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crochet Instructions to Graph JSON</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink:#19202a;
+    --muted:#657181;
+    --line:#d5dde7;
+    --panel:#ffffff;
+    --soft:#f3f6f9;
+    --accent:#315c8c;
+    --accent-strong:#204b7c;
+    --good:#28734f;
+    --warn:#93601e;
+    --bad:#913e35;
+    --shadow:0 12px 34px rgba(31,45,61,.09);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#edf1f5;color:var(--ink);line-height:1.45}
+  button,input,textarea{font:inherit}
+  button{cursor:pointer}
+  .page{max-width:1500px;margin:0 auto;padding:24px}
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:18px}
+  .hero h1{margin:0;font-size:clamp(1.75rem,3vw,2.8rem);letter-spacing:-.035em}
+  .hero p{margin:.45rem 0 0;max-width:850px;color:var(--muted)}
+  .status{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);padding:8px 11px;border-radius:999px;color:var(--muted);white-space:nowrap}
+  .status-dot{width:9px;height:9px;border-radius:50%;background:#9ca7b4}
+  .status.good .status-dot{background:var(--good)}
+  .status.warn .status-dot{background:#c17a25}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);min-width:0;overflow:hidden}
+  .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:15px 17px;border-bottom:1px solid var(--line);background:#f8fafc}
+  .card-head h2{font-size:1rem;margin:0}
+  .card-head p{font-size:.76rem;color:var(--muted);margin:3px 0 0}
+  .body{padding:16px}
+  textarea{width:100%;resize:vertical;border:1px solid #c7d0db;border-radius:10px;background:#fff;color:var(--ink);padding:12px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2}
+  #patternInput{min-height:590px}
+  #jsonOutput{min-height:590px;background:#fbfcfd}
+  textarea:focus,input:focus,button:focus-visible{outline:3px solid rgba(49,92,140,.22);outline-offset:1px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px}
+  .button{border:1px solid #c5cfda;background:#fff;color:#263444;border-radius:9px;padding:8px 11px;font-weight:680}
+  .button:hover{background:#f1f5f8}
+  .button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .button.primary:hover{background:var(--accent-strong)}
+  .button:disabled{cursor:not-allowed;opacity:.5}
+  details.options{margin-bottom:14px;border:1px solid var(--line);border-radius:12px;background:#fbfcfd}
+  details.options>summary{cursor:pointer;padding:11px 13px;font-weight:740;font-size:.86rem}
+  .options-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:0 13px 13px}
+  .field.wide{grid-column:1/-1}
+  label{display:block;font-size:.78rem;font-weight:690;color:#465263;margin-bottom:5px}
+  input[type="number"],input[type="text"]{width:100%;border:1px solid #c7d0db;border-radius:9px;padding:8px 9px;background:#fff}
+  .check{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:#465263}
+  .check input{margin-top:3px}
+  .hint{font-size:.75rem;color:var(--muted);margin:6px 0 0}
+  .messages{display:none;margin:0 16px 16px;border-radius:10px;padding:10px 12px;font-size:.8rem;white-space:pre-wrap}
+  .messages.show{display:block}
+  .messages.error{border:1px solid #e2b7b0;background:#fff4f2;color:var(--bad)}
+  .messages.warning{border:1px solid #dfc49f;background:#fff9ef;color:#80531a}
+  .summary{display:grid;grid-template-columns:repeat(4,minmax(100px,1fr));gap:10px;margin-bottom:14px}
+  .metric{border:1px solid var(--line);border-radius:11px;padding:11px;background:#fff}
+  .metric .value{font-size:1.18rem;font-weight:780;font-variant-numeric:tabular-nums}
+  .metric .label{font-size:.7rem;color:var(--muted);margin-top:2px}
+  .round-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;margin-bottom:14px;display:none}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;white-space:nowrap}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  th{background:#f5f7fa;color:#465263;font-weight:740}
+  tbody tr:last-child td{border-bottom:0}
+  .badge{display:inline-block;border:1px solid #c9d3de;border-radius:999px;padding:2px 7px;background:#f8fafc;color:#465263;font-size:.7rem}
+  .accepted{margin-top:14px;color:#465263;font-size:.8rem}
+  .accepted code{background:#eef2f6;border-radius:4px;padding:1px 4px}
+  .accepted pre{overflow:auto;background:#f5f7fa;border:1px solid var(--line);border-radius:9px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  footer{padding:20px 4px 4px;color:var(--muted);font-size:.74rem}
+  @media(max-width:980px){.layout{grid-template-columns:1fr}.hero{display:block}.status{margin-top:12px}.summary{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.page{padding:13px}.options-grid{grid-template-columns:1fr}.field.wide{grid-column:auto}.card-head{display:block}.card-head .toolbar{margin-top:10px}.status{white-space:normal}.summary{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hero">
+    <div>
+      <h1>Crochet Instructions → Graph JSON</h1>
+      <p>Paste readable round instructions and convert them into stitch vertices, circular neighbour edges, and exact parent-child edges for increases and decreases.</p>
+    </div>
+    <div id="status" class="status"><span class="status-dot"></span><span id="statusText">Ready for instructions</span></div>
+  </header>
+
+  <div class="summary" aria-label="Conversion summary">
+    <div class="metric"><div id="roundMetric" class="value">—</div><div class="label">rounds</div></div>
+    <div class="metric"><div id="vertexMetric" class="value">—</div><div class="label">vertices</div></div>
+    <div class="metric"><div id="edgeMetric" class="value">—</div><div class="label">edges</div></div>
+    <div class="metric"><div id="yarnMetric" class="value">—</div><div class="label">yarns</div></div>
+  </div>
+
+  <div class="layout">
+    <section class="card">
+      <div class="card-head">
+        <div><h2>1. Crochet instructions</h2><p>Grouped colour lines and the earlier inline <code>&lt;Yarn&gt;</code> format are both accepted.</p></div>
+        <div class="toolbar"><button id="exampleButton" class="button" type="button">Load example</button><button id="convertButton" class="button primary" type="button">Convert</button></div>
+      </div>
+      <div class="body">
+        <details class="options">
+          <summary>Graph export options</summary>
+          <div class="options-grid">
+            <div class="field">
+              <label for="neighborLength">Neighbour edge length</label>
+              <input id="neighborLength" type="number" min="0.001" step="1" value="85">
+            </div>
+            <div class="field">
+              <label for="parentLength">Parent edge length</label>
+              <input id="parentLength" type="number" min="0.001" step="1" value="90">
+            </div>
+            <div class="field">
+              <label for="neighborColor">Neighbour edge colour</label>
+              <input id="neighborColor" type="text" value="#d9d9d9">
+            </div>
+            <div class="field">
+              <label for="parentColor">Parent edge colour</label>
+              <input id="parentColor" type="text" value="#9bacab">
+            </div>
+            <div class="field">
+              <label for="initialRoundSpacing">Initial round-axis spacing</label>
+              <input id="initialRoundSpacing" type="number" min="0.001" step="1" value="90">
+            </div>
+            <div class="field">
+              <label for="initialStitchSpacing">Initial stitch spacing</label>
+              <input id="initialStitchSpacing" type="number" min="0.001" step="1" value="85">
+            </div>
+            <div class="field wide">
+              <label for="yarnColors">Optional yarn colours, one per line</label>
+              <textarea id="yarnColors" style="min-height:78px" spellcheck="false">Blue = #2f79b7
+Green = #6f9a52</textarea>
+              <p class="hint">Colours are stored on vertices. When yarn-coloured edges are enabled, each stitch colours its outgoing neighbour edge and each parent edge uses the child stitch colour.</p>
+            </div>
+            <div class="field wide"><label class="check"><input id="includeInitialPositions" type="checkbox" checked> Include cylindrical initial positions. Round number sets X; stitches are spaced around a ring in Y/Z.</label></div>
+            <div class="field wide"><label class="check"><input id="colorEdgesByYarn" type="checkbox" checked> Colour neighbour and parent edges by yarn instead of using the neutral edge colours above.</label></div>
+            <div class="field wide"><label class="check"><input id="compactOutput" type="checkbox" checked> Use compact schema rows to reduce JSON size.</label></div>
+            <div class="field wide"><label class="check"><input id="includeNeighbors" type="checkbox" checked> Include circular neighbour edges within each round.</label></div>
+            <div class="field wide"><label class="check"><input id="includeParents" type="checkbox" checked> Include parent-child edges between rounds.</label></div>
+          </div>
+        </details>
+        <textarea id="patternInput" spellcheck="false" aria-label="Crochet instructions"></textarea>
+      </div>
+      <div id="errorBox" class="messages error" role="alert"></div>
+      <div id="warningBox" class="messages warning"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div><h2>2. Graph JSON</h2><p>Paste this object directly into the Global Geodesic Graph Layout input.</p></div>
+        <div class="toolbar"><button id="copyButton" class="button" type="button" disabled>Copy JSON</button><button id="downloadButton" class="button" type="button" disabled>Download</button></div>
+      </div>
+      <div class="body">
+        <div id="roundTableWrap" class="round-table-wrap">
+          <table>
+            <thead><tr><th>Round</th><th>Stitches</th><th>Change</th><th>Parent edges</th><th>Yarns</th></tr></thead>
+            <tbody id="roundTableBody"></tbody>
+          </table>
+        </div>
+        <textarea id="jsonOutput" spellcheck="false" readonly aria-label="Generated graph JSON"></textarea>
+        <details class="accepted">
+          <summary>Accepted operation syntax</summary>
+          <p>The parser understands <code>SC</code>, <code>SC x 4</code>, <code>INC</code>, <code>INC x 3</code>, <code>DEC</code>, <code>SC2TOG</code>, <code>SC3TOG</code>, <code>2 SC in next st</code>, and split-colour increases written as <code>SC in next st</code> followed by <code>SC again in same st</code>.</p>
+          <pre>Round 3: 12 -&gt; 17 (increase 5)
+   Blue: INC, SC x 2  {4}
+   Green: INC          {2}
+   Blue: SC, INC, SC, INC, SC x 2, INC, SC  {11}
+   [17 stitches]</pre>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <footer>The converter produces the <code>vertices[]</code> and <code>edges[]</code> structure accepted by Global Geodesic Graph Layout, including optional seed coordinates and yarn-coloured edges.</footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const EXAMPLE = `CROCHET GRAPH EXAMPLE
+
+Round 1: 0 -> 6 (start 6)
+   Blue: SC x 6  {6}
+   [6 stitches]
+
+Round 2: 6 -> 12 (increase 6)
+   Blue: INC  {2}
+   Green: INC  {2}
+   Blue: INC x 4  {8}
+   [12 stitches]
+
+Round 3: 12 -> 17 (increase 5)
+   Blue: INC, SC x 2  {4}
+   Green: INC  {2}
+   Blue: SC, INC, SC, INC, SC x 2, INC, SC  {11}
+   [17 stitches]`;
+
+  const SKIP_LINE_LABELS = new Set(['join','marker','note','notes','check','total','finish','turn','round']);
+
+  function totalOutputs(operations) {
+    return operations.reduce((sum, op) => sum + op.outputs.length, 0);
+  }
+
+  function parseRepeat(token) {
+    const match = token.match(/\s+(?:x|×|\*)\s*(\d+)\s*$/i);
+    if (!match) return { body: token.trim(), repeat: 1 };
+    return { body: token.slice(0, match.index).trim(), repeat: Math.max(1, +match[1]) };
+  }
+
+  function addOperation(operations, type, consume, outputCount, yarn, extra = {}) {
+    operations.push({ type, consume, outputs: Array(outputCount).fill(yarn), ...extra });
+  }
+
+  function parseInstructionText(text, yarn, operations, warnings, context) {
+    let cleaned = text
+      .replace(/\{\s*\d+\s*\}\s*$/g, '')
+      .replace(/^.*?work\s+into\s+ring\s*:\s*/i, '')
+      .replace(/^\s*MR\s*,?\s*/i, '')
+      .trim();
+
+    const tokens = cleaned.split(/[,;]/).map(value => value.trim()).filter(Boolean);
+    for (let token of tokens) {
+      token = token.replace(/[.]+$/g, '').trim();
+      if (!token) continue;
+      if (/^(?:join|ch\s*\d+|sl\s*st|fasten\s+off|turn|place\s+(?:a\s+)?marker)/i.test(token)) continue;
+
+      const { body, repeat } = parseRepeat(token);
+      const normalized = body.replace(/\s+/g, ' ').trim().toUpperCase();
+      let match;
+
+      if ((match = normalized.match(/^(\d+)\s+SC\s+IN\s+(?:THE\s+)?NEXT\s+ST(?:ITCH)?$/))) {
+        const count = +match[1];
+        for (let i = 0; i < repeat; i++) addOperation(operations, count === 2 ? 'INC' : 'MULTI_INC', 1, count, yarn, { children: count });
+        continue;
+      }
+
+      if (/^SC\s+IN\s+(?:THE\s+)?NEXT\s+ST(?:ITCH)?$/.test(normalized)) {
+        for (let i = 0; i < repeat; i++) addOperation(operations, 'SC_IN_ST', 1, 1, yarn, { sameStitchOpen: true });
+        continue;
+      }
+
+      if (/^SC\s+AGAIN\s+IN\s+(?:THE\s+)?SAME\s+ST(?:ITCH)?$/.test(normalized)) {
+        for (let i = 0; i < repeat; i++) {
+          const previous = operations[operations.length - 1];
+          if (!previous || !previous.sameStitchOpen) throw new Error(`${context}: "SC again in same st" needs to follow "SC in next st".`);
+          previous.outputs.push(yarn);
+          previous.type = previous.outputs.length === 2 ? 'INC' : 'MULTI_INC';
+          previous.children = previous.outputs.length;
+        }
+        continue;
+      }
+
+      if ((match = normalized.match(/^SC\s*(\d+)\s*TOG$/))) {
+        const consumed = +match[1];
+        for (let i = 0; i < repeat; i++) addOperation(operations, consumed === 2 ? 'DEC' : 'MULTI_DEC', consumed, 1, yarn, { consumed });
+        continue;
+      }
+
+      if (/^DEC$/.test(normalized)) {
+        for (let i = 0; i < repeat; i++) addOperation(operations, 'DEC', 2, 1, yarn, { consumed: 2 });
+        continue;
+      }
+
+      if (/^INC$/.test(normalized)) {
+        for (let i = 0; i < repeat; i++) addOperation(operations, 'INC', 1, 2, yarn, { children: 2 });
+        continue;
+      }
+
+      if (/^SC$/.test(normalized)) {
+        for (let i = 0; i < repeat; i++) addOperation(operations, 'SC', 1, 1, yarn);
+        continue;
+      }
+
+      if ((match = normalized.match(/^(\d+)\s+SC$/))) {
+        const count = +match[1];
+        for (let i = 0; i < count * repeat; i++) addOperation(operations, 'SC', 1, 1, yarn);
+        continue;
+      }
+
+      if ((match = normalized.match(/^(\d+)\s+INC$/))) {
+        const count = +match[1];
+        for (let i = 0; i < count * repeat; i++) addOperation(operations, 'INC', 1, 2, yarn, { children: 2 });
+        continue;
+      }
+
+      if ((match = normalized.match(/^(\d+)\s+DEC$/))) {
+        const count = +match[1];
+        for (let i = 0; i < count * repeat; i++) addOperation(operations, 'DEC', 2, 1, yarn, { consumed: 2 });
+        continue;
+      }
+
+      if (/^(?:MR|MAGIC\s+RING)$/.test(normalized)) continue;
+      warnings.push(`${context}: ignored unrecognized instruction fragment "${token}".`);
+    }
+  }
+
+  function parseInlineColored(text, operations, warnings, context) {
+    const markers = [...text.matchAll(/<([^>]+)>/g)];
+    if (!markers.length) {
+      parseInstructionText(text, 'Yarn', operations, warnings, context);
+      return;
+    }
+    for (let i = 0; i < markers.length; i++) {
+      const yarn = markers[i][1].trim() || 'Yarn';
+      const start = markers[i].index + markers[i][0].length;
+      const end = i + 1 < markers.length ? markers[i + 1].index : text.length;
+      parseInstructionText(text.slice(start, end), yarn, operations, warnings, context);
+    }
+  }
+
+  function extractDeclaredCount(text) {
+    const matches = [...text.matchAll(/\[(\d+)\s*(?:stitches|sts?)\b[^\]]*\]/gi)];
+    return matches.length ? +matches[matches.length - 1][1] : null;
+  }
+
+  function parsePattern(text) {
+    const lines = String(text || '').replace(/\r/g, '').split('\n');
+    const blocks = [];
+    let current = null;
+
+    for (const line of lines) {
+      const match = line.match(/^\s*(?:Round\s+|R)(\d+)\s*:\s*(.*)$/i);
+      if (match) {
+        if (current) blocks.push(current);
+        current = { number: +match[1], header: match[2].trim(), lines: [] };
+      } else if (current) {
+        current.lines.push(line);
+      }
+    }
+    if (current) blocks.push(current);
+    if (!blocks.length) throw new Error('No round headings were found. Use headings such as "Round 3:" or "R3:".');
+
+    const warnings = [];
+    const parsed = [];
+    let previousCount = null;
+
+    for (const block of blocks) {
+      const context = `Round ${block.number}`;
+      const arrow = block.header.match(/(\d+)\s*(?:->|→)\s*(\d+)/);
+      const sourceDeclared = arrow ? +arrow[1] : null;
+      let targetDeclared = arrow ? +arrow[2] : extractDeclaredCount(block.header);
+      const operations = [];
+      let groupedLines = 0;
+
+      for (const line of block.lines) {
+        const countInLine = extractDeclaredCount(line);
+        if (countInLine !== null) targetDeclared = countInLine;
+
+        const match = line.match(/^\s*([^:]{1,80})\s*:\s*(.+)$/);
+        if (!match) continue;
+        const label = match[1].trim();
+        if (SKIP_LINE_LABELS.has(label.toLowerCase())) continue;
+        const instruction = match[2].trim();
+        if (!/(?:\bSC\b|\bINC\b|\bDEC\b|TOG\b|same\s+st|next\s+st)/i.test(instruction)) continue;
+
+        const declaredGroup = instruction.match(/\{\s*(\d+)\s*\}\s*$/);
+        const before = totalOutputs(operations);
+        parseInstructionText(instruction, label, operations, warnings, `${context}, ${label}`);
+        const produced = totalOutputs(operations) - before;
+        if (declaredGroup && produced !== +declaredGroup[1]) warnings.push(`${context}, ${label}: brace total says ${declaredGroup[1]}, but the parsed instructions produce ${produced} stitches.`);
+        groupedLines++;
+      }
+
+      if (!groupedLines) parseInlineColored(block.header, operations, warnings, context);
+      if (!operations.length) throw new Error(`${context}: no supported crochet operations were found.`);
+
+      const outputCount = totalOutputs(operations);
+      if (targetDeclared === null) targetDeclared = outputCount;
+      if (targetDeclared !== outputCount) throw new Error(`${context}: heading/check says ${targetDeclared} stitches, but the parsed instructions produce ${outputCount}.`);
+
+      const sourceCount = sourceDeclared !== null ? sourceDeclared : (previousCount === null ? 0 : previousCount);
+      if (previousCount !== null && sourceCount !== previousCount) warnings.push(`${context}: heading starts from ${sourceCount}, while the preceding round contains ${previousCount} stitches.`);
+
+      const consumed = operations.reduce((sum, op) => sum + op.consume, 0);
+      if (previousCount !== null && consumed !== previousCount) throw new Error(`${context}: the operations consume ${consumed} stitches from the previous round, but ${previousCount} are available.`);
+
+      parsed.push({ number: block.number, sourceCount, count: targetDeclared, operations });
+      previousCount = targetDeclared;
+    }
+
+    for (let i = 1; i < parsed.length; i++) {
+      if (parsed[i].number <= parsed[i - 1].number) warnings.push('Round numbers are not strictly increasing; graph IDs still use the supplied round numbers.');
+    }
+
+    return { rounds: parsed, warnings };
+  }
+
+  function parseYarnColorMap(text) {
+    const map = new Map();
+    for (const line of String(text || '').split(/\r?\n/)) {
+      const match = line.match(/^\s*(.+?)\s*=\s*(#[0-9a-f]{3,8}|[a-z]+)\s*$/i);
+      if (match) map.set(match[1].trim(), match[2].trim());
+    }
+    return map;
+  }
+
+  const TAU = Math.PI * 2;
+
+  function fallbackYarnColor(index) {
+    return ['#2f79b7','#6f9a52','#c17a25','#8a63a8','#b64f62','#4f8f8b','#7b6a58','#707986'][index % 8];
+  }
+
+  function buildGraph(parsed, options = {}) {
+    const neighborLength = Math.max(0.001, +(options.neighborLength ?? 85));
+    const parentLength = Math.max(0.001, +(options.parentLength ?? 90));
+    const neighborColor = options.neighborColor || '#d9d9d9';
+    const parentColor = options.parentColor || '#9bacab';
+    const includeNeighbors = options.includeNeighbors !== false;
+    const includeParents = options.includeParents !== false;
+    const includeInitialPositions = options.includeInitialPositions !== false;
+    const colorEdgesByYarn = options.colorEdgesByYarn !== false;
+    const initialRoundSpacing = Math.max(0.001, +(options.initialRoundSpacing ?? parentLength));
+    const initialStitchSpacing = Math.max(0.001, +(options.initialStitchSpacing ?? neighborLength));
+    const compact = options.compact !== false;
+    const yarnColorMap = options.yarnColorMap instanceof Map ? options.yarnColorMap : new Map();
+
+    const vertices = [];
+    const edges = [];
+    const roundSummaries = [];
+    const yarnNames = [];
+    const yarnIndex = new Map();
+    const roundNodes = new Map();
+
+    function colorFor(yarn) {
+      if (!yarnIndex.has(yarn)) {
+        yarnIndex.set(yarn, yarnNames.length);
+        yarnNames.push(yarn);
+      }
+      return yarnColorMap.get(yarn) || fallbackYarnColor(yarnIndex.get(yarn));
+    }
+
+    let previousRound = null;
+    for (const round of parsed.rounds) {
+      const stitchYarns = [];
+      const parentLinks = [];
+      let parentCursor = 0;
+      let childCursor = 0;
+
+      for (const op of round.operations) {
+        const parents = Array.from({ length: op.consume }, (_, i) => parentCursor + i);
+        for (const yarn of op.outputs) {
+          stitchYarns.push(yarn);
+          if (previousRound && includeParents) {
+            for (const parentIndex of parents) parentLinks.push({ parentIndex, childIndex: childCursor, operation: op.type });
+          }
+          childCursor++;
+        }
+        parentCursor += op.consume;
+      }
+
+      const ids = [];
+      const ringRadius = round.count > 1
+        ? initialStitchSpacing / (2 * Math.sin(Math.PI / round.count))
+        : 0;
+      for (let i = 0; i < round.count; i++) {
+        const id = `r${round.number}s${i + 1}`;
+        const yarn = stitchYarns[i] || 'Yarn';
+        const vertex = { id, round: round.number, stitch: i + 1, kind: yarn, color: colorFor(yarn) };
+        if (includeInitialPositions) {
+          const angle = TAU * (i + 1) / round.count;
+          vertex.x = round.number * initialRoundSpacing;
+          vertex.y = ringRadius * Math.cos(angle);
+          vertex.z = ringRadius * Math.sin(angle);
+        }
+        ids.push(id);
+        vertices.push(vertex);
+      }
+      roundNodes.set(round.number, ids);
+
+      if (includeNeighbors && round.count > 1) {
+        const edgeCount = round.count === 2 ? 1 : round.count;
+        for (let i = 0; i < edgeCount; i++) {
+          edges.push({
+            source: ids[i],
+            target: ids[(i + 1) % round.count],
+            length: neighborLength,
+            stiffness: 1,
+            type: 'neighbor',
+            color: colorEdgesByYarn ? colorFor(stitchYarns[i] || 'Yarn') : neighborColor
+          });
+        }
+      }
+
+      if (previousRound && includeParents) {
+        const parentIds = roundNodes.get(previousRound.number);
+        for (const link of parentLinks) {
+          if (!parentIds[link.parentIndex] || !ids[link.childIndex]) throw new Error(`Round ${round.number}: parent mapping exceeded the available stitch indices.`);
+          edges.push({
+            source: parentIds[link.parentIndex],
+            target: ids[link.childIndex],
+            length: parentLength,
+            stiffness: 1,
+            type: link.operation === 'SC' || link.operation === 'SC_IN_ST' ? 'parent' : link.operation.toLowerCase(),
+            color: colorEdgesByYarn ? colorFor(stitchYarns[link.childIndex] || 'Yarn') : parentColor
+          });
+        }
+      }
+
+      const change = previousRound ? round.count - previousRound.count : round.count;
+      roundSummaries.push({
+        round: round.number,
+        stitches: round.count,
+        change,
+        parentEdges: parentLinks.length,
+        yarns: [...new Set(stitchYarns)]
+      });
+      previousRound = round;
+    }
+
+    const metadata = {
+      mode: 'crochet_round_graph',
+      generator: 'Crochet Instructions to Graph JSON',
+      indexing: 'round and stitch numbers are one-based',
+      edgeMeaning: {
+        neighbor: 'adjacent stitches in the same crochet round',
+        parent: 'one output stitch worked from one parent stitch',
+        inc: 'one parent stitch connected to each increase child',
+        dec: 'each consumed parent stitch connected to the decrease output',
+        multi_inc: 'one parent stitch connected to three or more output stitches',
+        multi_dec: 'three or more consumed parent stitches connected to one output stitch'
+      },
+      rounds: roundSummaries,
+      yarns: yarnNames.map(name => ({ name, color: colorFor(name) })),
+      initialPositions: includeInitialPositions ? {
+        model: 'round-axis rings',
+        coordinates: 'x = round number × round spacing; y/z place stitches around a regular ring',
+        roundSpacing: initialRoundSpacing,
+        stitchSpacing: initialStitchSpacing,
+        note: 'The graph solver must accept non-fixed x/y/z values as seed positions.'
+      } : null,
+      edgeColors: colorEdgesByYarn ? 'yarn colour of the source stitch for neighbour edges and child stitch for parent edges' : 'neutral configured edge colours'
+    };
+
+    let graph;
+    if (compact) {
+      graph = {
+        schema: {
+          vertices: includeInitialPositions
+            ? ['id','round','stitch','kind','color','x','y','z']
+            : ['id','round','stitch','kind','color'],
+          edges: ['source','target','length','stiffness','type','color']
+        },
+        metadata,
+        vertices: vertices.map(v => includeInitialPositions
+          ? [v.id,v.round,v.stitch,v.kind,v.color,v.x,v.y,v.z]
+          : [v.id,v.round,v.stitch,v.kind,v.color]),
+        edges: edges.map(e => [e.source,e.target,e.length,e.stiffness,e.type,e.color])
+      };
+    } else {
+      graph = { metadata, vertices, edges };
+    }
+
+    return { graph, vertices, edges, roundSummaries, yarnNames };
+  }
+
+  function initUi() {
+    const $ = id => document.getElementById(id);
+    const ui = {
+      pattern: $('patternInput'), output: $('jsonOutput'), error: $('errorBox'), warning: $('warningBox'),
+      status: $('status'), statusText: $('statusText'), convert: $('convertButton'), example: $('exampleButton'),
+      copy: $('copyButton'), download: $('downloadButton'), roundMetric: $('roundMetric'), vertexMetric: $('vertexMetric'),
+      edgeMetric: $('edgeMetric'), yarnMetric: $('yarnMetric'), tableWrap: $('roundTableWrap'), tableBody: $('roundTableBody')
+    };
+    let latestJson = '';
+
+    function setStatus(kind, text) {
+      ui.status.className = `status ${kind || ''}`.trim();
+      ui.statusText.textContent = text;
+    }
+
+    function clearMessages() {
+      ui.error.textContent = '';
+      ui.error.classList.remove('show');
+      ui.warning.textContent = '';
+      ui.warning.classList.remove('show');
+    }
+
+    function showError(message) {
+      ui.error.textContent = message;
+      ui.error.classList.add('show');
+      setStatus('warn', 'Conversion needs attention');
+    }
+
+    function renderSummary(result) {
+      ui.roundMetric.textContent = result.roundSummaries.length.toLocaleString();
+      ui.vertexMetric.textContent = result.vertices.length.toLocaleString();
+      ui.edgeMetric.textContent = result.edges.length.toLocaleString();
+      ui.yarnMetric.textContent = result.yarnNames.length.toLocaleString();
+      ui.tableBody.innerHTML = '';
+      for (const item of result.roundSummaries) {
+        const tr = document.createElement('tr');
+        const change = item.round === result.roundSummaries[0].round ? `start ${item.stitches}` : item.change > 0 ? `+${item.change}` : String(item.change);
+        tr.innerHTML = `<td>R${item.round}</td><td>${item.stitches}</td><td><span class="badge">${change}</span></td><td>${item.parentEdges}</td><td>${item.yarns.map(value => value.replace(/[<>&]/g, '')).join(', ')}</td>`;
+        ui.tableBody.appendChild(tr);
+      }
+      ui.tableWrap.style.display = result.roundSummaries.length ? 'block' : 'none';
+    }
+
+    function convert() {
+      clearMessages();
+      try {
+        const parsed = parsePattern(ui.pattern.value);
+        const result = buildGraph(parsed, {
+          neighborLength: +$('neighborLength').value,
+          parentLength: +$('parentLength').value,
+          neighborColor: $('neighborColor').value.trim(),
+          parentColor: $('parentColor').value.trim(),
+          initialRoundSpacing: +$('initialRoundSpacing').value,
+          initialStitchSpacing: +$('initialStitchSpacing').value,
+          includeInitialPositions: $('includeInitialPositions').checked,
+          colorEdgesByYarn: $('colorEdgesByYarn').checked,
+          compact: $('compactOutput').checked,
+          includeNeighbors: $('includeNeighbors').checked,
+          includeParents: $('includeParents').checked,
+          yarnColorMap: parseYarnColorMap($('yarnColors').value)
+        });
+        latestJson = JSON.stringify(result.graph, null, 2);
+        ui.output.value = latestJson;
+        ui.copy.disabled = false;
+        ui.download.disabled = false;
+        renderSummary(result);
+        if (parsed.warnings.length) {
+          ui.warning.textContent = parsed.warnings.join('\n');
+          ui.warning.classList.add('show');
+          setStatus('warn', `Converted with ${parsed.warnings.length} warning${parsed.warnings.length === 1 ? '' : 's'}`);
+        } else {
+          setStatus('good', 'Graph JSON generated');
+        }
+      } catch (error) {
+        latestJson = '';
+        ui.output.value = '';
+        ui.copy.disabled = true;
+        ui.download.disabled = true;
+        ui.tableWrap.style.display = 'none';
+        showError(error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    ui.example.addEventListener('click', () => { ui.pattern.value = EXAMPLE; convert(); });
+    ui.convert.addEventListener('click', convert);
+    ui.copy.addEventListener('click', async () => {
+      if (!latestJson) return;
+      try { await navigator.clipboard.writeText(latestJson); setStatus('good', 'Graph JSON copied'); }
+      catch (error) { showError('Clipboard access was unavailable. Select the JSON and copy it manually.'); }
+    });
+    ui.download.addEventListener('click', () => {
+      if (!latestJson) return;
+      const url = URL.createObjectURL(new Blob([latestJson], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'crochet-stitch-graph.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      setTimeout(() => { URL.revokeObjectURL(url); anchor.remove(); }, 500);
+    });
+
+    ui.pattern.value = EXAMPLE;
+    convert();
+  }
+
+  if (typeof window !== 'undefined') window.CrochetGraphConverter = { parsePattern, buildGraph, parseYarnColorMap };
+  if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', initUi);
+})();
+</script>
+</body>
+</html>

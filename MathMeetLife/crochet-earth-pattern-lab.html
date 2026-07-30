@@ -1,0 +1,1519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crochet Earth Pattern Lab</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink:#19202a;
+    --muted:#647080;
+    --line:#d8dee8;
+    --panel:#ffffff;
+    --soft:#f3f6f9;
+    --accent:#315c8c;
+    --accent-strong:#204b7c;
+    --warning:#9b5c18;
+    --shadow:0 12px 34px rgba(31,45,61,.09);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#edf1f5;color:var(--ink);line-height:1.45;overflow-x:hidden}
+  button,input,select{font:inherit}
+  button{cursor:pointer}
+  .page{max-width:1500px;margin:0 auto;padding:24px}
+  .hero{display:flex;gap:24px;justify-content:space-between;align-items:flex-end;margin-bottom:18px}
+  .hero h1{margin:0;font-size:clamp(1.8rem,3vw,3rem);letter-spacing:-.04em}
+  .hero p{margin:.45rem 0 0;max-width:820px;color:var(--muted)}
+  .status{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);padding:8px 11px;border-radius:999px;color:var(--muted);white-space:nowrap}
+  .status-dot{width:9px;height:9px;border-radius:50%;background:#a1aab6}
+  .status.ready .status-dot{background:#3a8b61}
+  .status.dirty .status-dot{background:#c27a25}
+  .layout{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:18px;align-items:start}
+  .controls{display:grid;gap:14px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-right:3px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);min-width:0;max-width:100%}
+  .control-card{padding:16px}
+  .control-card h2{font-size:1rem;margin:0 0 12px;display:flex;align-items:center;gap:9px}
+  .step{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#e6edf5;color:var(--accent-strong);font-size:.8rem}
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .field{min-width:0}
+  .field.wide{grid-column:1/-1}
+  label{display:block;font-size:.78rem;font-weight:680;color:#465263;margin-bottom:5px}
+  input[type="number"],select,input[type="text"]{width:100%;border:1px solid #cbd3de;border-radius:9px;padding:8px 9px;background:#fff;color:var(--ink)}
+  input:focus,select:focus,button:focus-visible{outline:3px solid rgba(49,92,140,.22);outline-offset:1px}
+  input[type="range"]{width:100%;accent-color:var(--accent)}
+  input[type="color"]{width:100%;height:39px;border:1px solid #cbd3de;border-radius:9px;background:#fff;padding:4px}
+  .range-line{display:grid;grid-template-columns:1fr 48px;gap:10px;align-items:center}
+  .range-value{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-size:.8rem}
+  .check{display:flex;align-items:flex-start;gap:8px;font-size:.82rem;color:#465263}
+  .check input{margin-top:3px}
+  .hint{font-size:.76rem;color:var(--muted);margin:7px 0 0}
+  .intro-note{margin-top:12px;display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #cbd6e2;border-radius:999px;background:rgba(255,255,255,.72);color:#465263;font-size:.76rem}
+  .estimate{grid-column:1/-1;border:1px solid #cbd6e2;background:#f7f9fb;border-radius:10px;padding:10px 11px;font-size:.78rem;color:#465263}
+  .estimate strong{color:var(--ink)}
+  .inline-details{grid-column:1/-1;border-top:1px solid var(--line);padding-top:9px;margin-top:1px}
+  .inline-details summary{cursor:pointer;color:var(--accent-strong);font-weight:700;font-size:.8rem}
+  .inline-details .fields{margin-top:10px}
+  .control-details{overflow:hidden}
+  .control-details>summary{list-style:none;cursor:pointer;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:750;font-size:.92rem}
+  .control-details>summary::-webkit-details-marker{display:none}
+  .control-details>summary:after{content:'Show';font-size:.72rem;color:var(--accent-strong);border:1px solid #cbd3de;border-radius:999px;padding:3px 8px;background:#fff}
+  .control-details[open]>summary:after{content:'Hide'}
+  .details-body{padding:0 16px 16px}
+  .details-body .hint:first-child{margin-top:0}
+  .limit-note{font-size:.74rem;color:var(--muted);margin:0;line-height:1.45}
+  .limit-note strong{color:#465263}
+  .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+  .preset-row,.action-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+  .button{border:1px solid #c7d0db;background:#fff;color:#263444;border-radius:9px;padding:8px 11px;font-weight:650}
+  .button:hover{background:#f3f6f9}
+  .button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .button.primary:hover{background:var(--accent-strong)}
+  .button.small{font-size:.78rem;padding:6px 9px}
+  .solve-box{padding:14px;display:grid;gap:9px}
+  .solve-box .button{width:100%;padding:11px 14px}
+  .error{display:none;border:1px solid #e4b7ae;background:#fff5f2;color:#873d31;padding:9px 11px;border-radius:9px;font-size:.82rem}
+  .error.show{display:block}
+  .main{display:grid;gap:18px;min-width:0}
+  .summary{display:grid;grid-template-columns:repeat(6,minmax(105px,1fr));gap:10px}
+  .metric{padding:13px 14px;background:var(--panel);border:1px solid var(--line);border-radius:13px}
+  .metric .value{font-size:1.3rem;font-weight:760;font-variant-numeric:tabular-nums}
+  .metric .label{font-size:.72rem;color:var(--muted);margin-top:2px}
+  .preview-workspace{display:grid;gap:10px;min-width:0}
+  .workspace-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:0 2px}
+  .workspace-head h2{font-size:1rem;margin:0}
+  .workspace-head p{font-size:.76rem;color:var(--muted);margin:3px 0 0}
+  .mode-switch{display:inline-flex;align-items:center;padding:3px;border:1px solid #c7d0db;border-radius:11px;background:#e7ecf2;white-space:nowrap}
+  .mode-button{border:0;background:transparent;color:#465263;border-radius:8px;padding:6px 11px;font-size:.78rem;font-weight:700}
+  .mode-button:hover{background:rgba(255,255,255,.68)}
+  .mode-button.active{background:#fff;color:var(--accent-strong);box-shadow:0 1px 4px rgba(31,45,61,.14)}
+  .preview-grid{display:grid;grid-template-columns:minmax(320px,.78fr) minmax(500px,1.22fr);gap:18px;min-width:0;align-items:start}
+  .preview-panel{overflow:hidden;min-width:0}
+  .preview-workspace[data-mode="sphere"] .preview-grid,.preview-workspace[data-mode="chart"] .preview-grid{grid-template-columns:1fr}
+  .preview-workspace[data-mode="sphere"] .chart-panel,.preview-workspace[data-mode="chart"] .sphere-panel{display:none}
+  .preview-workspace[data-mode="sphere"] .sphere-panel{width:100%;max-width:1040px;justify-self:center}
+  .section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:15px 17px 0}
+  .section-head h2{font-size:1rem;margin:0}
+  .section-head p{font-size:.76rem;color:var(--muted);margin:3px 0 0}
+  .panel-tools,.chart-head-tools{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+  .zoom-readout{min-width:49px;text-align:center;font-size:.76rem;font-weight:750;color:#465263;font-variant-numeric:tabular-nums}
+  .icon-button{min-width:32px;padding:6px 8px}
+  .canvas-box{padding:12px 15px 16px;position:relative;display:grid;place-items:center}
+  #globeCanvas{display:block;max-width:100%;aspect-ratio:1;border-radius:12px;background:#e9eef4;touch-action:none;cursor:grab}
+  #globeCanvas:active{cursor:grabbing}
+  .preview-workspace[data-mode="sphere"] #globeCanvas{box-shadow:0 8px 24px rgba(31,45,61,.10)}
+  .canvas-note{font-size:.74rem;color:var(--muted);text-align:center;margin-top:9px;max-width:760px}
+  .chart-scroll{width:100%;min-width:0;max-width:100%;max-height:690px;overflow:auto;padding:10px 14px 16px}
+  .preview-workspace[data-mode="chart"] .chart-scroll{max-height:min(78vh,920px)}
+  #chartCanvas{display:block;width:100%;min-width:520px;border-radius:10px;background:#f7f9fb}
+  .legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:.75rem;color:var(--muted)}
+  .legend-item{display:flex;align-items:center;gap:5px}
+  .swatch{width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.18)}
+  .dot-mark{width:13px;height:13px;border:1px solid #9ca6b4;border-radius:3px;position:relative}
+  .dot-mark:after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:#263444;left:4px;top:4px}
+  .pattern-card{overflow:hidden}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line);background:#f7f9fb}
+  .pattern-wrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.6fr);gap:0}
+  #patternText{margin:0;padding:17px;max-height:560px;overflow:auto;white-space:pre-wrap;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border-right:1px solid var(--line);background:#fff}
+  .details{padding:17px;font-size:.82rem;color:#465263}
+  .details h3{margin:0 0 8px;font-size:.9rem;color:var(--ink)}
+  .details ul{padding-left:18px;margin:7px 0 17px}
+  .details code{background:#eef2f6;padding:1px 4px;border-radius:4px}
+  .tooltip{position:absolute;display:none;pointer-events:none;background:#17212c;color:#fff;padding:7px 9px;border-radius:7px;font-size:.75rem;box-shadow:0 6px 20px rgba(0,0,0,.18);z-index:5;max-width:240px}
+  .warning{color:var(--warning)}
+  footer{padding:20px 4px 4px;color:var(--muted);font-size:.74rem}
+  footer a{color:inherit}
+  @media(max-width:1120px){
+    .layout{grid-template-columns:1fr}
+    .controls{position:static;max-height:none;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+    .solve-box{grid-column:1/-1}
+    .summary{grid-template-columns:repeat(3,1fr)}
+  }
+  @media(max-width:900px){
+    .preview-grid{grid-template-columns:1fr}
+    .mode-button[data-preview-mode="split"]{display:none}
+    .focus-panel-button{display:none}
+  }
+  @media(max-width:820px){
+    .page{padding:14px}
+    .hero{display:block}
+    .status{margin-top:12px;white-space:normal;max-width:100%}
+    .controls{grid-template-columns:1fr}
+    .workspace-head{align-items:flex-start}
+    .pattern-wrap{grid-template-columns:1fr}
+    #patternText{border-right:0;border-bottom:1px solid var(--line)}
+  }
+  @media(max-width:520px){
+    .fields{grid-template-columns:1fr}
+    .field.wide{grid-column:auto}
+    .summary{grid-template-columns:repeat(2,1fr)}
+    .workspace-head{display:block}
+    .mode-switch{margin-top:9px;width:100%}
+    .mode-button{flex:1}
+    .section-head{display:block}
+    .panel-tools,.chart-head-tools{justify-content:flex-start;margin-top:9px}
+    .legend{margin-top:8px}
+  }
+  @media print{
+    @page{margin:.5in}
+    body{background:#fff}
+    .page{max-width:none;padding:0}
+    .controls,.toolbar,.canvas-note,.status{display:none!important}
+    .layout,.preview-grid,.pattern-wrap{display:block}
+    .workspace-head,.panel-tools,.focus-panel-button{display:none!important}
+    .sphere-panel .section-head p{display:none!important}
+    .preview-workspace .preview-panel{display:block!important}
+    .card,.metric{box-shadow:none!important;border:0!important;border-radius:0!important;background:transparent!important}
+    .pattern-card>.section-head{padding-left:0!important;padding-right:0!important}
+    .chart-scroll{max-height:none!important;overflow:visible!important;padding:0!important}
+    #chartCanvas{display:block!important;width:auto!important;height:auto!important;min-width:0!important;max-width:100%!important;max-height:9in!important;margin:0 auto!important;border-radius:0!important}
+    .chart-panel{break-before:page;page-break-before:always}
+    #patternText{max-height:none;border:0!important;padding:0;font-size:9pt;line-height:1.45}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hero">
+    <div>
+      <h1>Crochet Earth Pattern Lab</h1>
+      <p>Build a joined-round crochet pattern from your finished size, gauge, yarn colours, and chosen globe orientation. Every chart cell represents one stitch in the finished fabric.</p>
+      <div class="intro-note">Start with the generated example or enter measurements from your own gauge swatch.</div>
+    </div>
+    <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="statusText">Loading embedded land mask...</span></div>
+  </header>
+
+  <div class="layout">
+    <aside class="controls" aria-label="Pattern controls">
+      <section class="card control-card">
+        <h2><span class="step">1</span> Finished size and gauge</h2>
+        <div class="fields">
+          <div class="field">
+            <label for="sizeValue">Finished size</label>
+            <input id="sizeValue" type="number" min="0.1" step="0.1" value="40">
+          </div>
+          <div class="field">
+            <label for="sizeMode">Measure finished size by</label>
+            <select id="sizeMode"><option value="circumference">Widest circumference</option><option value="radius">Radius</option></select>
+          </div>
+          <div class="field">
+            <label for="stitchWidth">Average stitch width</label>
+            <input id="stitchWidth" type="number" min="0.01" step="0.01" value="0.60">
+          </div>
+          <div class="field">
+            <label for="rowHeight">Average round height</label>
+            <input id="rowHeight" type="number" min="0.01" step="0.01" value="0.55">
+          </div>
+          <p class="hint field wide">Use the same unit for finished size, stitch width, and round height.</p>
+          <div id="gaugeEstimate" class="estimate" aria-live="polite">Enter a valid size and gauge to estimate the pattern dimensions.</div>
+          <details class="inline-details">
+            <summary>Calculate stitch dimensions from a swatch</summary>
+            <div class="fields">
+              <div class="field">
+                <label for="swatchStitches">Stitches counted</label>
+                <input id="swatchStitches" type="number" min="1" step="1" value="10">
+              </div>
+              <div class="field">
+                <label for="swatchWidth">Measured width</label>
+                <input id="swatchWidth" type="number" min="0.01" step="0.1" value="6">
+              </div>
+              <div class="field">
+                <label for="swatchRounds">Rounds or rows counted</label>
+                <input id="swatchRounds" type="number" min="1" step="1" value="10">
+              </div>
+              <div class="field">
+                <label for="swatchHeight">Measured height</label>
+                <input id="swatchHeight" type="number" min="0.01" step="0.1" value="5.5">
+              </div>
+              <div class="field wide">
+                <button id="applySwatchButton" class="button small" type="button">Apply swatch gauge</button>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="card control-card">
+        <h2><span class="step">2</span> Choose yarns</h2>
+        <div class="fields">
+          <div class="field">
+            <label for="seaName">Sea yarn name</label>
+            <input id="seaName" type="text" value="Blue" maxlength="24">
+          </div>
+          <div class="field">
+            <label for="seaColor">Sea yarn colour</label>
+            <input id="seaColor" type="color" value="#2f79b7">
+          </div>
+          <div class="field">
+            <label for="landName">Land yarn name</label>
+            <input id="landName" type="text" value="Green" maxlength="24">
+          </div>
+          <div class="field">
+            <label for="landColor">Land yarn colour</label>
+            <input id="landColor" type="color" value="#6f9a52">
+          </div>
+        </div>
+      </section>
+
+      <section class="card control-card">
+        <h2><span class="step">3</span> Choose globe orientation</h2>
+        <div class="fields">
+          <div class="field wide">
+            <label for="poleLat">Crochet north-pole latitude</label>
+            <div class="range-line"><input id="poleLat" type="range" min="-90" max="90" step="1" value="90"><span id="poleLatValue" class="range-value">90&deg;</span></div>
+          </div>
+          <div class="field wide">
+            <label for="poleLon">Crochet north-pole longitude</label>
+            <div class="range-line"><input id="poleLon" type="range" min="-180" max="180" step="1" value="0"><span id="poleLonValue" class="range-value">0&deg;</span></div>
+          </div>
+          <div class="field wide">
+            <label for="roll">Rotate map around that pole</label>
+            <div class="range-line"><input id="roll" type="range" min="-180" max="180" step="1" value="0"><span id="rollValue" class="range-value">0&deg;</span></div>
+          </div>
+          <div class="field wide">
+            <label for="seam">First-stitch seam longitude</label>
+            <div class="range-line"><input id="seam" type="range" min="-180" max="180" step="1" value="-150"><span id="seamValue" class="range-value">-150&deg;</span></div>
+          </div>
+        </div>
+        <div class="preset-row" aria-label="Orientation presets">
+          <button class="button small" type="button" data-preset="standard" title="Standard geographic poles with the seam near the central Pacific">Standard poles</button>
+          <button class="button small" type="button" data-preset="pacific" title="Move the joined-round seam farther into the Pacific">Pacific seam</button>
+          <button class="button small" type="button" data-preset="tilted" title="Demonstrate a nonstandard crochet axis">Tilted example</button>
+        </div>
+        <p class="hint">The seam setting changes which map longitude begins each joined round. A Pacific seam usually keeps the join away from large land areas.</p>
+      </section>
+
+      <details class="card control-details">
+        <summary>Advanced geometry and shaping</summary>
+        <div class="details-body">
+          <div class="fields">
+            <div class="field wide">
+              <label for="placement">How round height was measured</label>
+              <select id="placement"><option value="edge">At the top loops / round edge</option><option value="midpoint">Across surface-band midpoints</option></select>
+            </div>
+            <div class="field wide">
+              <label class="check"><input id="smoothing" type="checkbox" checked> Pattern-friendly smoothing: limit each round to ordinary increases or decreases.</label>
+            </div>
+            <div class="field wide">
+              <label class="check"><input id="stagger" type="checkbox" checked> Offset every other increase and decrease round by half a repeat.</label>
+              <p class="hint">Shaping is rotated about one quarter-turn away from the joined-round seam. Every other shaping round is also shifted by half a repeat; densely shaped rounds may still require an increase or decrease beside the join.</p>
+            </div>
+            <div class="field wide">
+              <label for="geometryMode">Stitch layout</label>
+              <select id="geometryMode">
+                <option value="chart" selected>Even sectors - recommended</option>
+                <option value="centres">Parent-linked centres</option>
+                <option value="inherited">Inherited stitch footprints</option>
+              </select>
+              <p class="hint">Even sectors produce a clear conventional colour chart. The other layouts preserve more of the angular influence created by increases and decreases.</p>
+            </div>
+            <div class="field wide">
+              <label for="relaxation">Settle stitches toward even spacing</label>
+              <div class="range-line"><input id="relaxation" type="range" min="0" max="100" step="5" value="35"><span id="relaxationValue" class="range-value">35%</span></div>
+              <p class="hint">Applies to parent-linked centres and inherited stitch footprints. Higher values distribute the stitches more evenly around each round.</p>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card control-details">
+        <summary>Advanced map classification</summary>
+        <div class="details-body">
+          <div class="fields">
+            <div class="field wide">
+              <label for="seaMax">Classify as sea at or below</label>
+              <div class="range-line"><input id="seaMax" type="range" min="0" max="100" step="1" value="25"><span id="seaMaxValue" class="range-value">25%</span></div>
+            </div>
+            <div class="field wide">
+              <label for="landMin">Classify as land at or above</label>
+              <div class="range-line"><input id="landMin" type="range" min="0" max="100" step="1" value="75"><span id="landMinValue" class="range-value">75%</span></div>
+            </div>
+            <div class="field wide">
+              <label for="middlePolicy">For partially covered stitches</label>
+              <select id="middlePolicy">
+                <option value="majority">Use majority coverage</option>
+                <option value="dither">Dither between land and sea</option>
+                <option value="land">Treat as land</option>
+                <option value="sea">Treat as sea</option>
+              </select>
+            </div>
+          </div>
+          <p class="hint">Each stitch uses a fixed 11 &times; 11 coverage sample grid. Stitches between the thresholds still use one yarn colour and are marked with a dot on the chart. Short colour runs are preserved exactly as generated.</p>
+        </div>
+      </details>
+
+      <section class="card solve-box">
+        <div id="error" class="error" role="alert" aria-live="assertive"></div>
+        <button id="solveButton" class="button primary" type="button">Generate crochet Earth pattern</button>
+        <p class="limit-note"><strong>Geometric estimate:</strong> actual size and coastline appearance will vary with tension, yarn elasticity, stuffing, joining, and how shaping settles in the fabric.</p>
+        <div class="action-row">
+          <button id="saveButton" class="button small" type="button">Save in browser</button>
+          <button id="loadButton" class="button small" type="button">Load saved</button>
+          <button id="shareButton" class="button small" type="button">Copy share link</button>
+          <button id="resetButton" class="button small" type="button">Reset</button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="summary" aria-label="Pattern summary">
+        <div class="metric"><div id="mRounds" class="value">—</div><div class="label">joined rounds</div></div>
+        <div class="metric"><div id="mWidest" class="value">—</div><div class="label">widest round</div></div>
+        <div class="metric"><div id="mTotal" class="value">—</div><div class="label">total stitches</div></div>
+        <div class="metric"><div id="mLand" class="value">—</div><div class="label">land stitches</div></div>
+        <div class="metric"><div id="mMixed" class="value">—</div><div class="label">threshold-zone cells</div></div>
+        <div class="metric"><div id="mDiameter" class="value">—</div><div class="label">theoretical diameter</div></div>
+      </section>
+
+      <section id="previewWorkspace" class="preview-workspace" data-mode="split" aria-label="Pattern preview workspace">
+        <div class="workspace-head">
+          <div>
+            <h2>Preview workspace</h2>
+            <p>View both previews side by side, or focus either one for more room.</p>
+          </div>
+          <div class="mode-switch" aria-label="Preview layout">
+            <button class="mode-button active" type="button" data-preview-mode="split" aria-pressed="true">Split</button>
+            <button class="mode-button" type="button" data-preview-mode="sphere" aria-pressed="false">Sphere</button>
+            <button class="mode-button" type="button" data-preview-mode="chart" aria-pressed="false">Chart</button>
+          </div>
+        </div>
+
+        <div class="preview-grid">
+          <article id="spherePanel" class="card preview-panel sphere-panel">
+            <div class="section-head">
+              <div><h2>Finished-sphere preview</h2><p>Rotate the generated stitch cells on the theoretical sphere, then zoom for closer inspection.</p></div>
+              <div class="panel-tools" aria-label="Sphere view controls">
+                <button id="zoomOutButton" class="button small icon-button" type="button" aria-label="Zoom sphere out" title="Zoom out">&minus;</button>
+                <span id="zoomValue" class="zoom-readout" aria-live="polite">100%</span>
+                <button id="zoomInButton" class="button small icon-button" type="button" aria-label="Zoom sphere in" title="Zoom in">+</button>
+                <button id="resetViewButton" class="button small" type="button">Reset view</button>
+                <button id="focusSphereButton" class="button small focus-panel-button" type="button">Open large</button>
+              </div>
+            </div>
+            <div class="canvas-box">
+              <canvas id="globeCanvas" width="480" height="480" tabindex="0" aria-label="Rotatable and zoomable Crochet Earth sphere preview" aria-describedby="globeHelp"></canvas>
+              <div id="globeHelp" class="canvas-note">Drag or use the arrow keys to rotate. Use + and - to zoom; Home resets the view. Double-click to open the sphere large. Dark lines are stitch boundaries; the finer line is the embedded coastline.</div>
+            </div>
+          </article>
+
+          <article id="chartPanel" class="card preview-panel chart-panel" style="position:relative">
+            <div class="section-head">
+              <div><h2>Round-by-round colour chart</h2><p>Read each row from its left-hand seam marker. Equal-width cells at the widest round merge into larger parent spans toward both poles.</p></div>
+              <div class="chart-head-tools">
+                <div class="legend">
+                  <span class="legend-item"><span id="seaSwatch" class="swatch"></span>Sea</span>
+                  <span class="legend-item"><span id="landSwatch" class="swatch"></span>Land</span>
+                  <span class="legend-item"><span class="dot-mark"></span>Between thresholds</span>
+                </div>
+                <button id="focusChartButton" class="button small focus-panel-button" type="button">Open large</button>
+              </div>
+            </div>
+            <p id="chartDescription" class="visually-hidden">Visual round-by-round colour chart anchored at the widest round. Widest-round stitches have equal widths; cells merge into larger parent spans toward both poles, and forked connectors identify increases and decreases. The complete accessible text instructions are provided in the pattern section below.</p>
+            <div class="chart-scroll"><canvas id="chartCanvas" width="900" height="600" aria-label="Flat crochet colour chart" aria-describedby="chartDescription"></canvas></div>
+            <div id="tooltip" class="tooltip"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="card pattern-card">
+        <div class="section-head" style="padding-bottom:12px">
+          <div><h2>Pattern instructions and downloads</h2><p>The written pattern combines shaping and yarn changes into joined-round instructions.</p></div>
+        </div>
+        <div class="toolbar">
+          <button id="copyButton" class="button small" type="button">Copy pattern</button>
+          <button id="txtButton" class="button small" type="button">Download TXT</button>
+          <button id="csvButton" class="button small" type="button">Download stitch CSV</button>
+          <button id="jsonButton" class="button small" type="button">Download JSON</button>
+          <button id="printButton" class="button small" type="button">Print</button>
+        </div>
+        <div class="pattern-wrap">
+          <pre id="patternText">The pattern will appear after the embedded map is ready.</pre>
+          <aside class="details">
+            <h3>Pattern method</h3>
+            <ul>
+              <li>Finished size and round height determine how many joined rounds form the sphere.</li>
+              <li>At each latitude, the local circumference is divided by stitch width to estimate the stitch count, then rounded and optionally smoothed into practical shaping changes.</li>
+              <li>Increase and decrease points are distributed around each round, with optional half-repeat staggering to reduce visible shaping lines.</li>
+              <li>Each stitch footprint is sampled against the embedded land mask and assigned a yarn according to the selected coverage thresholds.</li>
+              <li>Orientation and seam controls place the map on the crochet grid without changing the gauge or shaping.</li>
+              <li>The selected stitch layout determines how angular space is assigned within each completed round.</li>
+            </ul>
+            <h3>Measurement example</h3>
+            <p id="calculationExample">Generate a pattern to see the widest-round calculation.</p>
+            <h3>Before you begin</h3>
+            <p>Generated dimensions are estimates rather than guaranteed finished measurements. Tension, stuffing, yarn construction, colour-change technique, joins, and fabric settlement can alter both size and coastline appearance.</p>
+            <p>Short one-stitch colour runs are preserved. Review them before crocheting and decide whether geographic detail or simpler yarn handling is more important for your project.</p>
+            <p id="fitWarning" class="warning"></p>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    Creates joined-round crochet patterns from an embedded land mask derived from the low-resolution GSHHS coastline dataset distributed with Basemap.
+  </footer>
+</div>
+<script>
+(() => {
+  'use strict';
+  const MASK_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAtAAAAFoCAYAAAB+JswZAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjEwLjgsIGh0dHBzOi8vbWF0cGxvdGxpYi5vcmcvwVt1zgAAAAlwSFlzAAAPYQAAD2EBqD+naQAAKhxJREFUeJzt3dty5Ci6BlB5oq97v/9jdr2A90VFdssqHUAC8QNrRUzMjMvOVCo5fEKAvpZl+V4AAIAk/2t9AAAA0BMBGgAAMgjQAACQQYAGAIAMAjQAAGQQoAEAIIMADQAAGQRoAADIIEADAEAGARoAADII0AAAkEGABgCADH+1PgCgX9/f38uyLMvX11fS79Vw9d4AUNrXsiz1ejboTM2gt2cd/vbeO1o4PDs/V5+ltWjnEoB+CdBMIyXUfX19hQx/W7kjvme/f/R5t3/z/f3dxfkRlAGoTYCme9EDXY6U8LcXjp9eHEQJxk+Oo8Rofs57C+oA8xKg6dLR3Nuao8wlQubneFNHffdECLo9uTrnd18PqOdzxwuiEqDpSuoc3O3vX4XfvX+vPaf37Hh5LveCR2fNsvzZZpxdgD0pM2evt/63Wcpl6uAHRCFAE9qT2/nbUeoI0xeOOoCjzlSgrkuHfN9Zmb26II1u+xl6OvbeCM70SoAmtBq33XNHou++35NbkILze2btnPeC7lkA/vz72etdmfVcsy91kOOI8kRLAjTFvbUd29Xt1SOl58RuX/cp4fk9Ty90epWyo8rTqQsznleeS23/zta/KHe8QYAmyZNbmXf2Dn460rV9nau/KblAcI9QHIsO9nohq9FAenA3cMNTAjRNnIXlu3sYb8P43v9PXVR4JWV+pNAck470T3tlOXfB7tHrQC1PdjOCpwRodt1tmErftn06HeQojO/N+0zxdNW9hYFtHc3x1eH+KbcN6OFJmgClCNATuDOSVOL93u48z8J7TkCuFQT2ApswHYew95tRPXr1dl/H3AToQaVui/ZkTnPNBillzvLdv32idJDmPbMuGHzKOYvDxc2xEmtjtBHkEKAH8fTKO2fU9e5iv3WjVWKF/5GSIbdWQ3rWcB89yGHv73hGR0kET/a7n83bU+GEao4I0JN4st9m7hPzSkyjSPVkRGak232C9X29fdf0ze4mv/XYZvX6XTx59kGvn/kNAvSEUp/Id/VQhaPX2L5HbqBOeXLg2b+X1lMD0mOn1MrRqD+U9mRKWs9Gao96/o5yB8zOpnoe3T3d/t4MBGj+FbmRv9r27ij8pzj73V4bhJE6rlp6/W7py2hty5kWOw2dLfyuubd/r2YNuzUI0B27e1Wp4sxDkD6nLlDLTMF56+12p1RoP3omwQzfGfkE6M5FusLO2Vc3Z7Q7dVTjyf60R6PXvTecMwbo7aKfmYMM75ptLukI7cu2nTh64FbNBeWty0aJ3blmJEB3rFR4fvJAibNpE3dCdO6Cxdy/SZ0/nfJ7PTUyI3R0V862poLaIlyo1Xg40Ehtx53+pcR77El5X21XbAJ0p+6u5E4JjlfB9u42dHd3/sgNRCUXH16NVPdkpI5wz9HI0fr/9/adEV+Ei+zcQYacujB6u9GD2uWo536tJQG6Q6UC4FNP9nLOvfpOvY2W0pmlTAnJDdvRG52jYDm6vduzUFK0kec9qQE6ZbBipvYjktLlqcQi++3vzUaA7lzq6EeLRu/JCMfdEei7I+xPbcN5JHujCyMF6jvbLMJTUXYtujsdbYS6P4urPu9uWSsVomdtV7+WZfn+559/lr///vu/H3ZwMowo/efOuXij4Xz63ZSosGfh/O2tliIasQO1eJAW3ixvd+5CllxzMmK70YOad5RrGLWt/f7+Xn79+hV/BPpJARn1y3vqKpjWmOZxx5MRnmgNy3oObqtR6qOR/GjnKsdeeb2686JdeNf2bsfVXPURvFHuSoXoO4TotmY4/z20BeECdOSpBq3UDFyRz3fqSMgbi2FKTodpMS/3bBpH7846k+h1exQlRy1H/85KXDCUWpANkUVvC8IE6J4qdq3tgXLmGW2DY6mdKmrYBt2z0Lv3b6VHc0psc1ZyJOcNJXcm6U30RrhHKQtxcx3tnPL536N5MkWt5egzvCWlHlxliW0bklsPzo4hRIAeqWJHXrVcc6S2xAjTkzl6ZxcXqe91dXx3XutMpB0iagSilkYMXC3VKhd3y1yrHS5azGc+u9N2dzej9evCyGplsq+vr/8WEf7f//3f4xdMMWOF7aWhyrlCOxslLj3vOXXhxNV82Ku/v/q7vdd5cns0UsjroXxeiXQ+R/B05OZtrS9Ar46h5C4YuYvJUu9WRv+OIYpfv34tf33+T4nb2uzroVFaf9+5I9VfX18/OoO7I6pXZfDqPF51DCkd1t1j/pyD1GPd/k6rRYXR6/moi8x60Etw/rhbTmpMfyv1OzX+9ui11C3I89fRP9TqtFztxpS7yGwdmo9+72jEJWXR1+d1n4zSrANi6uukhsqSi6b2Xq9mZ5Y6H72lOxd0lNVz+5xan1L7udRz0cM56+WOKER3GKDXanWyvY1wzCJn9CSnMd6OUKe8d6kQXbqMpdSHp8e9fo3SC1fXxxWt/gnMbUUrDy31fi5y7uL1/lnhbUkBeu1q5PAOQbqsN0f53/jOnr5H6pzp0sGtxLnZC7ol6trn9aKNRgnPbUUqC2u1+oi9qWc9irTrEswiOUCnzj/Nrch7t2pV9mtHIwvbn99ZRBctVJWUcn7uKrEg6Gw6TOlR6LP3e9MbofnOxcdMc68jlIMzdxbpbX+/5CK+aEb5HNCTH9vYPa2EOduTUcdZYH666ruX7/HoWPf2hKwh5zzlXOBECPtPvR1Ez0JV7jkYNUTXnt709MLyyfqAXtosoC8/duFYlvujlVeMLNe3N9KyDZIlVn33EKSvRqLWv3MnFN0JXlcLLc/uxPS8/qB16NyrFyUWpY6i9DSevfNzt6xFb2eAuWU9SOXpLc2UBlHYnluN7z/nNe/OJTwb9U5979RjKGlbp2uc9yhq3WHr1VsLa2u05VfTnuz2BJSw1y/+u7vXkhGg36TRY1meB+o7t5NLBKVew1qJehc5aN75fJE/zx21A23K+5S6WCs1XQQgxY+7xYsATcdSd9JImVf8ZK7lmav52EfeCm61djaIHjxTpvqMpFabemfq39P30z8ArVQZgc6d4rGd46lRrK9151Pzu04NP0/C3Z2/vRqJ2/u9Fovtao0K0lbEqRpHt0X1AUAPvr6+2o5AayzbSx0JLbn1Xan5wjVGiN/cUm1tb3/mFp7UScE5nojheftad3dD0X8ArTQL0Bq+eM62jIp6O7bF/sGpiwh73m9YiO5X7bpa+r3X9Sq1LVhPEdKXwHyi7CL1eoDW4MWT+3CC1t7epeLJiv4eA2XkCxr2vVFPcwN0TiDe+/uU44jYPgH57qxfeusO2+HvL5OMQLcaYY3szW2nSokQ0mYI0R9Rt9/jp9YjMSnHcLYd1Nme51cLgCO3V8C51AG8WouVn/RbzeZAv9XoXQVk2yDVk9rB5Y5UtdbrFnWlzLZ7RQ/emNJQYwrH53Xf6CiBWFLalIjB+eOv6195bm/UoXVjn/J3Gu1njPbfF3kbOCN/dd357t+oW2ejxNufP9kScn0xUGJxMhBLanuQM8C5XU+xp3S/Gm4f6KfzL/ca+Zr7+2q03xMlUNYegY62qJB+vHlnrwRtJ4yh5p3kqHc9hwnQHxG3/xopZLea8hKhsizLO7eOal3wMb6cXSy2P8v5+1LHMrqR2n7mcDUnucRzEJ62IVH6xJABei+krRui3HnNb0s9zujubDH1lhbfce0Vv5HLNPGlrDXY+/29PchLXMSl3m4tIerWdtGOB45E62NSFg+3PuZwATpVDyd3fRwRG/e3RNhupqTSnX7O79Ons4vqGt9ryjSgGmXvaADkTbO2s3BXtL4l+sjzR5cB+qwDijZ/dNtxjty4p94ZKBlAW2n1HUYo0zyzbaNaXezfDdC5xztqewe9i9Kf3GkjIhz7K7twlHI1cnO1SryF7dSTkaVUglpzxd8OISNfCFHHXnn5/OyNNmL7HjnbTK5fI2VEe/S2DnrWe/2McvzdjED33jjvHf+TANY6wLV+/xS1y0mrW9M9ln9+O7sL9WZ43vu3M7X2gAbeFan/eJqBWgsdoEfdjWAbgp5s3afjuva03KRs5v7mdzFKPZjVm/P7Ut6rxOJV7RBR6BePRes7BOjCRg3Na9vRIJX9PSPtXzti3ZjFWyE6Zbu6beAoveMGvO1OiB45eEfsK3qd97wWJkDPMk94bT2yOVrF7akx6n1B1Ex1pjd7i4jXP99TK0TvbQU60gVlbT21aeQZuR+OqkaAfn0t1NIwQM8Ymq+MVoFLeqMDuztHNAp1KY7Uec6150Ofrb+4c/FYYvoZ8aS2ryNeSIz6mdairZ8xAk0Vo1XkI9EarRL75ZY4hqdz4qM1MjPJ2dEi5e9qjRAfTeVIPa4ZRWuvKGPU0eet7TMyztb2vNWH3G0vo/jfW2/0/f09fAHN0XvBKe3r66v5Z46weXtu47U+b+st0dS1eFqV76Pt87Y///xs/R/+43yMZ5bwvLXdPnOtdT/cEyPQDV3dRh29Um+viD9ab8+3p9fvQmPYRurFWIkt5HJeCzANaU+JxcS53lwLUsNrI9D86WzUdbZb8dH2+Z5hNxjqKN0hX40GGy2GdOuBG/Xmt1b92977RrgbnSprBHq2UPeWq/M6UyWPcEvNKDR35I6m3NlmK/d9gd8i9C29eHvaYqv3fsoUjuBGr+xHjVqEBTs1b/O12lGEulLvpJQKz3deC2ZxZ8rUjFIXFdcQ7e5zDgG6AzNU+r1AGSVE3w07KQtFS36+o86it0ZpJusV8VfM24Q/Regneta63+i5nxKgA5tt39W9Bz30ptVxH5WRHhulWWy/J1O52uq1zYEn9B33/dX6ADh2Nr1h7+cjKfHZWnSIT98v5UlLqb+rAYzpE5S334/vixm5cImp9pq3EdbUGYHuyFF40vj8qbeLjKsFYrlbmXmoyhh6Kb9An86yhP7jnADdob0gPXpHO+ooRer8syeL01rs78l9I5bzJ2rV/VHblDeVOocjfBe9foa9AH30jAZ+EqA7NWOI/shpqN4aqc9dBJnyneU2XCUfysE7ZlvnACMaITwvy3F7pN/YJ0B3LNIT/KKJvGfunV0XruR8Lo1hDBHKItzRa2Dkp70ArX9IZxFh5yI0YlEa05SK33q0vsa5yh2N73nboJG0Los9u1uPorRVvXMO+6f9f84IdOd63/athLuPQ3/7fN2devLU+jwIz7HNWodLm7k9hCulFq3PToDuXK+dROnFJ2ejeUe3qSKfu6tdNNxqG1PkMhnVm9PYakwNe7stuno6nzsjY7saVLKDUzoBegAauvuidxbbh8ssi83uZxC1PL4hNRC/uc4hZ3/2u6/5xnf+pL2LPujAtZRyrE9JJ0B3ToOWJmWxxFlQjWI9OqCxG1fk6UW1j2PPk20caxzPk/dttcA5crtGfbX7ihn7IwG6cz03hm912qm3LPe0CDJX7z9bIzWjFrf0W7clkerhstQZdb563dbfAX1Jrbspfcad+c8zhuY1u3DQTITwXOs9c9/n6rb1zI0U72i5JeZV+d6byrRV8phb1DfhmTtKhOfP731/fyeF4s/vzN4vGYHunEb32tVV+t2Q/WQE/emtasZVaxpCavmvcQxnapTzUguUa7x+6/PNHJ4+iMvDVK4ZgWZqKSNbJRuOnNEA+tey49m+71GQ3iv/UaZ13BVlTvcRgYToDOZcMwLdscgdRBQ5t6WPOt2SW+4xh5bTk57M3X17gdsbdaLGXOUnrwslHF3k3hl5Tunj9F9/EqA7pgFPc3duZ8k5oRqfubTajzhVznSOlL+76816UWKruZKvHVH0kXv+U6LuCM3PmMLB0HJDcK1Fh27ZziVSEDmaorF3fFfltPepHTWMcC7WC8iIrXQ/cjQnX391zQh05zR4167CzJs7dWiU5hBtBPrqqZZ33uetaU13R8tTXydFytPbnr4HXCndfwjKzwjQnas5N1FncJ9GiRZPxDuS2lHmbKFYezpHiYeT3HmtO69f8r3giH4lFgG6cxrrmDR0RNiX+M4Co9QR6adTonrbzi1lFDry8dNOiTsUtbd71GflE6A7prGORyPEspSrmyUXCj0ZRV0HgNR9pY9GvXttt97eoYQxPF2MXrNPebqDx+z+1/oAuE9hh/m8sdhr/ZSxvf2ht/97e3xH/z5i2PRENvZsy8VeWL1asKtcxSZAd04Fa2cbMHwXLMs7CwijbP9mVBb+dPZQrm39FZT7JUDDQ1YyE9nTDvrqb/f+/eyhRHeOpcXTQHP/Rhswt71wvP33HLXvNJm+8ZwAPQAF/33OOUdKlY2Wo8y5nffRHtMl91EvJWenEUj1pIy2vmOj/N9jEeFgWlfEmWh0OBNtxf2RGvss9/gY7LNdNGZ7IiHPbOc+P90Gscb+zzVffxZGoAei8X6PBoczd+tirfmQZyPKLeZgRqw/Z9/Z5/xpY8mxvhPzpPyUHN1WhssxAj0YleNdEYMAMaVsDffktUo+eOQtZ6NtZ4E/wr7Lnj7YXi/fQYk7GKX2gi/52rMToAcUvTEZjcaHVCX2ZH4qanlN2Tf6ydMKoYVSj5y/U2+F57r+an0AADN5+jTAp6LuGlNq9wKIolXZzanjUduDHgjQA2p9a3MWGh3uWI9C73VeI9XdUgui7ozcQ0tvldWj9uJqOog69ZwAPSghGmI5Wswzcj0t9ShynTwzObq43jq6QN2b9rQNzOrUc+ZAT2LkTvpNGh3uilAHRyq/Ec4nXKm1q8729bd3tmq+P78ZgZ5EL6uVo9IIcVekOmc0F/q2rcNno9Dqel1GoCcUqUPvhYaIXJHrWe/lOfK5ZW61RoCvpmv0Xqd7JEBPSgeURqPEHb3Wr1J7zdauNyXOr3UivKVWiNY/tSVAT0rHcU3jxF0j1K+n2+3VrD8jnF/mUjpE65/a8yjvSW0rn8r4k/PBXcLdb7Uef+380puS/Ym+KQ4j0BPzhK99GijuGrXeHNWJJ5/36qmDe78z6vllTHbEGJsAPbmjyj1zR6WR464Z6o12gidmnXuuXxmPbezY1WMj1/oRydBjvck1+ufbM8P3+pbZzqOyMy4j0HQxCr3drudo0/jPz86k7qMJuSLVGZ5LmWYCqfQrY7GIkLCheevr6+vHY0i3jyT9/OzqM1hASQ2R607P1E8gIiPQ/Ovs8aCtvNl52mOTu1rXk9Fd3XWq/d5bvm9y6U/GYwSaf+1V8FaVfj3CDG/LCUjCVH3rcxzhfGubyKG8jMkINMuypM0DfqvjatXYGIEmVYQQN5uWW9rV2MaPOehHxmUEmmVZ3KbcM/vnZ59y0UbLC9yj79ydMpiXAM2/Pp3B0aLC0TuLkT8b8MzVY8vPFjYznxLfvYv12ARodmn04acaj6UmTw/TrNbhWXnhru12q8QjQHPoaCeO2pW6ZadjxAj60mIqR24bpV0hl/ISnycRckvN0ZUoDUeU46A9I4lx7I3MRRztzXlA09HDrHJemzj0HXMwAk2S2Z7Wd7SoUscFc7tqA+60E3vrT65+n5j0HfMQoDm1btSPQnTJxjxyxxD52KhHxxdPhAv6vWNI/RljOtvNSv8xHvtAk+ysISjZSWhoiEL4iavHvZlrtG2RP+9MrvpF/dp4jECT7KwB0DgAEURui9zKH48FovMyAk1RTzuHCLdhtzSOcxJ02rtaHNjjKPRHrXYl+mc/mxIY2acs5n5vtqMblxFoiupp4/j1lJSzUQSjRtBGyoK9XpU89k8bFWFu+JWe5wT3eMzUYwSa4nobhV6W41GCs0f4Mq6eg9kIcrel29bHHr6/0m1IxM989RkjHvOadp4zAjRVPGkYnzRaNQNvD6M7lBG9Y+en3gL0W9M3Wk2XSP18rR+atWW6BTm6nsIRvZGc1dPv5e7f1y4P9vech060b5G/v5rHtp6OFvkcfLQ6xh7ODfF1HaAjPn2KfXcWXrR67zuvJUiPRyfbt4jfX8RjKi33M759TuwmRSndT+HoeUHCyEqEyVKhu+XOHuuLPGW0Py6K+nFWvyJ8j63q/1ufvdY0uZJSd23RVpOi6xHoD4U9nrcb0wgd5Mf6s6+P62ylPPH4niipVXl6o3/sITynvq88QaruA7TCHlepRrXHINP76nO0Lb2JXKd6mZN8R6nPNer5YVzdT+GgD6WmdOS+Ts2tolIe3Zo6fcMjX2OKHMrYF+3hKhHqc63P3uOjyVs/rCtCeaAMAZrXvdmRaax4QoDuU4QQHantqfG5e32SYus1MYyj+ykc9OetRkRjBazN2iaU3omo5/PY8qLYBflYBGia6GmvUuaksxtTrTantz2Ye/A5jzM8tZH+/NX6AOBo1wqAO958otwsYXm0h560eOrgLGVlFuZAE9ZRAxf1ISuMxcVc396YB91T+3H3c0f6jD3N5V4W859HZwoHYR01OCUbIiGJPcoFV3oLRHeOt7fPeIe6zl1GoOnWrCNJ1KVDHc+2ft/5jkdpI3I+e7TP3NN2fGueRjsmI9B0S2NEDcrVeJ4GL2WCu7ZlzwX6OIxAM5SZR5Yoa7aO7s6DinqTs2B51Hah9cOonupxFPqznufov+mTEWiGst1GSuMEeUauM2fha5Zt6Eb6bD18V3sLCYXnMQjQDEvjBOnWo2Ij23u0srZiTBG+1zcWw9OGKRxMZS8cvLGNkcayT6OHyVHcCf4z18nUc/XGOcodib3aGq6XaXzbC9aZy2OvjEAzjU+D9VZDtdcwCmR90an14c3w/P393X097rlcXx37nc/21vd5NJ2DPhmBZirr0Y4ac9D2bg/v/Xz9b8TWe1hiX2r9G7nu9rqQ8qrtjno34mxQJeq55pgAzXSOQm6p10uVe9uyZvDnWtQgPcO85Vru3h0apf71GKBTA2fK9/n257P7xlj+an0A8Ka9RrVmY3YWbo5+fjZqDVvKyX3O3bGoAS/1gvGoHW05r3t7wRb1HJPGCDTTulqMcud1tmqEYY1uW0IXI9XBsykqEUPenWMq1daX4G7iOCwiZFopt28/C4aOFg5dhakaYUuAg3ZmCzwR25u7CznfemT31TFYYD4GI9BML3Ue4LbRa93gzdaRR1LzuzenObYR693RvOKIC9wijSavPRlNjvqZOCdAw0rqHqORQo4G931vfPeRyhi/jVrXUkZEI3323gNnyrQ/4jOFA1ZSb6m9HWxKbtnEc28tRII37O2PfzQazX29B39+EqBh49OZRGrgWsy15twb5SNSGZyd7yKO3r+Lqx066IMADRkiN3JC9PtqXmhFLmuz8V3Es16L0rLty3l/5Wgs5kBDph6Cqob6fbXLxdF32kN57N2s9amHKQctj7HEe0dcqEkaARpu6Dm0aKjrKV0unjxumnLUmbhaPmp95Me8c02AhkyjhBUNfR25t3NLdcKjlMto1JM2Ukd3r57oWkuPj0GnLI/yhkl5ClYduY8Qrv0d2A7vPvUjhkjTHARnPgRomFikjmk0b5/TGb9DFwfj2vtuS1/0576e/ZtZswsHZNJQ0hN3Gu5xztrb2+Wm1QNebCXKlgANmTSU9OQTMATCdM5VLLVCdMlFusrMfARoALpU42JWEOpD7YGMz/7Oqe9jYGU+AjQkar1hf02jfi5IFe3po/y0992c7dTxpE3THpJCgIYEMzSoM3zGmfX0/VqAyZ6jOdHrxdDrf88p89HqR7Tj4U8CNABhvLmzhlHnfuQs4vt8r7lznJ/eZTz6+7PXvPtvtGcbOzgxUwMmSBDBm+GZsbTelvNsGkmrB75QjwAN/MuWZ0R09tTGJ69HP+7s1/zm95z7oKSrtnZd5pXXmDzKm+7VamBmGX3OfXIefYpenvembpyFjyfvwxhKPdikRN14ez9q5bg9c6Bhcldz8KIHL6718B2mhOen5VHoGEup7/OtAZj1XOs7f78s/83vXm+zt1cveqjzvROg6Z5O8bm98LKdvydM8yZljT05+zLnlKEn/cjVnZI7befZ8Ry91tm2fpQnQAN/MCo9lsgjdUevW3Jf36P3oD/bi/uSTxO8ezyp77v3VNA7D2s52mHkaIs/AyB1mAMNOzQ054SR/vRWpj9B6e6+vtvXYlxX5SJ1Qd6d8nX1gJer333q7mdSJ54ToOFCb8HjLTmLvohhtrKsPM4jtWxvF00/vdOR8oTEWgv/PuH5aET+rSkssxKg4cRsgSNV7sMuNM5xzFSmlbt5pJTr3PKwDr45I7lHAfrqGPaC9tUgxd5xPX0YkXqTxhxoODBT0MiVe26cyzgido4Rj4m+1Hiq5Po1t6+fsofznfc7Oob17ht7f1NiqtP677XZ14xAww6NRx2CUhyjl3FlbU6l9oYudRx7++zXPo7SdfvO8a6nl4xaF41AA68xshFHpE6txsghc6oxEl1K6Sdqnr3P+j9P3W23Rw7PyyJAAw3YVomtkTta3hetPLU8nrcvKmZ5WqIpHLBDsHvX6A1tZFHK+tOFT9vXgrXRR0NTld5PPXebvJG+h79aHwBEVLIzB6CtozZ9lDC3LO+E0+1c7tz3q7mt39tM4YADvVdu6E2pOufil63cR4CPWoZK1LGnU0JK7hjSkikccKHnCt4LFyttRSnjpnFQW6mnDfas9DSOp3qd1iFAw4Uo4WJkPTaeI4lUxre3eD2+mzfkPsmw1jGkvP7dwHn3KYtvTn3pKUybwgEXeqnMcFfUMh4p2DO2s63ftlMOjsplTnn9/O6d/aGfhOer7e32Hsyy9zel6+bZvtlRGYGGRD1U6F5FDXAzaVW+1w9bKHkMyhS1HZXboxB4tjPF1e/UcmcXjZTfKyXyiLQADYkE6DqiNo4zaVm2a+14o1wRXcvgfCQlsL4xpWN9HFFDtAANGYTosiI2irPqoWznhm3li1autmqLGJ5zvBWia7xuKfaBBgAoKCX0RQ2GKfYeqFI68EY/P0agIVMPI3XRRW8YZzVi2VbWiCbqlIToop03u3AA0FzNHQggkqdleG8HjxKiP0AmWt0XoCFTtErcG+ePPZE7bohgO0XisyYgevAdlQANvEZ4jquHDrjWjh1Xejg3jG+9K8VeaF7/LHeUWhnPJ0DDDYIgI+ml82w5B7KXc8TYUsrhOjzfmRqlrKcRoOEmITrd2ZOvaEtnCWPKaXO1A/lsYwcAO4QKIlEeYzECDUA3cqdxCB30YD2v+Wh+c46jx4nnHg/HBGh4wLQEeN8bHfveewgU1JBSru72NaW2zOvFm8crQMNDQjS96q1zvONO/ZzhvBDf2Yh0yt+WPA7+JEBDATkrnQVuONdyp42jsKDeUkPNcDpj8H2znlpECIWkzDlbb4Q/Y+MGKUrVjZTONGefXCGaUlLL09O+Yv23ym85//zzz/K1LIteHCoQkP+j4Y6pdRmteSGZWuZy3l855ql1cG5R//bKcM052KNZf38CNFTWOqREoPGNabSymVvOhGfeFKm+3Xlwijrw05RzoCMVYsan0YGfStcJawvoQaQyendx4qz2ztWUATpSIWYOI5W53M8y0menDJ02M1Lu+7V3kT5lgAZgjIubJ58hZ/cceGKE8DzCZyhJgIaXjNIJa0SJwLQNeJ/2/z8CNFCNgBNfj99Rj8fMnEacZzza57lLgAaYXE+B9O1jLfV+Qsc8ZligF+Eztj6/HqQCVNFTKKMfJR9o8mYHrD6MqXWIm9l6H/nttnxv1Dcj0EAyi64gjWA1ttajr/y219e81f8I0EAyHca4erroKVEOaz99rafzSR7t4E+tz0erJzsK0EBRgkO/fHdwrnVY5Nh6SscbzIEGihHAgFEJz8fW56ZlP/DmewvQ8JLRGl9hGYBZCdBAMqGZWSjrrI02AMJz5kADlzz1jdEoz1DHLDuUCNDAKUFjLtG/7zcu5qKfA+jBJ0SPGqYFaOCQIEEUNYLz9vXcaeGIcnHPqOF5WcyBBg7oMIjAaDP0bdQ6ZgQa+MOoDR79GXkEi75oF1kToOEFvYWA3o4XoKZZFsaRToAG4AcjbfCTOsGWAA1AWIIL9G3UkXsBGoA/CK7wkzrBmgANlfV49a2jYFnal4PW7w9wRIAGfhBaWGtVHpRDIlIu+RCggX/pHIhAOQSiE6BhcsIKV5QR4K5R2w9PIoQOfBqgWvOpR23g6I+yCPTACDR0wCb+tPZGsBWe6YFyyrIYgQYg0dfXl7sg8LKjumFQpS0BGiYmtBCBcgj/XaCm1oft70UM1CPXbQEaJjNyg0ZdNTpo5ZHZrevAk/pQ8w7RHaPXbXOgYTLmUxPB19fX8B0snKlRB45e7+26NkPdNgINFUUMqjM0bNTxdIRL2WMEJdr1N+tCtJHpUQjQMAiNJG84K2cCMvzWsi7kzqWu8f4zEKBhENsG8/P/P2FnlkaN+pQlZna2L3/kumGQpayvZVmcTaigZUMVuREHoI3a/VKPfc/6nOQcv0WEMJgeGzAAyvssGl/fidRH/HT3fBiBhgpa3ybTQAJwxJaU+3LmjhuBhgG1DvAAxDVC2K0ppQ8VoKGwCOFV4wgA+VL7cAEaBiM8A3ClZF8xSr+z3clq/b+3wdo2djCQURoxAOo7Cozrf+9tu74ntp/1bDRagIZOzNaQAfCeq8eAt3w4SwTbz24XDqig1jzomRsvAKgl9wmr5kBDYREWEQIA6XIHqARo6ITRZwCoZ/ugmbN+V4CGgkqNPgvLALQ2+h3Vvc+X+pktIoSghGgAWjsLlD33U9tt6rauPptFhFDJkyv3nhslAMYxYoDOXTC4xxQOKOhTKZ/e9ir1OgBQQ6/h+YhFhDCA0RomAPo0Wn9U6nkK5kBDITVGi0druADoz/pBXr32S6UfRGYONFRg/jMAtHfVH9/tc41AQzCzPy4VAJ6qvfjRHGgIRngGgPve2DnECDQEIDQDwHNv7V5lBBoKy628wjMAPPfm1q9GoKEA+zUDQFvrAaltv1x6sMouHFDIurKut/xJYRQaAMp4YzG+AA2FlBqFFqYBIDZzoKGQEsFXeAaA+ARoeOj7+9scaACYiCkcUMDeYgVzoAFgTEag4aG9oCw8A2/5tDfuhMF7jEBDIXc7LwEaAPpiBBoe+gTnbRC+CsZfX1/CMwB0yAg0FJYyEi04A0C/jEADAEAGj/KGTu2NdBvZBoD6BGh42WeLu6dhV1gGgDZM4YDCPsF2L+Dm7g8NAMQjQEMl61Hmz38LzwDQPwEaXrIdkfYIcADok23s4GUW/x3vnQ0APRCg4QWf6RypI86CJQDEJUBDA+v50SV25AAA3iNAAwBABosIAQAggwANAAAZBGgAAMggQAMAQAYBGgAAMgjQAACQQYAGAIAMAjQAAGQQoAEAIIMADQAAGQRoAADIIEADAEAGARoAADII0AAAkEGAhsF8f3/v/jcAUMbXsix6V+jYJyB/fX0t39/fy9fXV+MjAoCx/dX6AIBze6H4aFRZeAaA+gRoCGwdnrehWVgGgDYEaAhuHZyFZmAGBgyIzhxoCOps8Z/OBBjZncXP27t1pdpJa0vYI0BDIDmdhgYd2kitp+roPbV2Dkr5Pq7eu+Z3ehXUc8+L8leXAA2NbBvLJyMuwHtc6P6WeyERcUvNp8eWG8o/uyXlvm7NczdyGa1JgIYGtlvP3aXhg7Jydr25q9d6GzEA855ey20tAjQE4fYctNFTMNzb7/2NObo9nSPq0e/8R4CGIARoqG/kIFiiTRj5/FDW7H2QAA0BmP8Mx+5u5SgM/qfEAjooYZS+S4CGivY6pKfzK0dpfGCtxiIugfCnvXPlHBFJT/2bAA0PHe05erWPs8WD7Gnx4JyjC72zh1mUOs6SAS7ybg9Avsh9nQANhbzdaUduWMgj8AGci9bneZQ3FCAA8aEsAJQXbf91I9BQ2FsBKtrV+IyEZYDYavWVAjQhHM0j7kWrINXr+RqB8AzQn1L9pgBNdSWCRo9B8Y2A1eN56Y2gDNC/0v2lOdBU93THiWWps8VVifcXYPsnIAOQS4DuRO9THFpJ2Yc55e+OtscSvvrluwMYnznQk7saAT0Lit/f382Ddw9hpcRI+Vtaf5+96+V7BiDN2/2iAB1cpI6+9nQI8gjR+5QvgHm06gtN4ahkxE48dRpJhBHvkTm3AMyudV9oBPqhEYMyfWndiESjTgKMr3XfN3WA1tEyqtYNy9vUZYA5ROnfpgzQOltmFKXRKUldBphHpH5sqgCts4XfIjVCqdRfAKL0X90F6JxOtKdtyaC1KI2SOgvAmaP+6s1NDLoK0DpWeN8bjZG6DUCuvf6pdH9y1Ad+Lcvy/c8//yx///138h/VpjMFACCiX79+ne8DLcgCAMBP/2t9AAAA0BMBGgAAMgjQAACQQYAGAIAMAjQAAGQQoAEAIIMADQAAGQRoAADIIEADAEAGARoAADII0AAAkEGABgCADAI0AABkEKABACCDAA0AABkEaAAAyCBAAwBABgEaAAAyCNAAAJBBgAYAgAwCNAAAZPhrWZbl169frY8DAADC+/Xr1/L/tlVVrZ2CFUkAAAAASUVORK5CYII=';
+  const $ = id => document.getElementById(id);
+  const ids = ['sizeValue','sizeMode','stitchWidth','rowHeight','placement','smoothing','stagger','geometryMode','relaxation','poleLat','poleLon','roll','seam','seaMax','landMin','middlePolicy','seaName','seaColor','landName','landColor'];
+  const defaults = {
+    sizeValue:40,sizeMode:'circumference',stitchWidth:.60,rowHeight:.55,placement:'edge',smoothing:true,stagger:true,geometryMode:'chart',relaxation:35,
+    poleLat:90,poleLon:0,roll:0,seam:-150,seaMax:25,landMin:75,middlePolicy:'majority',seaName:'Blue',seaColor:'#2f79b7',landName:'Green',landColor:'#6f9a52'
+  };
+  let mask = null;
+  let solution = null;
+  let chartLayout = null;
+  let viewYaw = -0.45;
+  let viewPitch = -0.15;
+  let viewZoom = 1;
+  let drag = null;
+  let renderQueued = false;
+  const previewBreakpoint = window.matchMedia('(max-width: 900px)');
+  let compactPreview = previewBreakpoint.matches;
+  let previewMode = compactPreview ? 'sphere' : 'split';
+  let desktopPreviewMode = 'split';
+  let mobilePreviewMode = 'sphere';
+
+  const TAU = Math.PI * 2;
+  const COVERAGE_SAMPLES = 11; // Fixed high-quality land-mask sampling grid per stitch.
+  function deg(v){ return v * Math.PI / 180; }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function normLonRad(v){ const t=v%TAU; return t<0?t+TAU:t; }
+  function fmtSigned(v){ return (v<0?'−':'') + Math.abs(Math.round(v)) + '°'; }
+  function formatNumber(v,d=1){ return Number(v).toLocaleString(undefined,{maximumFractionDigits:d}); }
+  function hexRgb(hex){ const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+  function cross(a,b){ return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]; }
+  function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+  function scale(a,s){ return [a[0]*s,a[1]*s,a[2]*s]; }
+  function add(a,b){ return [a[0]+b[0],a[1]+b[1],a[2]+b[2]]; }
+  function unit(a){ const m=Math.hypot(...a)||1; return scale(a,1/m); }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+
+  function readSettings(){
+    return {
+      sizeValue:+$('sizeValue').value,sizeMode:$('sizeMode').value,stitchWidth:+$('stitchWidth').value,rowHeight:+$('rowHeight').value,
+      placement:$('placement').value,smoothing:$('smoothing').checked,stagger:$('stagger').checked,geometryMode:$('geometryMode').value,relaxation:+$('relaxation').value,
+      poleLat:+$('poleLat').value,poleLon:+$('poleLon').value,roll:+$('roll').value,seam:+$('seam').value,
+      seaMax:+$('seaMax').value,landMin:+$('landMin').value,middlePolicy:$('middlePolicy').value,
+      seaName:$('seaName').value.trim()||'Blue',seaColor:$('seaColor').value,
+      landName:$('landName').value.trim()||'Green',landColor:$('landColor').value
+    };
+  }
+
+  function estimatePatternSize(s){
+    if(!Number.isFinite(s.sizeValue)||s.sizeValue<=0||!Number.isFinite(s.stitchWidth)||s.stitchWidth<=0||!Number.isFinite(s.rowHeight)||s.rowHeight<=0)return null;
+    const R=s.sizeMode==='radius'?s.sizeValue:s.sizeValue/(2*Math.PI);
+    const meridian=Math.PI*R;
+    const rounds=s.placement==='edge'?Math.max(3,Math.round(meridian/s.rowHeight)-1):Math.max(3,Math.round(meridian/s.rowHeight));
+    const equator=Math.max(3,Math.round(2*Math.PI*R/s.stitchWidth));
+    return {R,diameter:R*2,rounds,equator};
+  }
+
+  function updateGaugeEstimate(){
+    const box=$('gaugeEstimate');
+    if(!box)return;
+    const estimate=estimatePatternSize(readSettings());
+    if(!estimate){box.textContent='Enter a valid size and gauge to estimate the pattern dimensions.';return;}
+    box.innerHTML=`<strong>Approximate result:</strong> ${estimate.rounds} joined rounds, about ${estimate.equator} stitches at the equator, and a theoretical diameter of ${formatNumber(estimate.diameter,2)}.`;
+  }
+
+  function applySwatchGauge(){
+    const stitches=+$('swatchStitches').value,width=+$('swatchWidth').value,rounds=+$('swatchRounds').value,height=+$('swatchHeight').value;
+    if(!Number.isFinite(stitches)||stitches<=0||!Number.isFinite(width)||width<=0||!Number.isFinite(rounds)||rounds<=0||!Number.isFinite(height)||height<=0){
+      showError('Swatch counts and measurements must all be greater than zero.');return;
+    }
+    $('stitchWidth').value=(width/stitches).toFixed(4);
+    $('rowHeight').value=(height/rounds).toFixed(4);
+    showError('');markDirty();setStatus('dirty','Swatch gauge applied - generate to update');
+  }
+
+  function encodeBase64Url(text){
+    const bytes=new TextEncoder().encode(text);let binary='';
+    for(const value of bytes)binary+=String.fromCharCode(value);
+    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  function decodeBase64Url(value){
+    const padded=value.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((value.length+3)%4);
+    const binary=atob(padded),bytes=Uint8Array.from(binary,ch=>ch.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function sharedSettingsFromHash(){
+    const value=new URLSearchParams(location.hash.slice(1)).get('settings');
+    if(!value)return null;
+    try{return JSON.parse(decodeBase64Url(value));}
+    catch(e){showError('The settings in this share link could not be read.');return null;}
+  }
+
+  async function copyShareLink(){
+    const token=encodeBase64Url(JSON.stringify(readSettings()));
+    const hash='settings='+encodeURIComponent(token);
+    history.replaceState(null,'',location.pathname+location.search+'#'+hash);
+    try{await navigator.clipboard.writeText(location.href);setStatus('ready','Share link copied');}
+    catch(e){showError('The share link is now in the address bar, but clipboard access was unavailable.');}
+  }
+
+  function applySettings(s){
+    const v={...defaults,...s};
+    $('sizeValue').value=v.sizeValue;$('sizeMode').value=v.sizeMode;$('stitchWidth').value=v.stitchWidth;$('rowHeight').value=v.rowHeight;
+    $('placement').value=v.placement;$('smoothing').checked=!!v.smoothing;$('stagger').checked=!!v.stagger;$('geometryMode').value=v.geometryMode;$('relaxation').value=v.relaxation;
+    $('poleLat').value=v.poleLat;$('poleLon').value=v.poleLon;$('roll').value=v.roll;$('seam').value=v.seam;
+    $('seaMax').value=v.seaMax;$('landMin').value=v.landMin;$('middlePolicy').value=v.middlePolicy;
+    $('seaName').value=v.seaName;$('seaColor').value=v.seaColor;
+    $('landName').value=v.landName;$('landColor').value=v.landColor;
+    updateRangeLabels();
+    updateGaugeEstimate();
+  }
+
+  function updateRangeLabels(){
+    $('poleLatValue').textContent=fmtSigned(+$('poleLat').value);
+    $('poleLonValue').textContent=fmtSigned(+$('poleLon').value);
+    $('rollValue').textContent=fmtSigned(+$('roll').value);
+    $('seamValue').textContent=fmtSigned(+$('seam').value);
+    $('seaMaxValue').textContent=$('seaMax').value+'%';
+    $('landMinValue').textContent=$('landMin').value+'%';
+    $('relaxationValue').textContent=$('relaxation').value+'%';
+  }
+
+  function setStatus(kind,text){
+    $('status').className='status '+kind;
+    $('statusText').textContent=text;
+  }
+  function markDirty(){ updateRangeLabels(); updateGaugeEstimate(); if(mask) setStatus('dirty','Controls changed - generate to apply'); }
+  function showError(text){ $('error').textContent=text; $('error').classList.toggle('show',!!text); }
+
+  function validate(s){
+    if(!Number.isFinite(s.sizeValue)||s.sizeValue<=0) return 'Finished size must be greater than zero.';
+    if(!Number.isFinite(s.stitchWidth)||s.stitchWidth<=0) return 'Stitch width must be greater than zero.';
+    if(!Number.isFinite(s.rowHeight)||s.rowHeight<=0) return 'Round height must be greater than zero.';
+    if(s.seaMax>s.landMin) return 'Sea maximum cannot be greater than land minimum.';
+    const R=s.sizeMode==='radius'?s.sizeValue:s.sizeValue/(2*Math.PI);
+    const approximateRows=Math.PI*R/s.rowHeight;
+    const approximateEquator=2*Math.PI*R/s.stitchWidth;
+    if(approximateRows>180||approximateEquator>300) return 'This gauge produces more than 180 rounds or 300 stitches around. Increase stitch dimensions or use a smaller finished size.';
+    return '';
+  }
+
+  function generateRounds(s){
+    const R=s.sizeMode==='radius'?s.sizeValue:s.sizeValue/(2*Math.PI);
+    const meridian=Math.PI*R;
+    const N=s.placement==='edge' ? Math.max(3,Math.round(meridian/s.rowHeight)-1) : Math.max(3,Math.round(meridian/s.rowHeight));
+    const raw=[];
+    const ideal=[];
+    for(let r=0;r<N;r++){
+      const theta=s.placement==='edge' ? (r+1)*Math.PI/(N+1) : (r+.5)*Math.PI/N;
+      const rr=R*Math.sin(theta);
+      const id=2*Math.PI*rr/s.stitchWidth;
+      ideal.push(id); raw.push(Math.max(3,Math.round(id)));
+    }
+    let counts=raw.slice();
+    if(s.smoothing){
+      const half=Math.ceil(N/2);
+      const north=[];
+      for(let i=0;i<half;i++){
+        let c=raw[i];
+        if(i>0) c=clamp(c,Math.ceil(north[i-1]/2),north[i-1]*2);
+        north.push(c);
+      }
+      counts=Array(N);
+      for(let i=0;i<half;i++){
+        counts[i]=north[i];
+        counts[N-1-i]=north[i];
+      }
+    }
+    const rounds=[];
+    for(let r=0;r<N;r++){
+      rounds.push({
+        index:r+1,count:counts[r],raw:raw[r],ideal:ideal[r],
+        latTop:Math.PI/2-r*Math.PI/N,
+        latBottom:Math.PI/2-(r+1)*Math.PI/N,
+        cells:[]
+      });
+    }
+    return {R,meridian,N,rounds,actualStep:meridian/(s.placement==='edge'?N+1:N)};
+  }
+
+  function makeBasis(s){
+    const plat=deg(s.poleLat), plon=deg(s.poleLon);
+    const z=[Math.cos(plat)*Math.cos(plon),Math.cos(plat)*Math.sin(plon),Math.sin(plat)];
+    const globalZ=[0,0,1];
+    let x0;
+    const dz=dot(globalZ,z);
+    if(Math.abs(dz)>.999999) x0=[1,0,0];
+    else x0=unit(add(globalZ,scale(z,-dz)));
+    const y0=unit(cross(z,x0));
+    const a=deg(s.roll), ca=Math.cos(a), sa=Math.sin(a);
+    const x=add(scale(x0,ca),scale(y0,sa));
+    const y=add(scale(x0,-sa),scale(y0,ca));
+    return {x,y,z};
+  }
+
+  function localToEarth(lat,lon,basis,seamRad){
+    const L=lon+seamRad;
+    const c=Math.cos(lat);
+    const v=add(add(scale(basis.x,c*Math.cos(L)),scale(basis.y,c*Math.sin(L))),scale(basis.z,Math.sin(lat)));
+    return {lat:Math.asin(clamp(v[2],-1,1))*180/Math.PI,lon:Math.atan2(v[1],v[0])*180/Math.PI};
+  }
+
+  function isLand(lat,lon){
+    if(!mask) return false;
+    let L=((lon+180)%360+360)%360;
+    const x=clamp(Math.floor(L/360*mask.w),0,mask.w-1);
+    const y=clamp(Math.floor((90-lat)/180*mask.h),0,mask.h-1);
+    return mask.data[(y*mask.w+x)*4]>127;
+  }
+
+  function ditherValue(r,c){
+    const x=Math.sin((r+1)*12.9898+(c+1)*78.233)*43758.5453;
+    return x-Math.floor(x);
+  }
+
+  function distributedExtras(length,extra,halfRepeat=false){
+    const values=Array(length).fill(0);
+    if(length<=0||extra<=0)return values;
+    // First distribute shaping evenly. The alternating phase keeps the existing
+    // half-repeat stagger so successive shaping rounds do not stack vertically.
+    const phase=halfRepeat ? 0.5 : 1;
+    const basePositions=[];
+    for(let k=0;k<extra;k++){
+      let pos=Math.floor((k+phase)*length/extra-.5);
+      basePositions.push(((pos%length)+length)%length);
+    }
+
+    // Rotate the entire shaping layout by approximately one quarter-turn. Try
+    // nearby integer offsets first and prefer a layout with no shaping in the
+    // first or last stitch beside the joined-round seam. Dense shaping rounds
+    // may make seam-adjacent increases or decreases unavoidable.
+    const preferred=Math.round(length/4)%length;
+    const candidates=[];
+    for(let distance=0;distance<length;distance++){
+      const forward=(preferred+distance)%length;
+      const backward=(preferred-distance+length)%length;
+      if(!candidates.includes(forward))candidates.push(forward);
+      if(!candidates.includes(backward))candidates.push(backward);
+    }
+    let bestOffset=preferred;
+    let bestScore=-Infinity;
+    for(const offset of candidates){
+      const shifted=basePositions.map(pos=>(pos+offset)%length);
+      const seamHits=shifted.reduce((sum,pos)=>sum+(pos===0||pos===length-1?1:0),0);
+      const clearance=Math.min(...shifted.map(pos=>Math.min(pos+.5,length-pos-.5)));
+      const score=-seamHits*length+clearance;
+      if(score>bestScore){bestScore=score;bestOffset=offset;}
+      if(seamHits===0)break;
+    }
+    for(const pos of basePositions)values[(pos+bestOffset)%length]++;
+    return values;
+  }
+
+  function attachStitchTopologyInherited(rounds,s){
+    let increaseRoundIndex=0;
+    let decreaseRoundIndex=0;
+    const settle=clamp(s.relaxation/100,0,1);
+    for(let r=0;r<rounds.length;r++){
+      const round=rounds[r];
+      if(r===0){
+        round.topEdges=Array.from({length:round.count+1},(_,i)=>i*TAU/round.count);
+        round.bottomEdges=round.topEdges.slice();
+        round.topCenters=Array.from({length:round.count},(_,i)=>(i+.5)*TAU/round.count);
+        round.bottomCenters=round.topCenters.slice();
+        round.operations=Array.from({length:round.count},(_,i)=>({type:'SC',outputs:[i],inputs:[]}));
+        round.shapingPhase='none';
+        continue;
+      }
+      const prev=rounds[r-1];
+      const delta=round.count-prev.count;
+      const top=[0],ops=[];
+      if(delta>=0){
+        const halfRepeat=delta>0&&s.stagger&&(increaseRoundIndex%2===1);
+        if(delta>0)increaseRoundIndex++;
+        const extras=distributedExtras(prev.count,delta,halfRepeat);
+        round.shapingPhase=delta===0?'none':halfRepeat?'half-repeat':'standard';
+        let output=0;
+        for(let p=0;p<prev.count;p++){
+          const children=1+extras[p];
+          const a=prev.bottomEdges[p],b=prev.bottomEdges[p+1];
+          const outputs=[];
+          for(let k=0;k<children;k++){
+            outputs.push(output++);
+            top.push(lerp(a,b,(k+1)/children));
+          }
+          ops.push({type:children===1?'SC':children===2?'INC':'MULTI_INC',outputs,inputs:[p],children});
+        }
+      }else{
+        const merges=prev.count-round.count;
+        const halfRepeat=s.stagger&&(decreaseRoundIndex%2===1);
+        decreaseRoundIndex++;
+        const extras=distributedExtras(round.count,merges,halfRepeat);
+        round.shapingPhase=halfRepeat?'half-repeat':'standard';
+        let input=0;
+        for(let c=0;c<round.count;c++){
+          const consumed=1+extras[c];
+          const inputs=Array.from({length:consumed},(_,k)=>input+k);
+          input+=consumed;
+          top.push(prev.bottomEdges[input]);
+          ops.push({type:consumed===1?'SC':consumed===2?'DEC':'MULTI_DEC',outputs:[c],inputs,consumed});
+        }
+      }
+      round.topEdges=top;
+      const even=Array.from({length:round.count+1},(_,i)=>i*TAU/round.count);
+      round.bottomEdges=top.map((edge,i)=>lerp(edge,even[i],settle));
+      round.bottomEdges[0]=0;
+      round.bottomEdges[round.count]=TAU;
+      round.topCenters=Array.from({length:round.count},(_,i)=>(round.topEdges[i]+round.topEdges[i+1])/2);
+      round.bottomCenters=Array.from({length:round.count},(_,i)=>(round.bottomEdges[i]+round.bottomEdges[i+1])/2);
+      round.operations=ops;
+    }
+  }
+
+  function normaliseCentresToSeam(values){
+    if(!values.length)return [];
+    const centres=values.slice();
+    for(let i=1;i<centres.length;i++) while(centres[i]<=centres[i-1]) centres[i]+=TAU;
+    const seamBoundary=(centres[centres.length-1]-TAU+centres[0])/2;
+    return centres.map(v=>v-seamBoundary);
+  }
+
+  function edgesFromCentres(centres){
+    const n=centres.length;
+    const edges=Array(n+1);
+    edges[0]=0;edges[n]=TAU;
+    for(let i=1;i<n;i++)edges[i]=(centres[i-1]+centres[i])/2;
+    return edges;
+  }
+
+  function attachStitchTopologyCentres(rounds,s){
+    let increaseRoundIndex=0;
+    let decreaseRoundIndex=0;
+    const settle=clamp(s.relaxation/100,0,1);
+    for(let r=0;r<rounds.length;r++){
+      const round=rounds[r];
+      if(r===0){
+        round.topCenters=Array.from({length:round.count},(_,i)=>(i+.5)*TAU/round.count);
+        round.bottomCenters=round.topCenters.slice();
+        round.topEdges=edgesFromCentres(round.topCenters);
+        round.bottomEdges=round.topEdges.slice();
+        round.operations=Array.from({length:round.count},(_,i)=>({type:'SC',outputs:[i],inputs:[]}));
+        round.shapingPhase='none';
+        continue;
+      }
+      const prev=rounds[r-1];
+      const delta=round.count-prev.count;
+      const attachments=[];
+      const ops=[];
+      if(delta>=0){
+        const halfRepeat=delta>0&&s.stagger&&(increaseRoundIndex%2===1);
+        if(delta>0)increaseRoundIndex++;
+        const extras=distributedExtras(prev.count,delta,halfRepeat);
+        round.shapingPhase=delta===0?'none':halfRepeat?'half-repeat':'standard';
+        let output=0;
+        for(let p=0;p<prev.count;p++){
+          const children=1+extras[p];
+          const left=prev.bottomEdges[p],right=prev.bottomEdges[p+1];
+          const width=right-left;
+          const outputs=[];
+          for(let k=0;k<children;k++){
+            outputs.push(output++);
+            // Child centres divide the parent's attachment span. An increase pair
+            // therefore begins at the quarter and three-quarter points rather
+            // than sharing a long diagonal edge with every later stitch.
+            attachments.push(left+(k+.5)/children*width);
+          }
+          ops.push({type:children===1?'SC':children===2?'INC':'MULTI_INC',outputs,inputs:[p],children});
+        }
+      }else{
+        const merges=prev.count-round.count;
+        const halfRepeat=s.stagger&&(decreaseRoundIndex%2===1);
+        decreaseRoundIndex++;
+        const extras=distributedExtras(round.count,merges,halfRepeat);
+        round.shapingPhase=halfRepeat?'half-repeat':'standard';
+        let input=0;
+        for(let c=0;c<round.count;c++){
+          const consumed=1+extras[c];
+          const inputs=Array.from({length:consumed},(_,k)=>input+k);
+          const left=prev.bottomEdges[input],right=prev.bottomEdges[input+consumed];
+          attachments.push((left+right)/2);
+          input+=consumed;
+          ops.push({type:consumed===1?'SC':consumed===2?'DEC':'MULTI_DEC',outputs:[c],inputs,consumed});
+        }
+      }
+      round.topCenters=normaliseCentresToSeam(attachments);
+      const even=Array.from({length:round.count},(_,i)=>(i+.5)*TAU/round.count);
+      round.bottomCenters=round.topCenters.map((v,i)=>lerp(v,even[i],settle));
+      round.topEdges=edgesFromCentres(round.topCenters);
+      round.bottomEdges=edgesFromCentres(round.bottomCenters);
+      round.operations=ops;
+    }
+  }
+
+  function attachStitchTopologyChart(rounds,s){
+    // Generate the same parent/child operations and staggering as the crochet
+    // pattern, then represent each completed round as evenly spaced cells. This
+    // matches the conventional square-row charts used by many colour patterns:
+    // shaping changes which base stitch is used, but not the final map sector
+    // assigned to each stitch in that round.
+    attachStitchTopologyInherited(rounds,{...s,relaxation:100});
+    for(const round of rounds){
+      round.topEdges=Array.from({length:round.count+1},(_,i)=>i*TAU/round.count);
+      round.bottomEdges=round.topEdges.slice();
+      round.topCenters=Array.from({length:round.count},(_,i)=>(i+.5)*TAU/round.count);
+      round.bottomCenters=round.topCenters.slice();
+    }
+  }
+
+  function attachStitchTopology(rounds,s,mode=s.geometryMode){
+    if(mode==='chart')attachStitchTopologyChart(rounds,s);
+    else if(mode==='inherited')attachStitchTopologyInherited(rounds,s);
+    else attachStitchTopologyCentres(rounds,s);
+  }
+
+  function rowT(round,lat){
+    return clamp((round.latTop-lat)/(round.latTop-round.latBottom),0,1);
+  }
+
+  function boundaryAt(round,index,t){
+    return lerp(round.topEdges[index],round.bottomEdges[index],t);
+  }
+
+  function findCellIndex(round,lon,t){
+    const L=normLonRad(lon);
+    let lo=0,hi=round.count-1;
+    while(lo<hi){
+      const mid=(lo+hi)>>1;
+      if(L<boundaryAt(round,mid+1,t))hi=mid;
+      else lo=mid+1;
+    }
+    return lo;
+  }
+
+  function sampleGeometry(geom,s,basis,seamRad){
+    let total=0,landCount=0,mixedCount=0;
+    const ss=COVERAGE_SAMPLES;
+    for(let r=0;r<geom.rounds.length;r++){
+      const round=geom.rounds[r];
+      round.cells=[];
+      const sinB=Math.sin(round.latBottom), sinT=Math.sin(round.latTop);
+      for(let c=0;c<round.count;c++){
+        let landWeight=0,totalWeight=0;
+        for(let iy=0;iy<ss;iy++){
+          const sv=sinB+(iy+.5)/ss*(sinT-sinB);
+          const lat=Math.asin(clamp(sv,-1,1));
+          const t=rowT(round,lat);
+          const lon0=boundaryAt(round,c,t),lon1=boundaryAt(round,c+1,t);
+          const width=Math.max(1e-12,lon1-lon0);
+          for(let ix=0;ix<ss;ix++){
+            const lon=lon0+(ix+.5)/ss*width;
+            const e=localToEarth(lat,lon,basis,seamRad);
+            totalWeight+=width;
+            if(isLand(e.lat,e.lon)) landWeight+=width;
+          }
+        }
+        const coverage=totalWeight?landWeight/totalWeight:0;
+        const middle=coverage>s.seaMax/100 && coverage<s.landMin/100;
+        let kind;
+        if(coverage<=s.seaMax/100) kind='sea';
+        else if(coverage>=s.landMin/100) kind='land';
+        else if(s.middlePolicy==='land') kind='land';
+        else if(s.middlePolicy==='sea') kind='sea';
+        else if(s.middlePolicy==='dither') kind=ditherValue(r,c)<coverage?'land':'sea';
+        else kind=coverage>=.5?'land':'sea';
+        round.cells.push({
+          index:c+1,coverage,kind,middle,
+          topLon0:round.topEdges[c],topLon1:round.topEdges[c+1],
+          bottomLon0:round.bottomEdges[c],bottomLon1:round.bottomEdges[c+1]
+        });
+        total++;if(kind==='land')landCount++;if(middle)mixedCount++;
+      }
+    }
+    return {total,landCount,mixedCount};
+  }
+
+  function solve(){
+    if(!mask){showError('The embedded land mask is still loading.');return;}
+    const s=readSettings();
+    const err=validate(s);showError(err);if(err)return;
+    const basis=makeBasis(s),seamRad=deg(s.seam);
+
+    const geom=generateRounds(s);
+    attachStitchTopology(geom.rounds,s,s.geometryMode);
+    const stats=sampleGeometry(geom,s,basis,seamRad);
+
+    solution={settings:s,...geom,basis,seamRad,...stats};
+    renderAll();
+    setStatus('ready',s.geometryMode==='chart'?'Pattern generated with even stitch sectors':s.geometryMode==='centres'?'Pattern generated with parent-linked centres':'Pattern generated with inherited stitch footprints');
+  }
+
+  function renderAll(){
+    if(!solution) return;
+    const s=solution.settings;
+    const maxCount=Math.max(...solution.rounds.map(r=>r.count));
+    $('mRounds').textContent=solution.N;
+    $('mWidest').textContent=maxCount+' sts';
+    $('mTotal').textContent=formatNumber(solution.total,0);
+    $('mLand').textContent=formatNumber(solution.landCount,0);
+    $('mMixed').textContent=formatNumber(solution.mixedCount,0);
+    $('mDiameter').textContent=formatNumber(solution.R*2,2);
+    $('seaSwatch').style.background=s.seaColor;
+    $('landSwatch').style.background=s.landColor;
+    renderGlobe(); renderChart(); renderPattern(); renderCalculationExample(); updateGaugeEstimate();
+    const ratio=Math.max(...solution.rounds.map(r=>r.count))*s.stitchWidth/(2*Math.PI*solution.R);
+    $('fitWarning').textContent=Math.abs(ratio-1)>.08 ? 'The rounded widest round differs noticeably from the requested circumference. A different gauge or size may produce a closer fit.' : '';
+  }
+
+
+  function renderCalculationExample(){
+    const target=$('calculationExample');
+    if(!target||!solution)return;
+    const round=solution.rounds.reduce((best,current)=>current.count>best.count?current:best,solution.rounds[0]);
+    const index=round.index-1;
+    const theta=solution.settings.placement==='edge'?(index+1)*Math.PI/(solution.N+1):(index+.5)*Math.PI/solution.N;
+    const localRadius=solution.R*Math.sin(theta);
+    const circumference=2*Math.PI*localRadius;
+    const smoothingNote=round.raw===round.count?'No smoothing adjustment was needed.':`Smoothing changed ${round.raw} to ${round.count} stitches.`;
+    target.textContent=`Round ${round.index} is one widest round. Local radius ${formatNumber(localRadius,3)} gives circumference ${formatNumber(circumference,3)}. Dividing by stitch width ${formatNumber(solution.settings.stitchWidth,3)} gives ${formatNumber(round.ideal,2)} stitches; integer rounding gives ${round.raw}. ${smoothingNote}`;
+  }
+
+  function getCellAtLocal(lat,lon){
+    const N=solution.N;
+    const r=clamp(Math.floor((Math.PI/2-lat)/Math.PI*N),0,N-1);
+    const round=solution.rounds[r];
+    const t=rowT(round,lat);
+    const c=findCellIndex(round,lon,t);
+    return {round,cell:round.cells[c],r,c,id:r*10000+c};
+  }
+
+  function localFromView(v){
+    const cp=Math.cos(viewPitch),sp=Math.sin(viewPitch),cy=Math.cos(viewYaw),sy=Math.sin(viewYaw);
+    const x1=v[0], y1=v[1]*cp+v[2]*sp, z1=-v[1]*sp+v[2]*cp;
+    return [x1*cy+y1*sy,-x1*sy+y1*cy,z1];
+  }
+
+  function resizeGlobeCanvas(){
+    const canvas=$('globeCanvas'),box=canvas.closest('.canvas-box');
+    if(!box)return false;
+    const focused=previewMode==='sphere';
+    const available=Math.max(280,box.clientWidth-30);
+    const viewportCap=Math.max(320,Math.min(window.innerHeight*.72,focused?900:560));
+    const cssSize=Math.floor(Math.min(available,viewportCap));
+    canvas.style.width=cssSize+'px';
+    canvas.style.height=cssSize+'px';
+    const renderSize=Math.round(Math.min(focused?900:720,Math.max(480,cssSize)));
+    if(canvas.width!==renderSize||canvas.height!==renderSize){
+      canvas.width=renderSize;canvas.height=renderSize;return true;
+    }
+    return false;
+  }
+
+  function renderGlobe(){
+    const canvas=$('globeCanvas');
+    resizeGlobeCanvas();
+    const ctx=canvas.getContext('2d',{alpha:false});
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=W*.455*viewZoom;
+    const img=ctx.createImageData(W,H),data=img.data;
+    const ids=new Int32Array(W*H); ids.fill(-1);
+    const coast=new Uint8Array(W*H);
+    const sea=hexRgb(solution.settings.seaColor),land=hexRgb(solution.settings.landColor);
+    for(let y=0;y<H;y++){
+      const ny=(cy-y)/R;
+      for(let x=0;x<W;x++){
+        const nx=(x-cx)/R, rr=nx*nx+ny*ny, p=(y*W+x), q=p*4;
+        if(rr>1){ data[q]=233;data[q+1]=238;data[q+2]=244;data[q+3]=255; continue; }
+        const z=Math.sqrt(1-rr);
+        const v=localFromView([nx,ny,z]);
+        const lat=Math.asin(clamp(v[2],-1,1)),lon=Math.atan2(v[1],v[0]);
+        const hit=getCellAtLocal(lat,lon); ids[p]=hit.id;
+        const rgb=hit.cell.kind==='land'?land:sea;
+        const shade=.72+.28*z;
+        data[q]=rgb[0]*shade;data[q+1]=rgb[1]*shade;data[q+2]=rgb[2]*shade;data[q+3]=255;
+        const e=localToEarth(lat,normLonRad(lon),solution.basis,solution.seamRad);
+        coast[p]=isLand(e.lat,e.lon)?1:0;
+      }
+    }
+    for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+      const p=y*W+x;if(ids[p]<0)continue;
+      const q=p*4;
+      const grid=ids[p]!==ids[p+1]||ids[p]!==ids[p+W];
+      const shoreline=coast[p]!==coast[p+1]||coast[p]!==coast[p+W];
+      if(grid){data[q]*=.58;data[q+1]*=.58;data[q+2]*=.58;}
+      if(shoreline){data[q]=Math.min(255,data[q]*.45+30);data[q+1]=Math.min(255,data[q+1]*.45+30);data[q+2]=Math.min(255,data[q+2]*.45+30);}
+    }
+    ctx.putImageData(img,0,0);
+    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.strokeStyle='rgba(25,32,42,.55)';ctx.lineWidth=2;ctx.stroke();
+  }
+
+  function buildChartDisplayEdges(rounds){
+    const maxCount=Math.max(...rounds.map(round=>round.count));
+    const midpoint=(rounds.length-1)/2;
+    let anchorRound=0,bestDistance=Infinity;
+    for(let r=0;r<rounds.length;r++){
+      if(rounds[r].count!==maxCount)continue;
+      const distance=Math.abs(r-midpoint);
+      if(distance<bestDistance){bestDistance=distance;anchorRound=r;}
+    }
+
+    const fallback=round=>Array.from({length:round.count+1},(_,i)=>i/round.count);
+    const validEdges=(edges,round)=>edges.length===round.count+1&&edges.every((value,i)=>
+      Number.isFinite(value)&&(i===0||value>=edges[i-1]-1e-12)
+    );
+    const finish=(edges,round)=>{
+      if(!validEdges(edges,round))return fallback(round);
+      edges[0]=0;edges[edges.length-1]=1;
+      return edges;
+    };
+
+    const edgesByRound=Array(rounds.length);
+    edgesByRound[anchorRound]=fallback(rounds[anchorRound]);
+
+    // Southward from the widest round: use the stored crochet operations in
+    // their normal direction. Increases divide one span; decreases combine
+    // adjacent spans.
+    for(let r=anchorRound+1;r<rounds.length;r++){
+      const prevRound=rounds[r-1],round=rounds[r],prevEdges=edgesByRound[r-1];
+      const edges=[0];
+      if(round.count>=prevRound.count){
+        for(const op of round.operations){
+          const parent=op.inputs[0];
+          const a=prevEdges[parent],b=prevEdges[parent+1];
+          const children=Math.max(1,op.outputs.length);
+          for(let k=1;k<=children;k++)edges.push(lerp(a,b,k/children));
+        }
+      }else{
+        for(const op of round.operations){
+          const lastParent=op.inputs[op.inputs.length-1];
+          edges.push(prevEdges[lastParent+1]);
+        }
+      }
+      edgesByRound[r]=finish(edges,round);
+    }
+
+    // Northward from the widest round: invert the next round's operations.
+    // A forward increase becomes one enlarged parent span; a forward decrease
+    // divides its known output span among the consumed parent stitches.
+    for(let r=anchorRound-1;r>=0;r--){
+      const round=rounds[r],nextRound=rounds[r+1],nextEdges=edgesByRound[r+1];
+      const edges=[0];
+      if(nextRound.count>=round.count){
+        for(const op of nextRound.operations){
+          const lastOutput=op.outputs[op.outputs.length-1];
+          edges.push(nextEdges[lastOutput+1]);
+        }
+      }else{
+        for(const op of nextRound.operations){
+          const child=op.outputs[0];
+          const a=nextEdges[child],b=nextEdges[child+1];
+          const parents=Math.max(1,op.inputs.length);
+          for(let k=1;k<=parents;k++)edges.push(lerp(a,b,k/parents));
+        }
+      }
+      edgesByRound[r]=finish(edges,round);
+    }
+
+    return {edges:edgesByRound,anchorRound};
+  }
+
+  function chartCellIndex(edges,ratio){
+    const value=clamp(ratio,0,.999999999);
+    let lo=0,hi=edges.length-2;
+    while(lo<hi){
+      const mid=(lo+hi)>>1;
+      if(value<edges[mid+1])hi=mid;
+      else lo=mid+1;
+    }
+    return lo;
+  }
+
+  function renderChart(){
+    const canvas=$('chartCanvas');
+    const parent=canvas.parentElement;
+    const cssW=Math.max(760,parent.clientWidth-8);
+    const rowH=29,top=28,bottom=20,cellTop=3,cellBottom=21;
+    canvas.width=Math.round(cssW);canvas.height=top+solution.N*rowH+bottom;
+    canvas.style.height=canvas.height+'px';
+    const ctx=canvas.getContext('2d'),W=canvas.width;
+    ctx.fillStyle='#f7f9fb';ctx.fillRect(0,0,W,canvas.height);
+    const left=62,right=14,plotW=W-left-right;
+    const chartGeometry=buildChartDisplayEdges(solution.rounds);
+    const roundEdges=chartGeometry.edges,anchorRound=chartGeometry.anchorRound;
+    chartLayout={left,right,plotW,top,rowH,cellTop,cellBottom,roundEdges,anchorRound};
+    ctx.font='11px ui-sans-serif,system-ui';ctx.textBaseline='middle';
+
+    for(let r=0;r<solution.N;r++){
+      const round=solution.rounds[r],displayEdges=roundEdges[r];
+      const y=top+r*rowH,y0=y+cellTop,y1=y+cellBottom;
+      ctx.fillStyle=r===anchorRound?'#204b7c':'#596575';ctx.textAlign='right';ctx.fillText('R'+round.index+(r===anchorRound?' *':''),left-10,(y0+y1)/2);
+      ctx.strokeStyle='#8390a0';ctx.beginPath();ctx.moveTo(left-5,y0+1);ctx.lineTo(left-5,y1-1);ctx.stroke();
+      for(let c=0;c<round.count;c++){
+        const cell=round.cells[c];
+        const x0=left+displayEdges[c]*plotW,x1=left+displayEdges[c+1]*plotW;
+        ctx.beginPath();ctx.rect(x0,y0,x1-x0,y1-y0);
+        ctx.fillStyle=cell.kind==='land'?solution.settings.landColor:solution.settings.seaColor;ctx.fill();
+        ctx.strokeStyle='rgba(23,33,44,.42)';ctx.lineWidth=.7;ctx.stroke();
+        if(cell.middle){
+          const mx=(x0+x1)/2,my=(y0+y1)/2;
+          ctx.fillStyle='rgba(25,32,42,.82)';ctx.beginPath();ctx.arc(mx,my,2.1,0,TAU);ctx.fill();
+        }
+      }
+    }
+
+    // Draw parent-child connectors in the gap between rows. Increase branches
+    // run from one parent to its children; decrease branches run from the
+    // consumed parents into their single output stitch.
+    ctx.strokeStyle='rgba(20,29,39,.82)';ctx.lineWidth=1.15;
+    for(let r=1;r<solution.N;r++){
+      const round=solution.rounds[r],prevEdges=roundEdges[r-1],currentEdges=roundEdges[r];
+      const prevY=top+(r-1)*rowH+cellBottom;
+      const currentY=top+r*rowH+cellTop;
+      const midY=(prevY+currentY)/2;
+      for(const op of round.operations){
+        if(op.outputs.length>1){
+          const parent=op.inputs[0];
+          const parentX=left+(prevEdges[parent]+prevEdges[parent+1])*.5*plotW;
+          ctx.beginPath();ctx.moveTo(parentX,prevY);ctx.lineTo(parentX,midY);
+          for(const child of op.outputs){
+            const childX=left+(currentEdges[child]+currentEdges[child+1])*.5*plotW;
+            ctx.moveTo(parentX,midY);ctx.lineTo(childX,currentY);
+          }
+          ctx.stroke();
+        }else if(op.inputs.length>1){
+          const child=op.outputs[0];
+          const childX=left+(currentEdges[child]+currentEdges[child+1])*.5*plotW;
+          ctx.beginPath();
+          for(const parent of op.inputs){
+            const parentX=left+(prevEdges[parent]+prevEdges[parent+1])*.5*plotW;
+            ctx.moveTo(parentX,prevY);ctx.lineTo(childX,midY);
+          }
+          ctx.moveTo(childX,midY);ctx.lineTo(childX,currentY);ctx.stroke();
+        }
+      }
+    }
+    ctx.fillStyle='#647080';ctx.textAlign='left';ctx.fillText('seam',8,13);
+    ctx.textAlign='right';ctx.fillText('* widest-round anchor',W-right,13);
+  }
+
+  function yarnName(kind,s){
+    const value=(kind==='land'?s.landName:s.seaName)||'';
+    return value.trim().replace(/[<>]/g,'') || (kind==='land'?'Green':'Blue');
+  }
+
+  function evenlySpacedFlags(length,count,offset=0){
+    const flags=Array(length).fill(false);
+    if(count<=0||length<=0)return flags;
+    for(let k=0;k<count;k++){
+      let pos=(Math.floor((k+.5)*length/count)+offset)%length;
+      while(flags[pos])pos=(pos+1)%length;
+      flags[pos]=true;
+    }
+    return flags;
+  }
+
+  function roundOperations(roundIndex){
+    const round=solution.rounds[roundIndex];
+    return round.operations.map(op=>({
+      ...op,
+      colors:op.outputs.map(i=>round.cells[i].kind)
+    }));
+  }
+
+  function operationUnits(ops){
+    const units=[];
+    function add(kind,type,count=1,raw='',stitches=count){
+      const last=units[units.length-1];
+      if(!raw&&last&&!last.raw&&last.kind===kind&&last.type===type){
+        last.count+=count;
+        last.stitches+=stitches;
+        return;
+      }
+      units.push({kind,type,count,raw,stitches});
+    }
+    for(const op of ops){
+      if(op.type==='INC'||op.type==='MULTI_INC'){
+        if(op.colors.every(v=>v===op.colors[0])){
+          if(op.colors.length===2)add(op.colors[0],'INC',1,'',2);
+          else add(op.colors[0],'SC',1,`${op.colors.length} SC in next st`,op.colors.length);
+        }else{
+          op.colors.forEach((kind,k)=>add(kind,'SC',1,k===0?'SC in next st':'SC again in same st',1));
+        }
+      }else if(op.type==='MULTI_DEC'){
+        add(op.colors[0],'SC',1,`SC${op.consumed}TOG`,1);
+      }else{
+        add(op.colors[0],op.type,1,'',1);
+      }
+    }
+    return units;
+  }
+
+  function formatOperationUnit(unit){
+    return unit.raw || (unit.count===1?unit.type:`${unit.type} x ${unit.count}`);
+  }
+
+  function colourInstructionGroups(units){
+    const groups=[];
+    for(const unit of units){
+      const last=groups[groups.length-1];
+      if(last&&last.kind===unit.kind){
+        last.units.push(unit);
+        last.stitches+=unit.stitches;
+      }else{
+        groups.push({kind:unit.kind,units:[unit],stitches:unit.stitches});
+      }
+    }
+    return groups;
+  }
+
+  function stitchLabel(count){
+    return count===1?'1 stitch':`${count} stitches`;
+  }
+
+  function renderPattern(){
+    const s=solution.settings;
+    const lines=[];
+    const layout=s.geometryMode==='chart'?'Even sectors':s.geometryMode==='centres'?'Parent-linked centres':'Inherited stitch footprints';
+    const sizeLabel=s.sizeMode==='radius'?'radius':'widest circumference';
+    const middleLabel={majority:'majority coverage',dither:'dithered land and sea',land:'land',sea:'sea'}[s.middlePolicy]||s.middlePolicy;
+    lines.push('CROCHET EARTH');
+    lines.push('Joined-round pattern');
+    lines.push('');
+    lines.push('PROJECT DETAILS');
+    lines.push(`Requested ${sizeLabel}: ${formatNumber(s.sizeValue,2)}`);
+    lines.push(`Gauge: ${formatNumber(s.stitchWidth,3)} average stitch width; ${formatNumber(s.rowHeight,3)} average round height`);
+    lines.push(`Calculated sphere: ${formatNumber(solution.R*2,3)} theoretical diameter; ${solution.N} rounds; ${solution.total} total stitches`);
+    lines.push(`Yarns: ${yarnName('sea',s)} for sea; ${yarnName('land',s)} for land`);
+    lines.push(`Map placement: pole ${fmtSigned(s.poleLat)} latitude, ${fmtSigned(s.poleLon)} longitude; roll ${fmtSigned(s.roll)}; seam ${fmtSigned(s.seam)}`);
+    lines.push(`Land classification: sea through ${s.seaMax}%; land from ${s.landMin}%; partial coverage uses ${middleLabel}; fixed ${COVERAGE_SAMPLES} x ${COVERAGE_SAMPLES} sampling`);
+    lines.push(`Stitch layout: ${layout}`);
+    lines.push('');
+    lines.push('WORKING NOTES');
+    lines.push('US crochet terminology. Work in joined rounds without turning.');
+    lines.push('Abbreviations: MR = magic ring; SC = single crochet; INC = 2 SC in the next stitch; DEC = decrease over 2 stitches; SCnTOG = decrease over n stitches when a larger decrease is specified; SL ST = slip stitch; CH = chain.');
+    lines.push('Each round heading shows the starting and finished stitch counts and identifies increases, decreases, or an even round.');
+    lines.push('Each indented yarn line is one continuous colour run. The number in braces is the number of completed stitches produced by that run.');
+    lines.push('The instructions identify colour changes but leave the choice to carry, float, or cut unused yarn to the maker.');
+    lines.push(s.geometryMode==='chart'?'Each completed round is divided into evenly spaced sectors, matching a conventional square-cell colour chart.':s.geometryMode==='centres'?'Stitch footprints are placed between neighbouring parent-linked centre-lines.':'Stitch footprints inherit and divide the angular edges of the preceding round.');
+    if(s.geometryMode!=='chart')lines.push(`Stitch settling toward even spacing: ${s.relaxation}%.`);
+    lines.push('Increase and decrease placement is rotated approximately one quarter-turn away from the joined-round seam whenever the stitch count allows.');
+    if(s.stagger)lines.push('Alternate increase and decrease rounds are additionally offset by half a repeat to distribute shaping lines around the sphere.');
+    lines.push('When an increase crosses a colour boundary, its two SC are written separately as "SC in next st" and "SC again in same st."');
+    lines.push('Finished measurements and coastline placement are estimates; tension, yarn elasticity, stuffing, joins, and fabric settlement may change the result.');
+    lines.push('');
+    lines.push('ROUNDS');
+    lines.push('');
+    for(let i=0;i<solution.rounds.length;i++){
+      const round=solution.rounds[i];
+      const groups=colourInstructionGroups(operationUnits(roundOperations(i)));
+      const finish=i===solution.rounds.length-1?'SL ST to first SC; fasten off':'SL ST to first SC; CH 1';
+      if(i===0){
+        lines.push(`Round ${round.index}: ${stitchLabel(round.count)} (starting round)`);
+        lines.push('   Begin: MR, work into ring');
+      }else{
+        const startCount=solution.rounds[i-1].count;
+        const delta=round.count-startCount;
+        const shaping=delta>0?`increase ${delta}`:delta<0?`decrease ${Math.abs(delta)}`:'even round';
+        lines.push(`Round ${round.index}: ${startCount} -> ${round.count} (${shaping})`);
+      }
+      const labelWidth=Math.max(5,...groups.map(group=>yarnName(group.kind,s).length+1));
+      for(const group of groups){
+        const label=`${yarnName(group.kind,s)}:`.padEnd(labelWidth);
+        const instructions=group.units.map(formatOperationUnit).join(', ');
+        lines.push(`   ${label} ${instructions}  {${group.stitches}}`);
+      }
+      lines.push(`   Join: ${finish}`);
+      lines.push(`   [${stitchLabel(round.count)}]`);
+      lines.push('');
+    }
+    lines.push('MAKING NOTE');
+    lines.push('Short one-stitch colour runs are preserved. Review them before crocheting and adjust only when simpler yarn handling is more important than geographic detail.');
+    lines.push('');
+    lines.push('Created with Crochet Earth Pattern Lab.');
+    $('patternText').textContent=lines.join('\n');
+  }
+
+  function cellCsv(){
+    const rows=['round,stitch,stitches_in_round,land_coverage_percent,final_colour,between_thresholds,top_start_degrees,top_end_degrees,bottom_start_degrees,bottom_end_degrees'];
+    for(const r of solution.rounds) for(const c of r.cells) rows.push([
+      r.index,c.index,r.count,(c.coverage*100).toFixed(1),c.kind,c.middle,
+      (c.topLon0*180/Math.PI).toFixed(3),(c.topLon1*180/Math.PI).toFixed(3),
+      (c.bottomLon0*180/Math.PI).toFixed(3),(c.bottomLon1*180/Math.PI).toFixed(3)
+    ].join(','));
+    return rows.join('\n');
+  }
+
+  function exportJson(){
+    return JSON.stringify({
+      schema:'crochet-earth-pattern-lab',
+      generator:'Crochet Earth Pattern Lab',
+      dataset:{name:'GSHHS low-resolution coastline land mask',distribution:'Basemap',format:'embedded raster mask'},
+      settings:solution.settings,radius:solution.R,theoreticalDiameter:solution.R*2,
+      coverageSampling:{gridWidth:COVERAGE_SAMPLES,gridHeight:COVERAGE_SAMPLES,samplesPerStitch:COVERAGE_SAMPLES*COVERAGE_SAMPLES},
+      roundingRules:{roundCount:'round pole-to-pole surface length divided by round height, with edge-placement adjustment',stitchCount:'max(3, round(local circumference divided by stitch width))',smoothing:solution.settings.smoothing?'enabled; mirrored and limited to ordinary shaping ratios':'disabled',shapingPlacement:'evenly distributed, rotated approximately one quarter-turn from the seam, with optional alternating half-repeat staggering'},
+      geometry:solution.settings.geometryMode==='chart'?'even angular sectors within each completed round':solution.settings.geometryMode==='centres'?'footprints placed between parent-linked stitch centres':'footprints inherited from the angular edges of the preceding round',
+      rounds:solution.rounds.map(r=>({
+        round:r.index,count:r.count,rawRoundedCount:r.raw,idealCount:r.ideal,
+        topEdgesRadians:r.topEdges,bottomEdgesRadians:r.bottomEdges,topCentersRadians:r.topCenters,bottomCentersRadians:r.bottomCenters,
+        shapingPhase:r.shapingPhase,operations:r.operations,
+        cells:r.cells.map(c=>({
+          stitch:c.index,landCoverage:c.coverage,colour:c.kind,betweenThresholds:c.middle,
+          topLongitude:[c.topLon0,c.topLon1],bottomLongitude:[c.bottomLon0,c.bottomLon1]
+        }))
+      }))
+    },null,2);
+  }
+
+  function download(name,type,text){
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  }
+
+  function queueGlobe(){ if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;if(solution&&previewMode!=='chart')renderGlobe();}); }
+
+  function updateZoomControls(){
+    $('zoomValue').textContent=Math.round(viewZoom*100)+'%';
+    $('zoomOutButton').disabled=viewZoom<=.7501;
+    $('zoomInButton').disabled=viewZoom>=1.5999;
+  }
+
+  function setGlobeZoom(value){
+    viewZoom=clamp(value,.75,1.6);
+    updateZoomControls();
+    queueGlobe();
+  }
+
+  function resetGlobeView(){
+    viewYaw=-.45;viewPitch=-.15;viewZoom=1;
+    updateZoomControls();
+    queueGlobe();
+  }
+
+  function setPreviewMode(mode){
+    if(previewBreakpoint.matches&&mode==='split')mode=mobilePreviewMode;
+    if(previewBreakpoint.matches)mobilePreviewMode=mode;else desktopPreviewMode=mode;
+    previewMode=mode;
+    const workspace=$('previewWorkspace');
+    workspace.dataset.mode=mode;
+    document.querySelectorAll('[data-preview-mode]').forEach(button=>{
+      const active=button.dataset.previewMode===mode;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-pressed',String(active));
+    });
+    const sphereVisible=mode!=='chart',chartVisible=mode!=='sphere';
+    $('spherePanel').setAttribute('aria-hidden',String(!sphereVisible));
+    $('chartPanel').setAttribute('aria-hidden',String(!chartVisible));
+    $('focusSphereButton').textContent=mode==='sphere'?'Back to split':'Open large';
+    $('focusChartButton').textContent=mode==='chart'?'Back to split':'Open large';
+    requestAnimationFrame(()=>{
+      if(!solution)return;
+      if(sphereVisible)renderGlobe();
+      if(chartVisible)renderChart();
+    });
+  }
+
+  function handlePreviewBreakpoint(){
+    const nowCompact=previewBreakpoint.matches;
+    if(nowCompact===compactPreview)return;
+    compactPreview=nowCompact;
+    setPreviewMode(nowCompact?mobilePreviewMode:desktopPreviewMode);
+  }
+
+  function installEvents(){
+    ids.forEach(id=>$(id).addEventListener('input',markDirty));
+    $('solveButton').addEventListener('click',solve);
+    $('applySwatchButton').addEventListener('click',applySwatchGauge);
+    document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
+      const p=b.dataset.preset;
+      if(p==='standard'){ $('poleLat').value=90;$('poleLon').value=0;$('roll').value=0;$('seam').value=-150; }
+      if(p==='pacific'){ $('poleLat').value=90;$('poleLon').value=0;$('roll').value=0;$('seam').value=150; }
+      if(p==='tilted'){ $('poleLat').value=58;$('poleLon').value=-35;$('roll').value=20;$('seam').value=-120; }
+      markDirty();
+    }));
+    $('saveButton').addEventListener('click',()=>{try{localStorage.setItem('crochetEarthSettings',JSON.stringify(readSettings()));setStatus('ready','Settings saved in this browser');}catch(e){showError('This browser did not allow local storage.');}});
+    $('loadButton').addEventListener('click',()=>{try{const v=localStorage.getItem('crochetEarthSettings');if(!v){showError('No saved settings were found in this browser.');return;}applySettings(JSON.parse(v));solve();}catch(e){showError('Saved settings could not be loaded.');}});
+    $('shareButton').addEventListener('click',copyShareLink);
+    $('resetButton').addEventListener('click',()=>{applySettings(defaults);solve();});
+    $('copyButton').addEventListener('click',async()=>{if(!solution)return;try{await navigator.clipboard.writeText($('patternText').textContent);setStatus('ready','Pattern copied');}catch(e){showError('Clipboard access was unavailable. Select the pattern text and copy it manually.');}});
+    $('txtButton').addEventListener('click',()=>solution&&download('crochet-earth-pattern.txt','text/plain',$('patternText').textContent));
+    $('csvButton').addEventListener('click',()=>solution&&download('crochet-earth-stitches.csv','text/csv',cellCsv()));
+    $('jsonButton').addEventListener('click',()=>solution&&download('crochet-earth-pattern.json','application/json',exportJson()));
+    $('printButton').addEventListener('click',()=>window.print());
+
+    document.querySelectorAll('[data-preview-mode]').forEach(button=>button.addEventListener('click',()=>setPreviewMode(button.dataset.previewMode)));
+    $('focusSphereButton').addEventListener('click',()=>setPreviewMode(previewMode==='sphere'?'split':'sphere'));
+    $('focusChartButton').addEventListener('click',()=>setPreviewMode(previewMode==='chart'?'split':'chart'));
+    $('zoomOutButton').addEventListener('click',()=>setGlobeZoom(viewZoom-.1));
+    $('zoomInButton').addEventListener('click',()=>setGlobeZoom(viewZoom+.1));
+    $('resetViewButton').addEventListener('click',resetGlobeView);
+
+    const gc=$('globeCanvas');
+    gc.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw:viewYaw,pitch:viewPitch};gc.setPointerCapture(e.pointerId);gc.focus();});
+    gc.addEventListener('pointermove',e=>{if(!drag)return;viewYaw=drag.yaw+(e.clientX-drag.x)*.009;viewPitch=clamp(drag.pitch-(e.clientY-drag.y)*.009,-1.35,1.35);queueGlobe();});
+    gc.addEventListener('pointerup',()=>drag=null);gc.addEventListener('pointercancel',()=>drag=null);
+    gc.addEventListener('dblclick',()=>{if(!previewBreakpoint.matches)setPreviewMode(previewMode==='sphere'?'split':'sphere');});
+    gc.addEventListener('wheel',e=>{
+      if(document.activeElement!==gc&&previewMode!=='sphere'&&!e.ctrlKey&&!e.metaKey)return;
+      e.preventDefault();setGlobeZoom(viewZoom+(e.deltaY<0?.08:-.08));
+    },{passive:false});
+    gc.addEventListener('keydown',e=>{
+      const step=e.shiftKey ? .16 : .08;
+      if(e.key==='ArrowLeft')viewYaw-=step;
+      else if(e.key==='ArrowRight')viewYaw+=step;
+      else if(e.key==='ArrowUp')viewPitch=clamp(viewPitch+step,-1.35,1.35);
+      else if(e.key==='ArrowDown')viewPitch=clamp(viewPitch-step,-1.35,1.35);
+      else if(e.key==='+'||e.key==='=')setGlobeZoom(viewZoom+.1);
+      else if(e.key==='-'||e.key==='_')setGlobeZoom(viewZoom-.1);
+      else if(e.key==='Home')resetGlobeView();
+      else if(e.key==='Escape'&&previewMode==='sphere'&&!previewBreakpoint.matches)setPreviewMode('split');
+      else return;
+      e.preventDefault();queueGlobe();
+    });
+
+    const cc=$('chartCanvas'),tip=$('tooltip');
+    cc.addEventListener('mousemove',e=>{
+      if(!solution||!chartLayout)return;
+      const rect=cc.getBoundingClientRect(),sx=cc.width/rect.width,sy=cc.height/rect.height;
+      const x=(e.clientX-rect.left)*sx,y=(e.clientY-rect.top)*sy;
+      const {left,plotW,top,rowH,roundEdges}=chartLayout;
+      const r=Math.floor((y-top)/rowH);
+      if(r<0||r>=solution.rounds.length||x<left||x>left+plotW){tip.style.display='none';return;}
+      const round=solution.rounds[r];
+      const cellIndex=chartCellIndex(roundEdges[r],(x-left)/plotW),c=round.cells[cellIndex];
+      const op=round.operations.find(o=>o.outputs.includes(cellIndex));
+      const shaping=op?(op.type==='MULTI_INC'?`${op.children} stitches in one parent`:op.type==='MULTI_DEC'?`decrease over ${op.consumed} parent stitches`:op.type):'SC';
+      const settling=solution.settings.geometryMode==='chart'?'':`<br>Stitch settling: ${solution.settings.relaxation}%`;
+      tip.innerHTML=`Round ${r+1}, stitch ${cellIndex+1}<br>Land coverage: ${(c.coverage*100).toFixed(1)}% → <b>${c.kind}</b><br>Shaping attachment: ${shaping}${settling}${c.middle?'<br>Between classification thresholds':''}`;
+      const host=tip.parentElement.getBoundingClientRect();tip.style.left=(e.clientX-host.left+12)+'px';tip.style.top=(e.clientY-host.top+12)+'px';tip.style.display='block';
+    });
+    cc.addEventListener('mouseleave',()=>tip.style.display='none');
+    window.addEventListener('resize',()=>{
+      handlePreviewBreakpoint();
+      if(!solution)return;
+      if(previewMode!=='chart')queueGlobe();
+      if(previewMode!=='sphere')renderChart();
+    });
+    if(previewBreakpoint.addEventListener)previewBreakpoint.addEventListener('change',handlePreviewBreakpoint);
+    else previewBreakpoint.addListener(handlePreviewBreakpoint);
+    updateZoomControls();
+    setPreviewMode(previewMode);
+  }
+
+  function loadMask(){
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;
+      const x=c.getContext('2d');x.drawImage(img,0,0);
+      mask={w:c.width,h:c.height,data:x.getImageData(0,0,c.width,c.height).data};
+      setStatus('ready','Embedded land mask ready');solve();
+    };
+    img.onerror=()=>{showError('The embedded land mask could not be decoded.');setStatus('dirty','Land mask unavailable');};
+    img.src=MASK_URI;
+  }
+
+  const shared=sharedSettingsFromHash();
+  applySettings(shared?{...defaults,...shared}:defaults);installEvents();loadMask();
+})();
+</script>
+</body>
+</html>
