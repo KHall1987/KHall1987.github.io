@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignment Optimizer Playground</title>
+  <link rel="stylesheet" href="./assets/mml-toy.css">
+  <link rel="stylesheet" href="./assets/widgets/assignment-optimizer.css">
+</head>
+<body class="mml-widget assignment-widget">
+  <main class="mml-page assignment-page">
+    <header class="mml-hero assignment-hero">
+      <div class="assignment-hero-copy">
+        <div class="mml-eyebrow">Interactive assignment problem</div>
+        <h1>What does a “good” assignment mean?</h1>
+        <p class="mml-lede">
+          Describe each item, record what each person prefers, and compare two
+          one-to-one assignments: one that maximizes total utility, and one that
+          protects the least-satisfied person before using total utility as a tie-breaker.
+        </p>
+      </div>
+
+      <aside class="assignment-objectives" aria-label="Objectives">
+        <div>
+          <h2>Two objectives</h2>
+          <p>The same constraints can produce different answers depending on what the model is asked to optimize.</p>
+        </div>
+        <div>
+          <div class="mml-formula assignment-formula">Total utility: maximize ∑ᵢ ∑ⱼ uᵢⱼxᵢⱼ</div>
+          <div class="mml-formula assignment-formula">Fairness first: maximize the minimum assigned utility</div>
+        </div>
+      </aside>
+    </header>
+
+    <section class="assignment-layout">
+      <section class="mml-card assignment-setup">
+        <div class="mml-section-head assignment-section-head">
+          <div>
+            <h2>Build the utility scores</h2>
+            <p>Utilities are calculated from item attributes and each person’s preference state.</p>
+          </div>
+          <div class="mml-actions assignment-actions">
+            <label class="assignment-select-control">
+              People and items
+              <select id="sizeSelect" aria-label="Number of people and items">
+                <option value="2">2 × 2</option>
+                <option value="3" selected>3 × 3</option>
+                <option value="4">4 × 4</option>
+                <option value="5">5 × 5</option>
+                <option value="6">6 × 6</option>
+                <option value="7">7 × 7</option>
+                <option value="8">8 × 8</option>
+              </select>
+            </label>
+            <button id="sampleBtn" type="button">Load example</button>
+            <button id="randomBtn" type="button">Randomize model</button>
+          </div>
+        </div>
+
+        <div class="mml-panel assignment-feature-area">
+          <div class="assignment-feature-head">
+            <div>
+              <h3>Features</h3>
+            </div>
+            <button id="addFeatureBtn" type="button">Add feature</button>
+          </div>
+          <div id="featureList" class="feature-list"></div>
+        </div>
+
+        <div class="builder-grid">
+          <section class="mml-panel assignment-subpanel">
+            <div class="assignment-subpanel-head">
+              <h3>Item attributes</h3>
+              <p>Describe the value each item has for every feature.</p>
+            </div>
+            <div class="mml-table-wrap assignment-table-wrap">
+              <table id="attributeTable" aria-label="Editable item attributes"></table>
+            </div>
+          </section>
+
+          <section class="mml-panel assignment-subpanel preference-subpanel">
+            <div class="assignment-subpanel-head">
+              <h3>Person preferences</h3>
+              <p>Select one person, then mark each attribute as preferred, not preferred, or neutral.</p>
+            </div>
+            <div id="personTabs" class="mml-tabs assignment-person-tabs" role="tablist" aria-label="People"></div>
+            <div id="preferenceEditor" class="preference-editor"></div>
+          </section>
+        </div>
+
+        <div class="builder-note">
+          <strong>Matching rule</strong>
+          <span>Preferred attributes score +1, not preferred attributes score −1, and no preference scores 0. For binary features, the other value automatically receives the opposite state.</span>
+        </div>
+      </section>
+
+      <section class="mml-card assignment-utility-panel">
+        <div class="mml-section-head assignment-section-head">
+          <div>
+            <h2>Utility matrix</h2>
+            <p id="matrixDescription">Calculated from the preferences and attributes above.</p>
+          </div>
+          <div class="mml-actions assignment-actions">
+            <label class="assignment-select-control">
+              Utility source
+              <select id="sourceSelect" aria-label="Utility input mode">
+                <option value="preferences" selected>Preferences</option>
+                <option value="manual">Manual scores</option>
+              </select>
+            </label>
+            <button class="primary" id="solveBtn" type="button">Recalculate</button>
+          </div>
+        </div>
+
+        <div id="modeNote" class="mode-note"></div>
+        <div class="mml-table-wrap assignment-table-wrap">
+          <table id="matrixTable" aria-label="Utility matrix"></table>
+        </div>
+        <p id="matrixHint" class="hint"></p>
+      </section>
+
+      <section class="assignment-results" aria-live="polite">
+        <article class="mml-card assignment-result-card total">
+          <div class="result-head">
+            <div>
+              <h2>Maximize total utility</h2>
+              <p>Chooses the assignment with the largest combined score.</p>
+            </div>
+            <span class="badge total">Efficiency first</span>
+          </div>
+          <div id="totalResult" class="empty">Enter complete data to calculate an assignment.</div>
+        </article>
+
+        <article class="mml-card assignment-result-card fair">
+          <div class="result-head">
+            <div>
+              <h2>Max-min, then total</h2>
+              <p>Raises the worst outcome first, then maximizes the total.</p>
+            </div>
+            <span class="badge fair">Fairness first</span>
+          </div>
+          <div id="fairResult" class="empty">Enter complete data to calculate an assignment.</div>
+        </article>
+
+        <div id="comparison" class="comparison" hidden></div>
+      </section>
+
+      <section class="mml-panel assignment-method">
+        <h2>How the widget decides</h2>
+        <p>This is a one-to-one binary linear assignment problem. Every person receives exactly one item, and every item is used exactly once.</p>
+        <div class="method-grid">
+          <div class="method-step">
+            <div class="step-number">1</div>
+            <h3>Build utilities</h3>
+            <p>Each item attribute contributes +1, −1, or 0 according to that person’s preference state.</p>
+          </div>
+          <div class="method-step">
+            <div class="step-number">2</div>
+            <h3>Search valid matchings</h3>
+            <p>The solver considers only one-to-one assignments that use every person and item once.</p>
+          </div>
+          <div class="method-step">
+            <div class="step-number">3</div>
+            <h3>Compare objectives</h3>
+            <p>One solution prioritizes the total; the other compares minimum utility before total utility.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const MAX_FEATURES = 6;
+
+      const articleSample = {
+        people: ["Person 1", "Person 2", "Person 3"],
+        items: ["Item A", "Item B", "Item C"],
+        features: ["Size", "Colour", "Texture"],
+        itemAttributes: [
+          ["Large", "Dark", "Textured"],
+          ["Large", "Dark", "Smooth"],
+          ["Large", "Light", "Textured"]
+        ],
+        preferences: [
+          [
+            { value: "Large", relation: "preferred" },
+            { value: "Dark", relation: "preferred" },
+            { value: "Textured", relation: "preferred" }
+          ],
+          [
+            { value: "Large", relation: "preferred" },
+            { value: "Dark", relation: "preferred" },
+            { value: "Textured", relation: "not_preferred" }
+          ],
+          [
+            { value: "Large", relation: "preferred" },
+            { value: "Dark", relation: "none" },
+            { value: "Textured", relation: "not_preferred" }
+          ]
+        ],
+        manualValues: [
+          [3, 8, 4],
+          [4, 9, 10],
+          [2, 6, 6]
+        ]
+      };
+
+      const state = {
+        n: 3,
+        source: "preferences",
+        people: [],
+        items: [],
+        features: [],
+        itemAttributes: [],
+        preferences: [],
+        manualValues: [],
+        activePerson: 0
+      };
+
+      const matrixTable = document.getElementById("matrixTable");
+      const attributeTable = document.getElementById("attributeTable");
+      const personTabs = document.getElementById("personTabs");
+      const preferenceEditor = document.getElementById("preferenceEditor");
+      const featureList = document.getElementById("featureList");
+      const sizeSelect = document.getElementById("sizeSelect");
+      const sourceSelect = document.getElementById("sourceSelect");
+      const sampleBtn = document.getElementById("sampleBtn");
+      const randomBtn = document.getElementById("randomBtn");
+      const solveBtn = document.getElementById("solveBtn");
+      const addFeatureBtn = document.getElementById("addFeatureBtn");
+      const matrixDescription = document.getElementById("matrixDescription");
+      const matrixHint = document.getElementById("matrixHint");
+      const modeNote = document.getElementById("modeNote");
+      const totalResult = document.getElementById("totalResult");
+      const fairResult = document.getElementById("fairResult");
+      const comparison = document.getElementById("comparison");
+
+      let recalcTimer = null;
+
+      function clonePreferences(preferences) {
+        return preferences.map(row => row.map(entry => ({ ...entry })));
+      }
+
+      function loadArticleSample() {
+        state.n = articleSample.people.length;
+        state.source = "preferences";
+        state.people = [...articleSample.people];
+        state.items = [...articleSample.items];
+        state.features = [...articleSample.features];
+        state.itemAttributes = articleSample.itemAttributes.map(row => [...row]);
+        state.preferences = clonePreferences(articleSample.preferences);
+        state.manualValues = articleSample.manualValues.map(row => [...row]);
+        state.activePerson = 0;
+        sizeSelect.value = String(state.n);
+        sourceSelect.value = state.source;
+      }
+
+      function letterName(index) {
+        let value = index + 1;
+        let result = "";
+        while (value > 0) {
+          value -= 1;
+          result = String.fromCharCode(65 + (value % 26)) + result;
+          value = Math.floor(value / 26);
+        }
+        return result;
+      }
+
+      function defaultAttribute(featureIndex, itemIndex) {
+        const pools = [
+          ["Large", "Small"],
+          ["Light", "Dark"],
+          ["Smooth", "Textured"],
+          ["Near", "Far"],
+          ["Quiet", "Busy"],
+          ["Basic", "Premium"]
+        ];
+        const pool = pools[featureIndex] || ["Option A", "Option B"];
+        return pool[itemIndex % pool.length];
+      }
+
+      function defaultPreference(featureIndex) {
+        return defaultAttribute(featureIndex, 0);
+      }
+
+      function resizeState(nextN) {
+        const oldPeople = [...state.people];
+        const oldItems = [...state.items];
+        const oldAttributes = state.itemAttributes.map(row => [...row]);
+        const oldPreferences = clonePreferences(state.preferences);
+        const oldManual = state.manualValues.map(row => [...row]);
+
+        state.n = nextN;
+        state.activePerson = Math.min(state.activePerson, nextN - 1);
+        state.people = Array.from({ length: nextN }, (_, i) => oldPeople[i] || `Person ${i + 1}`);
+        state.items = Array.from({ length: nextN }, (_, j) => oldItems[j] || `Item ${letterName(j)}`);
+
+        state.itemAttributes = Array.from({ length: nextN }, (_, j) =>
+          Array.from({ length: state.features.length }, (_, k) =>
+            oldAttributes[j]?.[k] ?? defaultAttribute(k, j)
+          )
+        );
+
+        state.preferences = Array.from({ length: nextN }, (_, i) =>
+          Array.from({ length: state.features.length }, (_, k) => {
+            const previous = oldPreferences[i]?.[k];
+            return previous ? { ...previous } : { value: defaultPreference(k), relation: "preferred" };
+          })
+        );
+
+        state.manualValues = Array.from({ length: nextN }, (_, i) =>
+          Array.from({ length: nextN }, (_, j) => {
+            const previous = oldManual[i]?.[j];
+            return Number.isFinite(previous) ? previous : Math.floor(Math.random() * 10) + 1;
+          })
+        );
+      }
+
+      function addFeature() {
+        if (state.features.length >= MAX_FEATURES) return;
+        const featureIndex = state.features.length;
+        state.features.push(`Feature ${featureIndex + 1}`);
+        state.itemAttributes.forEach((row, itemIndex) => row.push(defaultAttribute(featureIndex, itemIndex)));
+        state.preferences.forEach(row => row.push({ value: defaultPreference(featureIndex), relation: "preferred" }));
+        renderBuilder();
+        renderMatrix();
+        solveAndRender();
+      }
+
+      function removeFeature(featureIndex) {
+        if (state.features.length <= 1) return;
+        state.features.splice(featureIndex, 1);
+        state.itemAttributes.forEach(row => row.splice(featureIndex, 1));
+        state.preferences.forEach(row => row.splice(featureIndex, 1));
+        renderBuilder();
+        renderMatrix();
+        solveAndRender();
+      }
+
+      function normalize(value) {
+        return String(value ?? "").trim().toLocaleLowerCase();
+      }
+
+      function preferenceContribution(preference, actualValue) {
+        const relation = preference?.relation || "none";
+        const wanted = normalize(preference?.value);
+        const actual = normalize(actualValue);
+
+        if (relation === "none" || wanted === "" || actual === "") return 0;
+
+        const selectedMatches = wanted === actual;
+        if (relation === "preferred") return selectedMatches ? 1 : -1;
+        if (relation === "not_preferred") return selectedMatches ? -1 : 1;
+        return 0;
+      }
+
+      function calculateDerivedValues() {
+        return state.people.map((_, personIndex) =>
+          state.items.map((__, itemIndex) =>
+            state.features.reduce((sum, ___, featureIndex) => {
+              const preference = state.preferences[personIndex][featureIndex];
+              const actual = state.itemAttributes[itemIndex][featureIndex];
+              return sum + preferenceContribution(preference, actual);
+            }, 0)
+          )
+        );
+      }
+
+      function activeValues() {
+        return state.source === "preferences" ? calculateDerivedValues() : state.manualValues;
+      }
+
+      function matchBreakdown(personIndex, itemIndex) {
+        const parts = [];
+        state.features.forEach((feature, featureIndex) => {
+          const preference = state.preferences[personIndex][featureIndex];
+          const actual = state.itemAttributes[itemIndex][featureIndex];
+          const contribution = preferenceContribution(preference, actual);
+          const sign = contribution > 0 ? "+" : "";
+          const label = contribution > 0
+            ? "preferred"
+            : contribution < 0
+              ? "not preferred"
+              : "no preference";
+          parts.push(`${feature || `Feature ${featureIndex + 1}`}: ${sign}${contribution} (${label})`);
+        });
+        return parts.join("; ");
+      }
+
+      function renderBuilder() {
+        renderFeatures();
+        renderAttributeTable();
+        renderPreferenceEditor();
+        addFeatureBtn.disabled = state.features.length >= MAX_FEATURES;
+      }
+
+      function renderFeatures() {
+        featureList.innerHTML = "";
+
+        state.features.forEach((feature, featureIndex) => {
+          const card = document.createElement("div");
+          card.className = "feature-card";
+
+          const input = document.createElement("input");
+          input.className = "feature-name-input";
+          input.value = feature;
+          input.setAttribute("aria-label", `Name for feature ${featureIndex + 1}`);
+          input.addEventListener("input", event => {
+            state.features[featureIndex] = event.target.value || `Feature ${featureIndex + 1}`;
+            refreshFeatureLabels(featureIndex);
+            renderPreferenceEditor();
+            scheduleSolve();
+          });
+
+          const removeButton = document.createElement("button");
+          removeButton.className = "feature-remove-button";
+          removeButton.type = "button";
+          removeButton.textContent = "Remove";
+          removeButton.disabled = state.features.length <= 1;
+          removeButton.setAttribute("aria-label", `Remove ${feature || `feature ${featureIndex + 1}`}`);
+          removeButton.addEventListener("click", () => removeFeature(featureIndex));
+
+          card.append(input, removeButton);
+          featureList.appendChild(card);
+        });
+      }
+
+      function refreshFeatureLabels(featureIndex) {
+        const label = state.features[featureIndex] || `Feature ${featureIndex + 1}`;
+        document.querySelectorAll(`[data-feature-label="${featureIndex}"]`).forEach(element => {
+          element.textContent = label;
+        });
+      }
+
+      function renderAttributeTable() {
+        attributeTable.innerHTML = "";
+
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        const itemHeader = document.createElement("th");
+        itemHeader.textContent = "Item";
+        headerRow.appendChild(itemHeader);
+
+        state.features.forEach((feature, featureIndex) => {
+          const th = document.createElement("th");
+          th.dataset.featureLabel = String(featureIndex);
+          th.textContent = feature;
+          headerRow.appendChild(th);
+        });
+
+        thead.appendChild(headerRow);
+        attributeTable.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        state.items.forEach((item, itemIndex) => {
+          const row = document.createElement("tr");
+          const nameCell = document.createElement("th");
+          nameCell.className = "row-name-cell";
+          const nameInput = document.createElement("input");
+          nameInput.className = "name-input";
+          nameInput.value = item;
+          nameInput.setAttribute("aria-label", `Name for item ${itemIndex + 1}`);
+          nameInput.addEventListener("input", event => {
+            state.items[itemIndex] = event.target.value || `Item ${letterName(itemIndex)}`;
+            scheduleMatrixRefresh();
+          });
+          nameCell.appendChild(nameInput);
+          row.appendChild(nameCell);
+
+          state.features.forEach((feature, featureIndex) => {
+            const cell = document.createElement("td");
+            const input = document.createElement("input");
+            input.className = "attribute-input";
+            input.value = state.itemAttributes[itemIndex][featureIndex];
+            input.placeholder = "Value";
+            input.setAttribute("aria-label", `${state.items[itemIndex]} ${feature} attribute`);
+            input.addEventListener("input", event => {
+              state.itemAttributes[itemIndex][featureIndex] = event.target.value;
+              scheduleSolve();
+            });
+            input.addEventListener("change", () => renderPreferenceEditor());
+            cell.appendChild(input);
+            row.appendChild(cell);
+          });
+
+          tbody.appendChild(row);
+        });
+
+        attributeTable.appendChild(tbody);
+      }
+
+      function featureOptions(featureIndex) {
+        const values = [];
+        const seen = new Set();
+        state.itemAttributes.forEach(row => {
+          const value = String(row[featureIndex] ?? "").trim();
+          const normalized = normalize(value);
+          if (value && !seen.has(normalized)) {
+            seen.add(normalized);
+            values.push(value);
+          }
+        });
+        return values;
+      }
+
+      function renderPersonTabs() {
+        personTabs.innerHTML = "";
+        state.people.forEach((person, personIndex) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "mml-tab assignment-person-tab";
+          button.textContent = person;
+          button.title = person;
+          button.setAttribute("role", "tab");
+          button.setAttribute("aria-selected", String(personIndex === state.activePerson));
+          button.setAttribute("aria-controls", "preferenceEditor");
+          button.addEventListener("click", () => {
+            state.activePerson = personIndex;
+            renderPreferenceEditor();
+          });
+          personTabs.appendChild(button);
+        });
+      }
+
+      function setPreferenceValue(personIndex, featureIndex, value) {
+        state.preferences[personIndex][featureIndex].value = value;
+        scheduleSolve();
+      }
+
+      function setPreferenceRelation(personIndex, featureIndex, relation) {
+        state.preferences[personIndex][featureIndex].relation = relation;
+        scheduleSolve();
+      }
+
+      function renderPreferenceEditor() {
+        state.activePerson = Math.max(0, Math.min(state.activePerson, state.people.length - 1));
+        renderPersonTabs();
+        preferenceEditor.innerHTML = "";
+
+        const personIndex = state.activePerson;
+        const header = document.createElement("div");
+        header.className = "person-editor-head";
+
+        const nameField = document.createElement("label");
+        const nameLabel = document.createElement("span");
+        nameLabel.className = "field-label";
+        nameLabel.textContent = "Person name";
+        const nameInput = document.createElement("input");
+        nameInput.className = "person-name-input";
+        nameInput.value = state.people[personIndex];
+        nameInput.setAttribute("aria-label", `Name for person ${personIndex + 1}`);
+        nameInput.addEventListener("input", event => {
+          state.people[personIndex] = event.target.value || `Person ${personIndex + 1}`;
+          renderPersonTabs();
+          scheduleMatrixRefresh();
+        });
+        nameField.append(nameLabel, nameInput);
+
+        const position = document.createElement("div");
+        position.className = "person-position";
+        position.textContent = `Person ${personIndex + 1} of ${state.people.length}`;
+        header.append(nameField, position);
+
+        const columnHeads = document.createElement("div");
+        columnHeads.className = "preference-column-heads";
+        columnHeads.innerHTML = "<span>Feature</span><span>Attribute value</span><span>Preference</span>";
+
+        const rows = document.createElement("div");
+        rows.className = "preference-rows";
+
+        state.features.forEach((feature, featureIndex) => {
+          const row = document.createElement("div");
+          row.className = "preference-row";
+
+          const featureLabel = document.createElement("div");
+          featureLabel.className = "preference-feature-label";
+          featureLabel.dataset.featureLabel = String(featureIndex);
+          featureLabel.textContent = feature || `Feature ${featureIndex + 1}`;
+          const featureHelp = document.createElement("small");
+          featureHelp.textContent = "The other value receives the opposite state";
+          featureLabel.appendChild(featureHelp);
+
+          const valueControl = document.createElement("div");
+          valueControl.className = "preference-value-control";
+          const valueSelect = document.createElement("select");
+          valueSelect.className = "preference-select";
+          valueSelect.setAttribute("aria-label", `${state.people[personIndex]} selected ${feature} value`);
+
+          const preference = state.preferences[personIndex][featureIndex];
+          const options = featureOptions(featureIndex);
+          const currentNormalized = normalize(preference.value);
+          const matchingOption = options.find(option => normalize(option) === currentNormalized);
+
+          if (!matchingOption && options.length) preference.value = options[0];
+
+          if (!options.length) {
+            const emptyOption = document.createElement("option");
+            emptyOption.value = "";
+            emptyOption.textContent = "Add item values first";
+            valueSelect.appendChild(emptyOption);
+            valueSelect.disabled = true;
+          } else {
+            options.forEach(optionValue => {
+              const option = document.createElement("option");
+              option.value = optionValue;
+              option.textContent = optionValue;
+              valueSelect.appendChild(option);
+            });
+            valueSelect.value = matchingOption || options[0];
+          }
+
+          valueSelect.addEventListener("change", event => {
+            setPreferenceValue(personIndex, featureIndex, event.target.value);
+            renderPreferenceEditor();
+          });
+          valueControl.appendChild(valueSelect);
+
+          const relationControls = document.createElement("div");
+          relationControls.className = "preference-state-controls";
+          relationControls.setAttribute("role", "radiogroup");
+          relationControls.setAttribute("aria-label", `${state.people[personIndex]} preference for ${feature}`);
+
+          const states = [
+            { value: "preferred", label: "Preferred", score: "+1" },
+            { value: "not_preferred", label: "Not preferred", score: "−1" },
+            { value: "none", label: "No preference", score: "0" }
+          ];
+          const currentRelation = states.some(stateOption => stateOption.value === preference.relation)
+            ? preference.relation
+            : "none";
+          preference.relation = currentRelation;
+
+          states.forEach(stateOption => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `preference-state-button${currentRelation === stateOption.value ? " active" : ""}`;
+            button.innerHTML = `<span>${stateOption.label}</span><small>${stateOption.score}</small>`;
+            button.setAttribute("role", "radio");
+            button.setAttribute("aria-checked", String(currentRelation === stateOption.value));
+            button.addEventListener("click", () => {
+              setPreferenceRelation(personIndex, featureIndex, stateOption.value);
+              renderPreferenceEditor();
+            });
+            relationControls.appendChild(button);
+          });
+
+          const implication = document.createElement("div");
+          implication.className = "preference-effect";
+          const selectedValue = preference.value || "Selected value";
+          const oppositeValues = options.filter(option => normalize(option) !== normalize(preference.value));
+          const oppositeLabel = oppositeValues.length ? oppositeValues.join(" / ") : "other values";
+          if (currentRelation === "preferred") {
+            implication.textContent = `${selectedValue} scores +1; ${oppositeLabel} scores −1.`;
+          } else if (currentRelation === "not_preferred") {
+            implication.textContent = `${selectedValue} scores −1; ${oppositeLabel} scores +1.`;
+          } else {
+            implication.textContent = `All ${feature || `feature ${featureIndex + 1}`} values score 0.`;
+          }
+
+          row.append(featureLabel, valueControl, relationControls, implication);
+          rows.appendChild(row);
+        });
+
+        const preview = document.createElement("div");
+        preview.id = "personUtilityPreview";
+        preview.className = "person-utility-preview";
+
+        preferenceEditor.append(header, columnHeads, rows, preview);
+        refreshSelectedPersonPreview();
+      }
+
+      function refreshSelectedPersonPreview() {
+        const preview = document.getElementById("personUtilityPreview");
+        if (!preview || !state.people.length) return;
+        const personIndex = state.activePerson;
+        const values = calculateDerivedValues()[personIndex] || [];
+        preview.innerHTML = `
+          <h4>Calculated utility for ${escapeHtml(state.people[personIndex])}</h4>
+          <div class="preview-grid">
+            ${state.items.map((item, itemIndex) => `
+              <div class="preview-card" title="${escapeHtml(matchBreakdown(personIndex, itemIndex))}">
+                <div class="preview-item">${escapeHtml(item)}</div>
+                <div class="preview-score">${formatNumber(values[itemIndex] ?? 0)}</div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function renderMatrix() {
+        matrixTable.innerHTML = "";
+        const values = activeValues();
+
+        const thead = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        const corner = document.createElement("th");
+        corner.textContent = "Person / Item";
+        headRow.appendChild(corner);
+
+        state.items.forEach((name) => {
+          const th = document.createElement("th");
+          th.textContent = name;
+          headRow.appendChild(th);
+        });
+
+        thead.appendChild(headRow);
+        matrixTable.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+
+        values.forEach((rowValues, personIndex) => {
+          const row = document.createElement("tr");
+          const rowHead = document.createElement("th");
+          rowHead.textContent = state.people[personIndex];
+          row.appendChild(rowHead);
+
+          rowValues.forEach((value, itemIndex) => {
+            const cell = document.createElement("td");
+
+            if (state.source === "preferences") {
+              const display = document.createElement("div");
+              display.className = `score-display${value !== 0 ? " matched-score" : ""}`;
+              display.textContent = formatNumber(value);
+              display.title = matchBreakdown(personIndex, itemIndex);
+              display.setAttribute("aria-label", `${state.people[personIndex]} utility for ${state.items[itemIndex]}: ${formatNumber(value)}. ${matchBreakdown(personIndex, itemIndex)}`);
+              cell.appendChild(display);
+            } else {
+              const input = document.createElement("input");
+              input.className = "score-input";
+              input.type = "number";
+              input.step = "any";
+              input.value = value;
+              input.setAttribute("aria-label", `${state.people[personIndex]} utility for ${state.items[itemIndex]}`);
+              input.addEventListener("input", event => {
+                const parsed = Number(event.target.value);
+                state.manualValues[personIndex][itemIndex] = Number.isFinite(parsed) ? parsed : NaN;
+                scheduleSolve(false);
+              });
+              cell.appendChild(input);
+            }
+
+            row.appendChild(cell);
+          });
+
+          tbody.appendChild(row);
+        });
+
+        matrixTable.appendChild(tbody);
+        renderModeCopy();
+      }
+
+      function renderModeCopy() {
+        const isPreferences = state.source === "preferences";
+        matrixDescription.textContent = isPreferences
+          ? "Calculated from the preferences and attributes above."
+          : "Enter the utility of every person–item pairing directly.";
+        modeNote.innerHTML = isPreferences
+          ? "<strong>Preference mode:</strong> hover over a score to see how preferred, not preferred, and neutral attributes contributed."
+          : "<strong>Manual mode:</strong> the preference builder is retained, but the solver uses the scores entered in this matrix.";
+        matrixHint.textContent = isPreferences
+          ? "Scores update automatically as preference states and item attributes change."
+          : "Use any numeric scores, including zero or negative values. Changes recalculate automatically.";
+      }
+
+      function scheduleSolve(renderTable = true) {
+        window.clearTimeout(recalcTimer);
+        recalcTimer = window.setTimeout(() => {
+          if (renderTable) renderMatrix();
+          solveAndRender();
+          refreshSelectedPersonPreview();
+        }, 140);
+      }
+
+      function scheduleMatrixRefresh() {
+        window.clearTimeout(recalcTimer);
+        recalcTimer = window.setTimeout(() => {
+          renderMatrix();
+          solveAndRender();
+          refreshSelectedPersonPreview();
+        }, 140);
+      }
+
+      function validPreferences() {
+        const allowed = new Set(["preferred", "not_preferred", "none"]);
+        return state.preferences.every(row => row.every(entry =>
+          allowed.has(entry.relation) && (entry.relation === "none" || normalize(entry.value) !== "")
+        ));
+      }
+
+      function validMatrix(values) {
+        return values.length === state.n && values.every(row =>
+          row.length === state.n && row.every(Number.isFinite)
+        );
+      }
+
+      function solve(values, mode) {
+        const n = state.n;
+        const fullMask = (1 << n) - 1;
+        const memo = new Map();
+
+        function better(candidate, current) {
+          if (!current) return true;
+
+          if (mode === "total") {
+            if (candidate.total !== current.total) return candidate.total > current.total;
+            if (candidate.min !== current.min) return candidate.min > current.min;
+          } else {
+            if (candidate.min !== current.min) return candidate.min > current.min;
+            if (candidate.total !== current.total) return candidate.total > current.total;
+          }
+
+          return candidate.assignment.join(",") < current.assignment.join(",");
+        }
+
+        function dp(personIndex, mask) {
+          if (mask === fullMask) {
+            return { min: Infinity, total: 0, assignment: [] };
+          }
+
+          const key = `${personIndex}|${mask}`;
+          if (memo.has(key)) return memo.get(key);
+
+          let best = null;
+
+          for (let itemIndex = 0; itemIndex < n; itemIndex += 1) {
+            if ((mask & (1 << itemIndex)) !== 0) continue;
+
+            const next = dp(personIndex + 1, mask | (1 << itemIndex));
+            const utility = values[personIndex][itemIndex];
+            const candidate = {
+              min: Math.min(utility, next.min),
+              total: utility + next.total,
+              assignment: [itemIndex, ...next.assignment]
+            };
+
+            if (better(candidate, best)) best = candidate;
+          }
+
+          memo.set(key, best);
+          return best;
+        }
+
+        return dp(0, 0);
+      }
+
+      function formatNumber(value) {
+        if (Number.isInteger(value)) return String(value);
+        return Number(value.toFixed(2)).toString();
+      }
+
+      function resultMarkup(solution, values) {
+        const utilities = solution.assignment.map((itemIndex, personIndex) => values[personIndex][itemIndex]);
+        const maxMagnitude = Math.max(1, ...utilities.map(value => Math.abs(value)));
+
+        const assignments = solution.assignment.map((itemIndex, personIndex) => {
+          const utility = values[personIndex][itemIndex];
+          const width = Math.max(3, Math.abs(utility) / maxMagnitude * 100);
+          return `
+            <li class="assignment-row">
+              <div class="assignment-copy">
+                <strong>${escapeHtml(state.people[personIndex])}</strong>
+                <span> → ${escapeHtml(state.items[itemIndex])}</span>
+                <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+              </div>
+              <span class="utility-pill">${formatNumber(utility)}</span>
+            </li>
+          `;
+        }).join("");
+
+        return `
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">Total utility</div>
+              <div class="metric-value">${formatNumber(solution.total)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Minimum utility</div>
+              <div class="metric-value">${formatNumber(solution.min)}</div>
+            </div>
+          </div>
+          <ul class="assignment-list">${assignments}</ul>
+        `;
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function sameAssignment(a, b) {
+        return a.assignment.length === b.assignment.length && a.assignment.every((value, index) => value === b.assignment[index]);
+      }
+
+      function solveAndRender() {
+        const values = activeValues();
+        const preferencesValid = state.source !== "preferences" || validPreferences();
+
+        if (!preferencesValid || !validMatrix(values)) {
+          totalResult.className = "empty";
+          fairResult.className = "empty";
+          totalResult.textContent = "Complete every preference or numeric score before calculating.";
+          fairResult.textContent = "Complete every preference or numeric score before calculating.";
+          comparison.hidden = true;
+          return;
+        }
+
+        const totalSolution = solve(values, "total");
+        const fairSolution = solve(values, "fair");
+
+        totalResult.className = "";
+        fairResult.className = "";
+        totalResult.innerHTML = resultMarkup(totalSolution, values);
+        fairResult.innerHTML = resultMarkup(fairSolution, values);
+
+        comparison.hidden = false;
+
+        if (sameAssignment(totalSolution, fairSolution)) {
+          comparison.innerHTML = "For these scores, both objectives choose the same assignment. There is no efficiency–fairness trade-off in this matrix.";
+          return;
+        }
+
+        const totalLoss = totalSolution.total - fairSolution.total;
+        const minimumGain = fairSolution.min - totalSolution.min;
+        comparison.innerHTML = `
+          The fairness-first solution raises the minimum utility by <strong>${formatNumber(minimumGain)}</strong>
+          while giving up <strong>${formatNumber(totalLoss)}</strong> point${Math.abs(totalLoss) === 1 ? "" : "s"} of total utility.
+        `;
+      }
+
+      function randomizeModel() {
+        const pools = [
+          ["Large", "Small"],
+          ["Light", "Dark"],
+          ["Smooth", "Textured"],
+          ["Near", "Far"],
+          ["Quiet", "Busy"],
+          ["Basic", "Premium"]
+        ];
+
+        state.itemAttributes = state.items.map(() =>
+          state.features.map((_, featureIndex) => {
+            const pool = pools[featureIndex] || ["Option A", "Option B", "Option C"];
+            return pool[Math.floor(Math.random() * pool.length)];
+          })
+        );
+
+        const relations = ["preferred", "not_preferred", "none"];
+        state.preferences = state.people.map(() =>
+          state.features.map((_, featureIndex) => {
+            const pool = pools[featureIndex] || ["Option A", "Option B", "Option C"];
+            return {
+              value: pool[Math.floor(Math.random() * pool.length)],
+              relation: relations[Math.floor(Math.random() * relations.length)]
+            };
+          })
+        );
+
+        state.manualValues = Array.from({ length: state.n }, () =>
+          Array.from({ length: state.n }, () => Math.floor(Math.random() * 10) + 1)
+        );
+      }
+
+      sizeSelect.addEventListener("change", event => {
+        resizeState(Number(event.target.value));
+        renderBuilder();
+        renderMatrix();
+        solveAndRender();
+      });
+
+      sourceSelect.addEventListener("change", event => {
+        state.source = event.target.value;
+        if (state.source === "manual" && !validMatrix(state.manualValues)) {
+          state.manualValues = calculateDerivedValues().map(row => [...row]);
+        }
+        renderMatrix();
+        solveAndRender();
+      });
+
+      sampleBtn.addEventListener("click", () => {
+        loadArticleSample();
+        renderBuilder();
+        renderMatrix();
+        solveAndRender();
+      });
+
+      randomBtn.addEventListener("click", () => {
+        randomizeModel();
+        renderBuilder();
+        renderMatrix();
+        solveAndRender();
+      });
+
+      addFeatureBtn.addEventListener("click", addFeature);
+      solveBtn.addEventListener("click", () => {
+        renderMatrix();
+        solveAndRender();
+      });
+
+      loadArticleSample();
+      renderBuilder();
+      renderMatrix();
+      solveAndRender();
+    })();
+  </script>
+</body>
+</html>
