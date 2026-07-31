@@ -403,6 +403,7 @@
           card.className = "feature-card";
 
           const input = document.createElement("input");
+          input.type = "text";
           input.className = "feature-name-input";
           input.value = feature;
           input.setAttribute("aria-label", `Name for feature ${featureIndex + 1}`);
@@ -458,6 +459,7 @@
           const nameCell = document.createElement("th");
           nameCell.className = "row-name-cell";
           const nameInput = document.createElement("input");
+          nameInput.type = "text";
           nameInput.className = "name-input";
           nameInput.value = item;
           nameInput.setAttribute("aria-label", `Name for item ${itemIndex + 1}`);
@@ -471,6 +473,7 @@
           state.features.forEach((feature, featureIndex) => {
             const cell = document.createElement("td");
             const input = document.createElement("input");
+            input.type = "text";
             input.className = "attribute-input";
             input.value = state.itemAttributes[itemIndex][featureIndex];
             input.placeholder = "Value";
@@ -547,6 +550,7 @@
         nameLabel.className = "field-label";
         nameLabel.textContent = "Person name";
         const nameInput = document.createElement("input");
+        nameInput.type = "text";
         nameInput.className = "person-name-input";
         nameInput.value = state.people[personIndex];
         nameInput.setAttribute("aria-label", `Name for person ${personIndex + 1}`);
